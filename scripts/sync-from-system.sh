@@ -130,7 +130,7 @@ copy_dir_contents /etc/keyd "$repo_root/system/etc/keyd" \
   -name '*.conf'
 
 copy_file "$home_dir/.config/gocrosshair/config.toml" "$repo_root/applications/gocrosshair/config.toml" optional
-for name in README.md LICENSE PKGBUILD go.mod go.sum main.go gocrosshair.desktop gocrosshair.png icon.png .gitignore; do
+for name in LICENSE PKGBUILD go.mod go.sum main.go gocrosshair.desktop gocrosshair.png icon.png .gitignore; do
   copy_file "$home_dir/gocrosshair/$name" "$repo_root/applications/gocrosshair/$name" optional
 done
 copy_dir_contents "$home_dir/gocrosshair/config" "$repo_root/applications/gocrosshair/config" \
