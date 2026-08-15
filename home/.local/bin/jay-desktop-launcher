@@ -1,75 +1,9 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
 
-application_dirs=(
-  "$HOME/.local/share/applications"
-  "/usr/local/share/applications"
-  "/usr/share/applications"
-  "/var/lib/flatpak/exports/share/applications"
-  "$HOME/.local/share/flatpak/exports/share/applications"
-)
-
-entry_table="$(mktemp)"
-selection_table="$(mktemp)"
-trap 'rm -f "$entry_table" "$selection_table"' EXIT
-
-desktop_value() {
-  local key="$1" file="$2"
-  awk -F= -v key="$key" '
-    /^\[Desktop Entry\]$/ { in_entry=1; next }
-    /^\[/ { in_entry=0; next }
-    in_entry && $1 == key {
-      value = substr($0, length($1) + 2)
-      print value
-      exit
-    }
-  ' "$file"
-}
-
-declare -A seen_ids=()
-for dir in "${application_dirs[@]}"; do
-  [[ -d "$dir" ]] || continue
-  while IFS= read -r -d '' file; do
-    rel="${file#"$dir"/}"
-    desktop_id="${rel//\//-}"
-    [[ -n "${seen_ids[$desktop_id]+set}" ]] && continue
-    seen_ids[$desktop_id]=1
-
-    type="$(desktop_value Type "$file")"
-    name="$(desktop_value Name "$file")"
-    hidden="$(desktop_value Hidden "$file")"
-    no_display="$(desktop_value NoDisplay "$file")"
-    exec_line="$(desktop_value Exec "$file")"
-
-    [[ "$type" == "Application" ]] || continue
-    [[ -n "$name" && -n "$exec_line" ]] || continue
-    [[ "${hidden,,}" == "true" || "${no_display,,}" == "true" ]] && continue
-
-    printf '%s\t%s\t%s\n' "$name" "$desktop_id" "$file" >>"$entry_table"
-  done < <(find "$dir" -type f -name '*.desktop' -print0 2>/dev/null | sort -z)
-done
-
-sort -f -k1,1 -k2,2 "$entry_table" | awk -F '\t' '
-  {
-    label = $1
-    if (labels[label]++) {
-      display = label " (" $2 ")"
-    } else {
-      display = label
-    }
-    print display "\t" $3
-  }
-' >"$selection_table"
-
-selection="$(
-  cut -f1 "$selection_table" \
-    | bemenu -i -p 'Run' --single-instance
-)"
-[[ -n "$selection" ]] || exit 0
-
-desktop_file="$(
-  awk -F '\t' -v selection="$selection" '$1 == selection { print $2; exit }' "$selection_table"
-)"
-[[ -n "$desktop_file" ]] || exit 1
-
-exec dex "$desktop_file"
+: "${XDG_RUNTIME_DIR:?XDG_RUNTIME_DIR is not set}"
+launcher_bin="$XDG_RUNTIME_DIR/nathan-jay-launcher-bin"
+/usr/bin/install -d -m 700 "$launcher_bin"
+/usr/bin/ln -sfn /home/nathan/.local/bin/foot-tabbed "$launcher_bin/foot"
+export PATH="$launcher_bin:$PATH"
+exec /usr/bin/bemenu-run "$@"

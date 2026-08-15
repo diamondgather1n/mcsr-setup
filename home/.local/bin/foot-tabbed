@@ -5,7 +5,7 @@ export EDITOR="${EDITOR:-micro}"
 export VISUAL="${VISUAL:-micro}"
 
 if ! command -v zellij >/dev/null 2>&1; then
-  exec foot
+  exec /usr/bin/foot
 fi
 
-exec foot zellij attach --create main
+exec /usr/bin/foot zellij attach --create main
