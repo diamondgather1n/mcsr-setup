@@ -95,8 +95,16 @@ action = { type = "move-to-workspace", name = "10" }
 [[windows]]
 name = "qpwgraph"
 match.any = [
-  { app-id-regex = "(?i)^qpwgraph$" },
+  { app-id-regex = "(?i)^(org[.]rncbc[.])?qpwgraph$" },
   { x-class-regex = "(?i)^qpwgraph$" },
+]
+action = { type = "move-to-workspace", name = "10" }
+
+[[windows]]
+name = "foot"
+match.any = [
+  { app-id-regex = "(?i)^foot$" },
+  { x-class-regex = "(?i)^foot$" },
 ]
 action = { type = "move-to-workspace", name = "10" }
 

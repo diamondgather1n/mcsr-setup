@@ -63,7 +63,7 @@ sort -f -k1,1 -k2,2 "$entry_table" | awk -F '\t' '
 
 selection="$(
   cut -f1 "$selection_table" \
-    | bemenu -i -p 'Run' -l 20 --single-instance
+    | bemenu -i -p 'Run' --single-instance
 )"
 [[ -n "$selection" ]] || exit 0
 

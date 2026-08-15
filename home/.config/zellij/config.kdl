@@ -1,6 +1,6 @@
 on_force_close "quit"
 session_serialization false
-mouse_mode false
+mouse_mode true
 copy_command "wl-copy"
 copy_clipboard "system"
 copy_on_select true
