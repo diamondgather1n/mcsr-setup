@@ -213,7 +213,7 @@ F11 = [
   "disable-pointer-constraint",
   "toggle-fullscreen",
 ]
-logo-d = { type = "exec", exec = "jay-desktop-launcher" }
+logo-d = { type = "exec", exec = "bemenu-run" }
 logo-shift-c = "reload-config-toml"
 logo-shift-r = "reload-config-toml"
 logo-shift-space = "toggle-floating"
