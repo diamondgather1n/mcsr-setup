@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+real_jay="/home/nathan/.local/bin/jay.real"
+gbm_shim="/home/nathan/.local/lib/jay-gbm-implicit-modifier.so"
+
+if [[ -r "$gbm_shim" ]]; then
+    case ":${LD_PRELOAD-}:" in
+        *:"$gbm_shim":*) ;;
+        *) export LD_PRELOAD="$gbm_shim${LD_PRELOAD:+:$LD_PRELOAD}" ;;
+    esac
+    export JAY_GBM_IMPLICIT_SHIM_LOG="${JAY_GBM_IMPLICIT_SHIM_LOG:-1}"
+fi
+
+exec "$real_jay" "$@"

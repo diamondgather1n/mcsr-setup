@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+STATE="$HOME/.cache/mcsr-speedrun-mode"
+
+case "${BLOCK_BUTTON:-}" in
+    1)
+        nohup "$HOME/.local/bin/mcsr-speedrun-set" toggle >/dev/null 2>&1 &
+        ;;
+    2)
+        nohup "$HOME/.local/bin/mcsr-speedrun-set" speedrun >/dev/null 2>&1 &
+        ;;
+    3)
+        nohup "$HOME/.local/bin/mcsr-speedrun-set" normal >/dev/null 2>&1 &
+        ;;
+esac
+
+mode="normal"
+[ -f "$STATE" ] && mode="$(cat "$STATE" 2>/dev/null || echo normal)"
+
+if [ "$mode" = "speedrun" ]; then
+    echo " SPEEDRUN "
+    echo " SR "
+    echo "#ffffff"
+else
+    echo " SPEEDRUN "
+    echo " SR "
+    echo "#f3f0ff"
+fi

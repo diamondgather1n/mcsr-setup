@@ -1,0 +1,386 @@
+#!/usr/bin/env python3
+"""Show only the OBS capture source whose Minecraft surface is visible in Jay."""
+
+import asyncio
+import base64
+import hashlib
+import json
+import os
+import signal
+from pathlib import Path
+
+from websockets.asyncio.client import connect
+from websockets.exceptions import ConnectionClosed
+
+
+OBS_CONFIG = Path.home() / ".config/obs-studio/plugin_config/obs-websocket/config.json"
+OBS_HOST = "127.0.0.1"
+OBS_SCENE = "capture"
+CAPTURE_SOURCES = ("latest", "waywall")
+POLL_INTERVAL = 0.5
+RETRY_INTERVAL = 2.0
+SWITCH_STABILITY = 2.0
+JAY_TREE_COMMAND = (
+    "/home/nathan/.local/bin/jay",
+    "--json",
+    "--all-json-fields",
+    "tree",
+    "query",
+    "-r",
+    "root",
+)
+
+
+class ObsRequestError(RuntimeError):
+    pass
+
+
+def compact(value):
+    return "".join(
+        character
+        for character in str(value or "").casefold()
+        if character.isalnum()
+    )
+
+
+def surface_kind(node):
+    client = node.get("client") or {}
+    title = str(node.get("title") or "").casefold().strip()
+    identifiers = (
+        node.get("app_id"),
+        node.get("x_class"),
+        node.get("x_instance"),
+        client.get("comm"),
+        Path(client.get("exe") or "").name,
+    )
+    compact_identifiers = tuple(compact(value) for value in identifiers)
+
+    if title == "waywall" or any("waywall" in value for value in compact_identifiers):
+        return "waywall"
+    if title.startswith(("minecraft", "lunar client")) and "launcher" not in title:
+        return "latest"
+    if any(
+        (
+            "lunarclient" in value
+            or ("minecraft" in value and "launcher" not in value)
+        )
+        for value in compact_identifiers
+    ):
+        return "latest"
+    return None
+
+
+def visible_capture_state(node):
+    if not isinstance(node, dict):
+        return False, False
+
+    latest_visible = False
+    waywall_visible = False
+    if node.get("visible"):
+        kind = surface_kind(node)
+        latest_visible = kind == "latest"
+        waywall_visible = kind == "waywall"
+
+    for child in node.get("children", []):
+        child_latest, child_waywall = visible_capture_state(child)
+        latest_visible = latest_visible or child_latest
+        waywall_visible = waywall_visible or child_waywall
+
+    return latest_visible, waywall_visible
+
+
+async def query_capture_state():
+    process = None
+    try:
+        process = await asyncio.create_subprocess_exec(
+            *JAY_TREE_COMMAND,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        stdout, _stderr = await asyncio.wait_for(process.communicate(), timeout=1.0)
+    except (OSError, TimeoutError):
+        if process is not None and process.returncode is None:
+            process.kill()
+            await process.wait()
+        return None
+
+    if process.returncode != 0:
+        return None
+
+    latest_visible = False
+    waywall_visible = False
+    for line in stdout.splitlines():
+        try:
+            tree = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        tree_latest, tree_waywall = visible_capture_state(tree)
+        latest_visible = latest_visible or tree_latest
+        waywall_visible = waywall_visible or tree_waywall
+
+    if waywall_visible:
+        return {"latest": False, "waywall": True}
+    if latest_visible:
+        return {"latest": True, "waywall": False}
+    # Keep the last selected capture when no target is currently visible.
+    return None
+
+
+def obs_connection_settings():
+    config = json.loads(OBS_CONFIG.read_text(encoding="utf-8"))
+    return int(config.get("server_port", 4455)), str(config.get("server_password", ""))
+
+
+def obs_authentication(password, authentication):
+    secret = base64.b64encode(
+        hashlib.sha256((password + authentication["salt"]).encode("utf-8")).digest()
+    ).decode("ascii")
+    return base64.b64encode(
+        hashlib.sha256((secret + authentication["challenge"]).encode("utf-8")).digest()
+    ).decode("ascii")
+
+
+class ObsClient:
+    def __init__(self, websocket):
+        self.websocket = websocket
+        self.request_number = 0
+
+    @classmethod
+    async def open(cls):
+        port, password = obs_connection_settings()
+        websocket = await connect(
+            f"ws://{OBS_HOST}:{port}",
+            open_timeout=2,
+            close_timeout=1,
+            ping_interval=20,
+            ping_timeout=20,
+            max_size=4 * 1024 * 1024,
+        )
+        hello = json.loads(await websocket.recv())
+        if hello.get("op") != 0:
+            await websocket.close()
+            raise RuntimeError("OBS WebSocket did not send Hello")
+
+        hello_data = hello.get("d", {})
+        identify = {
+            "rpcVersion": min(1, int(hello_data.get("rpcVersion", 1))),
+            "eventSubscriptions": 0,
+        }
+        authentication = hello_data.get("authentication")
+        if authentication:
+            identify["authentication"] = obs_authentication(password, authentication)
+        await websocket.send(json.dumps({"op": 1, "d": identify}, separators=(",", ":")))
+
+        identified = json.loads(await websocket.recv())
+        if identified.get("op") != 2:
+            await websocket.close()
+            raise RuntimeError("OBS WebSocket authentication failed")
+        return cls(websocket)
+
+    async def close(self):
+        await self.websocket.close()
+
+    async def request(self, request_type, request_data):
+        self.request_number += 1
+        request_id = f"capture-visibility-{self.request_number}"
+        await self.websocket.send(
+            json.dumps(
+                {
+                    "op": 6,
+                    "d": {
+                        "requestType": request_type,
+                        "requestId": request_id,
+                        "requestData": request_data,
+                    },
+                },
+                separators=(",", ":"),
+            )
+        )
+        while True:
+            message = json.loads(await self.websocket.recv())
+            if message.get("op") != 7:
+                continue
+            data = message.get("d", {})
+            if data.get("requestId") != request_id:
+                continue
+            status = data.get("requestStatus", {})
+            if not status.get("result"):
+                comment = status.get("comment") or f"status {status.get('code', 'unknown')}"
+                raise ObsRequestError(f"{request_type}: {comment}")
+            return data.get("responseData", {})
+
+
+async def set_capture_visibility(client, item_ids, desired):
+    for source_name, enabled in desired.items():
+        scene_item_id = item_ids.get(source_name)
+        if scene_item_id is None:
+            continue
+        await client.request(
+            "SetSceneItemEnabled",
+            {
+                "sceneName": OBS_SCENE,
+                "sceneItemId": scene_item_id,
+                "sceneItemEnabled": enabled,
+            },
+        )
+    visible = next((name for name, enabled in desired.items() if enabled), "neither")
+    print(f"Visible OBS capture: {visible}", flush=True)
+
+
+async def recover_capture_item(client, item_ids, source_name):
+    scene_item_id = item_ids.get(source_name)
+    if scene_item_id is None:
+        return
+    # Recreating the scene item stream clears the stale PipeWire connection
+    # without changing the source's portal restore token.
+    await client.request(
+        "SetSceneItemEnabled",
+        {
+            "sceneName": OBS_SCENE,
+            "sceneItemId": scene_item_id,
+            "sceneItemEnabled": False,
+        },
+    )
+    await asyncio.sleep(0.1)
+    await client.request(
+        "SetSceneItemEnabled",
+        {
+            "sceneName": OBS_SCENE,
+            "sceneItemId": scene_item_id,
+            "sceneItemEnabled": True,
+        },
+    )
+    print(f"Recovered OBS capture stream: {source_name}", flush=True)
+
+
+async def capture_is_responding(client, source_name):
+    try:
+        scene = await client.request(
+            "GetSceneItemList",
+            {"sceneName": OBS_SCENE},
+        )
+        item = next(
+            (
+                item
+                for item in scene.get("sceneItems", [])
+                if item.get("sourceName") == source_name
+            ),
+            None,
+        )
+        transform = (item or {}).get("sceneItemTransform") or {}
+        if transform.get("sourceWidth", 0) <= 0 or transform.get("sourceHeight", 0) <= 0:
+            return False
+        response = await client.request(
+            "GetSourceScreenshot",
+            {
+                "sourceName": source_name,
+                "imageFormat": "png",
+                "imageWidth": 16,
+                "imageHeight": 16,
+            },
+        )
+        return bool(response.get("imageData"))
+    except (ObsRequestError, KeyError, OSError, ConnectionClosed):
+        return False
+
+
+async def run_connected(stop):
+    client = await ObsClient.open()
+    print("Connected to OBS WebSocket", flush=True)
+    item_ids = {}
+    missing_sources = set()
+    last_desired = None
+    pending_desired = None
+    pending_since = None
+    active_source = None
+    next_discovery = 0.0
+    reconnect_after_hidden = True
+
+    try:
+        while not stop.is_set():
+            now = asyncio.get_running_loop().time()
+            if len(item_ids) != len(CAPTURE_SOURCES) and now >= next_discovery:
+                next_discovery = now + RETRY_INTERVAL
+                for source_name in CAPTURE_SOURCES:
+                    if source_name in item_ids:
+                        continue
+                    try:
+                        response = await client.request(
+                            "GetSceneItemId",
+                            {
+                                "sceneName": OBS_SCENE,
+                                "sourceName": source_name,
+                            },
+                        )
+                        item_ids[source_name] = int(response["sceneItemId"])
+                        if source_name in missing_sources:
+                            print(f"Found OBS capture source: {source_name}", flush=True)
+                            missing_sources.discard(source_name)
+                        last_desired = None
+                    except (KeyError, ObsRequestError):
+                        if source_name not in missing_sources:
+                            print(f"Waiting for OBS capture source: {source_name}", flush=True)
+                            missing_sources.add(source_name)
+
+            desired = await query_capture_state()
+            if desired is None:
+                # Jay may expose the selected window with valid geometry but no
+                # pixels while its workspace is hidden.  Do not treat that as
+                # a failed stream or repeatedly tear down the PipeWire source.
+                reconnect_after_hidden = True
+                last_desired = None
+            if desired is not None and desired != last_desired:
+                if desired != pending_desired:
+                    pending_desired = desired
+                    pending_since = now
+                elif pending_since is not None and now - pending_since >= SWITCH_STABILITY:
+                    await set_capture_visibility(client, item_ids, desired)
+                    last_desired = desired
+                    active_source = next(
+                        (name for name, enabled in desired.items() if enabled),
+                        None,
+                    )
+                    if active_source and reconnect_after_hidden:
+                        await recover_capture_item(client, item_ids, active_source)
+                        reconnect_after_hidden = False
+                    pending_desired = None
+                    pending_since = None
+
+            try:
+                await asyncio.wait_for(stop.wait(), timeout=POLL_INTERVAL)
+            except TimeoutError:
+                pass
+    finally:
+        await client.close()
+
+
+async def main():
+    stop = asyncio.Event()
+    loop = asyncio.get_running_loop()
+    for signum in (signal.SIGINT, signal.SIGTERM):
+        loop.add_signal_handler(signum, stop.set)
+
+    last_error = None
+    while not stop.is_set():
+        try:
+            await run_connected(stop)
+            last_error = None
+        except (
+            ConnectionClosed,
+            FileNotFoundError,
+            json.JSONDecodeError,
+            OSError,
+            RuntimeError,
+        ) as error:
+            message = str(error)
+            if message != last_error:
+                print(f"OBS capture visibility waiting: {message}", flush=True)
+                last_error = message
+            try:
+                await asyncio.wait_for(stop.wait(), timeout=RETRY_INTERVAL)
+            except TimeoutError:
+                pass
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

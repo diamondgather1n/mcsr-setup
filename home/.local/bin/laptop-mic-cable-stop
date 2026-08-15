@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+state_file="${XDG_RUNTIME_DIR:-/tmp}/laptop-mic-cable-loopback.module"
+
+if [[ ! -s "$state_file" ]]; then
+  echo "Cable mic loopback is not running"
+  exit 0
+fi
+
+module_id="$(cat "$state_file")"
+pactl unload-module "$module_id" >/dev/null 2>&1 || true
+rm -f "$state_file"
+echo "Stopped cable mic loopback"

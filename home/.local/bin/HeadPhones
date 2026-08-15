@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+exec "${HOME}/.local/bin/audio-output-switch" headphones

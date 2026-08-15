@@ -1,0 +1,12 @@
+! Norwegian MCSR search-crafting layout
+clear
+keycode 10 = 1 exclam
+keycode 11 = 2 quotedbl
+keycode 12 = 3 numbersign
+keycode 13 = 4 currency
+keycode 14 = 5 percent
+keycode 15 = 6 ampersand
+keycode 16 = 7 slash
+keycode 17 = 8 parenleft
+keycode 18 = 9 parenright
+keycode 19 = 0 equal

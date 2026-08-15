@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+jay_cmd="${JAY_COMMAND:-/home/nathan/.local/bin/jay}"
+interval="${JAY_INPUT_SANITIZER_INTERVAL:-0.5}"
+
+while :; do
+  if seat="$("$jay_cmd" input seat default show 2>/dev/null)"; then
+    while IFS= read -r line; do
+      case "$line" in
+        *": dotool absolute pointer")
+          id="${line%%:*}"
+          id="${id//[!0-9]/}"
+          if [[ -n "$id" ]]; then
+            "$jay_cmd" input device "$id" detach >/dev/null 2>&1 || true
+          fi
+          ;;
+      esac
+    done <<< "$seat"
+  fi
+
+  sleep "$interval"
+done

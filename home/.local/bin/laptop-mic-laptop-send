@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -lt 1 ]]; then
+  echo "Usage: laptop-mic-laptop-send <pc-ip> [port]" >&2
+  exit 2
+fi
+
+pc_ip="$1"
+port="${2:-5000}"
+
+need() {
+  command -v "$1" >/dev/null 2>&1 || {
+    echo "Missing required command: $1" >&2
+    exit 1
+  }
+}
+
+need pw-cat
+need socat
+
+echo "Sending this laptop's default mic to ${pc_ip}:${port}"
+exec pw-cat --record --raw --rate 48000 --channels 1 --format s16 - \
+  | socat -u - "UDP4-SENDTO:${pc_ip}:${port}"

@@ -1,0 +1,14 @@
+[Unit]
+Description=Chromebook Remote with OBS scene preview
+After=default.target pipewire.service pipewire-pulse.service
+Wants=pipewire.service pipewire-pulse.service
+
+[Service]
+Type=simple
+ExecStart=/home/nathan/.local/bin/chromebook-remote-web-direct
+Restart=on-failure
+RestartSec=2
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

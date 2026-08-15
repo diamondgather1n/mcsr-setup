@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+port="${1:-5000}"
+sink="${CHROMEBOOK_MIC_INTERMEDIATE_SINK:-Intermediate-Chromebook-Mic}"
+source_name="${CHROMEBOOK_MIC_SOURCE:-Chromebook-Mic}"
+
+need() {
+  command -v "$1" >/dev/null 2>&1 || {
+    echo "Missing required command: $1" >&2
+    exit 1
+  }
+}
+
+need pactl
+need pw-cat
+need socat
+
+if ! pactl list short sinks | awk '{print $2}' | grep -Fxq "$sink"; then
+  module_id="$(pactl load-module module-null-sink "sink_name=$sink" "sink_properties=device.description=$sink")"
+  echo "$module_id" > "${XDG_RUNTIME_DIR:-/tmp}/chromebook-mic-intermediate.module"
+fi
+
+pactl set-default-source "$source_name" >/dev/null 2>&1 || true
+
+echo "Receiving laptop mic on UDP port $port into PipeWire sink: $sink"
+echo "Use this input in apps: $source_name"
+exec socat -u "UDP4-RECV:${port},reuseaddr" - \
+  | pw-cat --playback --raw --target "$sink" --rate 48000 --channels 1 --format s16 -

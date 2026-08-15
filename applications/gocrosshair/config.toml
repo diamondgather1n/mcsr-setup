@@ -1,0 +1,30 @@
+[crosshair]
+#Shape of the crosshair: "cross", "dot", "circle", "cross-dot",
+shape = "cross"
+
+#Color in hex format (#RRGGBB, 0xRRGGBB, or RRGGBB),
+color = "#FFFFFF"
+
+#Size of the crosshair arms in pixels (from center),
+size = 1
+
+#Thickness of lines in pixels,
+thickness = 2
+
+#Gap in center (pixels) - creates hollow cross shape,
+gap = 0
+
+#Outline settings (set outline_thickness to 0 to disable),
+outline_thickness = 0
+outline_color = "#FFFFFF"
+
+[position]
+#Monitor index (0 = first, 1 = second, etc.),
+#Monitors are ordered left-to-right by X position,
+#Use -1 for primary monitor,
+monitor = 0
+
+#Offset from monitor center (pixels),
+#Positive X = right, Positive Y = down,
+offset_x = 0
+offset_y = 0

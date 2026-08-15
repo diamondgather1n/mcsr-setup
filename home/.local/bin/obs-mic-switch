@@ -1,0 +1,145 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+readonly OBS_NAME="Mic/Aux"
+readonly HEADPHONES_SOURCE="HeadPhones-Mic"
+readonly CHROMEBOOK_SOURCE="Chromebook-Mic"
+readonly RAW_HEADSET_SOURCE="alsa_input.usb-Logi_USB_Headset_Logi_USB_Headset-00.mono-fallback"
+readonly RAW_LAPTOP_SOURCE="alsa_input.pci-0000_0d_00.6.analog-stereo"
+readonly PW_LINK_TIMEOUT="2s"
+
+usage() {
+    printf 'Usage: %s headphones|earbuds\n' "${0##*/}" >&2
+    exit 2
+}
+
+graph_ports() {
+    pw-dump -N | python3 -c '
+import json
+import sys
+
+objects = json.load(sys.stdin)
+nodes = {}
+for item in objects:
+    if not item.get("type", "").endswith(":Node"):
+        continue
+    props = item.get("info", {}).get("props", {})
+    name = props.get("node.name")
+    media_name = props.get("media.name")
+    if name in {
+        "HeadPhones-Mic",
+        "Chromebook-Mic",
+        "Intermediate-Chromebook-Mic",
+        "alsa_input.usb-Logi_USB_Headset_Logi_USB_Headset-00.mono-fallback",
+        "alsa_input.pci-0000_0d_00.6.analog-stereo",
+    }:
+        nodes[name] = str(item["id"])
+    if media_name == "Mic/Aux":
+        nodes["Mic/Aux"] = str(item["id"])
+    if name == "Intermediate-Chromebook-Mic":
+        nodes["Intermediate-playback"] = str(item["id"])
+        nodes["Intermediate-monitor"] = str(item["id"])
+ports = {}
+for item in objects:
+    if not item.get("type", "").endswith(":Port"):
+        continue
+    info = item.get("info", {})
+    props = info.get("props", {})
+    channel = props.get("audio.channel")
+    node_id = str(props.get("node.id"))
+    for name, wanted_id in nodes.items():
+        if node_id != wanted_id:
+            continue
+        wanted_direction = "input" if name in {"Mic/Aux", "Intermediate-playback"} else "output"
+        if info.get("direction") != wanted_direction:
+            continue
+        if name == "alsa_input.usb-Logi_USB_Headset_Logi_USB_Headset-00.mono-fallback":
+            channel = "MONO"
+        if channel in ("FL", "FR", "MONO"):
+            ports[f"{name}:{channel}"] = str(item["id"])
+        break
+keys = [
+    "Mic/Aux:FL", "Mic/Aux:FR",
+    "HeadPhones-Mic:FL", "HeadPhones-Mic:FR",
+    "Chromebook-Mic:FL", "Chromebook-Mic:FR",
+    "Intermediate-playback:FL", "Intermediate-playback:FR",
+    "Intermediate-monitor:FL", "Intermediate-monitor:FR",
+    "alsa_input.usb-Logi_USB_Headset_Logi_USB_Headset-00.mono-fallback:MONO",
+    "alsa_input.pci-0000_0d_00.6.analog-stereo:FL",
+    "alsa_input.pci-0000_0d_00.6.analog-stereo:FR",
+]
+print(" ".join(ports.get(key, "") for key in keys))
+'
+}
+
+remove_links() {
+    local source_fl="$1" source_fr="$2" target_fl="$3" target_fr="$4" link_id
+    while read -r link_id; do
+        [[ -n "$link_id" ]] && timeout "$PW_LINK_TIMEOUT" pw-link -d "$link_id" >/dev/null 2>&1 || true
+    done < <(
+        pw-link -I -l | awk \
+            -v source_fl="$source_fl" -v source_fr="$source_fr" \
+            -v target_fl="$target_fl" -v target_fr="$target_fr" '
+            ($1 == source_fl || $1 == source_fr) { seeking=1; next }
+            seeking && $2 == "|->" && ($3 == target_fl || $3 == target_fr) { print $1; next }
+            seeking && NF && $2 != "|->" { seeking=0 }
+        '
+    )
+}
+
+mode=${1:-}
+case "$mode" in
+    headphones|earbuds|ensure) ;;
+    *) usage ;;
+esac
+
+read -r target_fl target_fr headphones_fl headphones_fr chromebook_fl chromebook_fr intermediate_playback_fl intermediate_playback_fr intermediate_monitor_fl intermediate_monitor_fr raw_headset raw_laptop_fl raw_laptop_fr < <(graph_ports)
+if [[ -z "$target_fl" || -z "$target_fr" ]]; then
+    printf 'OBS Mic/Aux ports not found\n' >&2
+    exit 1
+fi
+
+for port in "$headphones_fl" "$headphones_fr" "$chromebook_fl" "$chromebook_fr" "$intermediate_playback_fl" "$intermediate_playback_fr" "$intermediate_monitor_fl" "$intermediate_monitor_fr"; do
+    if [[ -z "$port" ]]; then
+        printf 'Required microphone port not found\n' >&2
+        exit 1
+    fi
+done
+
+link_exists() {
+    local source_id="$1" target_id="$2"
+    pw-link -I -l | awk -v source="$source_id" -v target="$target_id" '
+        $1 == source { seeking=1; next }
+        seeking && $2 == "|->" && $3 == target { found=1; exit }
+        seeking && NF && $2 != "|->" { seeking=0 }
+        END { exit(found ? 0 : 1) }
+    '
+}
+
+ensure_link() {
+    local source_id="$1" target_id="$2"
+    if ! link_exists "$source_id" "$target_id"; then
+        # PipeWire may create the link between the check and this command.
+        timeout "$PW_LINK_TIMEOUT" pw-link -w "$source_id" "$target_id" >/dev/null 2>&1 || true
+    fi
+}
+
+# OBS Mic/Aux accepts one source per channel. Mix both virtual microphones in
+# the existing Chromebook buffer, then send that buffer to OBS.
+remove_links "$headphones_fl" "$headphones_fr" "$target_fl" "$target_fr"
+remove_links "$chromebook_fl" "$chromebook_fr" "$target_fl" "$target_fr"
+sleep 0.1
+ensure_link "$headphones_fl" "$intermediate_playback_fl"
+ensure_link "$headphones_fr" "$intermediate_playback_fr"
+remove_links "$headphones_fl" "$headphones_fr" "$target_fl" "$target_fr"
+remove_links "$chromebook_fl" "$chromebook_fr" "$target_fl" "$target_fr"
+sleep 0.1
+ensure_link "$intermediate_monitor_fl" "$target_fl"
+ensure_link "$intermediate_monitor_fr" "$target_fr"
+
+if [[ "$mode" == ensure ]]; then
+    exit 0
+fi
+
+printf 'OBS Mic/Aux microphones: HeadPhones-Mic + Chromebook-Mic\n'

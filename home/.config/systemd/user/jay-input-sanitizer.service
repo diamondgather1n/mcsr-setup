@@ -1,0 +1,12 @@
+[Unit]
+Description=Jay input sanitizer
+After=default.target
+
+[Service]
+Type=simple
+ExecStart=/home/nathan/.local/bin/jay-input-sanitizer
+Restart=always
+RestartSec=1
+
+[Install]
+WantedBy=default.target

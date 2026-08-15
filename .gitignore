@@ -1,0 +1,31 @@
+*.bak
+*.backup
+*.old
+*.tmp
+*.swp
+*.swo
+*~
+*.log
+*.pyc
+*.class
+*.jar
+*.core
+core
+
+.cache/
+tmp/
+MCSR/temp/
+
+__pycache__/
+.DS_Store
+.git/
+
+# Local/runtime state that must not become part of this config snapshot.
+home/.local/state/
+home/.local/share/chromebook-remote-web/
+home/.local/share/input-recorder/recordings/
+
+# Large/generated binaries are intentionally excluded from this config repo.
+home/.local/bin/jay.real
+home/.local/bin/jay-*-backup-*
+applications/gocrosshair/gocrosshair

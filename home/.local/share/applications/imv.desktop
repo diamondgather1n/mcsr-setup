@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=imv
+Comment=View images with imv
+Exec=imv %F
+TryExec=imv
+Terminal=false
+Type=Application
+Icon=image-x-generic
+Categories=Graphics;Viewer;
+MimeType=image/png;image/jpeg;image/gif;image/webp;image/bmp;image/tiff;image/svg+xml;

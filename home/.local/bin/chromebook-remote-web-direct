@@ -1,0 +1,133 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+port="${1:-8765}"
+data_root="${XDG_DATA_HOME:-"$HOME/.local/share"}"
+state_dir="$data_root/chromebook-remote-web"
+old_state_dir="$data_root/chromebook-mic-web"
+cert="$state_dir/cert.pem"
+key="$state_dir/key.pem"
+conf="$state_dir/openssl.cnf"
+token_file="$state_dir/control-token"
+
+mic_sink_name="${CHROMEBOOK_MIC_INTERMEDIATE_SINK:-Intermediate-Chromebook-Mic}"
+mic_sink_description="${CHROMEBOOK_MIC_INTERMEDIATE_DESCRIPTION:-Intermediate-Chromebook-Mic}"
+mic_source_name="${CHROMEBOOK_MIC_SOURCE:-Chromebook-Mic}"
+mic_source_description="${CHROMEBOOK_MIC_DESCRIPTION:-Chromebook-Mic}"
+speaker_sink_name="${LAPTOP_SPEAKER_SINK:-Laptop-Speaker}"
+speaker_description="${LAPTOP_SPEAKER_DESCRIPTION:-Laptop-Speaker}"
+speaker_source="${LAPTOP_SPEAKER_SOURCE:-${speaker_sink_name}.monitor}"
+
+need() {
+  command -v "$1" >/dev/null 2>&1 || {
+    echo "Missing required command: $1" >&2
+    exit 1
+  }
+}
+
+need awk
+need ip
+need openssl
+need pactl
+
+mkdir -p "$state_dir"
+
+pc_ip="$(ip -4 -o addr show scope global | awk 'NR == 1 { split($4, a, "/"); print a[1] }')"
+if [[ -z "$pc_ip" ]]; then
+  echo "Could not detect the PC LAN IP address" >&2
+  exit 1
+fi
+
+if [[ ! -s "$token_file" && -s "$old_state_dir/control-token" ]]; then
+  cp "$old_state_dir/control-token" "$token_file"
+  chmod 600 "$token_file"
+fi
+
+if [[ ! -s "$cert" || ! -s "$key" ]]; then
+  cat > "$conf" <<EOF
+[req]
+distinguished_name = req_distinguished_name
+x509_extensions = v3_req
+prompt = no
+
+[req_distinguished_name]
+CN = chromebook-remote.local
+
+[v3_req]
+subjectAltName = @alt_names
+
+[alt_names]
+DNS.1 = localhost
+IP.1 = 127.0.0.1
+IP.2 = $pc_ip
+EOF
+
+  openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+    -keyout "$key" \
+    -out "$cert" \
+    -config "$conf" >/dev/null 2>&1
+fi
+
+if [[ ! -s "$token_file" ]]; then
+  openssl rand -hex 12 > "$token_file"
+  chmod 600 "$token_file"
+fi
+token="$(cat "$token_file")"
+
+sink_exists() {
+  pactl list short sinks | awk -v name="$1" '$2 == name { found=1 } END { exit(found ? 0 : 1) }'
+}
+
+source_exists() {
+  pactl list short sources | awk -v name="$1" '$2 == name { found=1 } END { exit(found ? 0 : 1) }'
+}
+
+ensure_null_sink() {
+  local name="$1"
+  local description="$2"
+  local module_file="$3"
+
+  if sink_exists "$name"; then
+    return 0
+  fi
+
+  module_id="$(pactl load-module module-null-sink \
+    "sink_name=${name}" \
+    "sink_properties=device.description=${description}")"
+  printf '%s\n' "$module_id" > "$module_file"
+}
+
+ensure_remap_source() {
+  if source_exists "$mic_source_name"; then
+    return 0
+  fi
+
+  module_id="$(pactl load-module module-remap-source \
+    "source_name=${mic_source_name}" \
+    "master=${mic_sink_name}.monitor" \
+    "source_properties=device.description=${mic_source_description}")"
+  printf '%s\n' "$module_id" > "$state_dir/mic-source-module"
+}
+
+ensure_null_sink "$mic_sink_name" "$mic_sink_description" "$state_dir/mic-sink-module"
+ensure_remap_source
+ensure_null_sink "$speaker_sink_name" "$speaker_description" "$state_dir/speaker-sink-module"
+
+echo "Open this on the Chromebook:"
+echo "  https://${pc_ip}:${port}/"
+echo
+echo "Chrome will warn about the self-signed local certificate."
+echo "Use Advanced/Proceed. This is Chromebook Remote: mic, remote input, and optional PC audio."
+echo
+echo "Mic source for apps/OBS: ${mic_source_description} (${mic_source_name})"
+echo "PC audio sink for qpwgraph: ${speaker_description} (${speaker_sink_name})"
+echo "Route audio to that sink to hear it on the Chromebook after the page's speaker receiver is enabled once."
+echo
+exec /home/nathan/.local/bin/chromebook-remote-web-receiver \
+  --host "$pc_ip" \
+  --port "$port" \
+  --tls-cert "$cert" \
+  --tls-key "$key" \
+  --control-token "$token" \
+  --sink "$mic_sink_name" \
+  --speaker-source "$speaker_source"

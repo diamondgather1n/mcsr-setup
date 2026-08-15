@@ -1,0 +1,162 @@
+! norwegian_layout_no_caps.xmodmap
+
+! -------------------------
+! KEYS TO KEEP DEFAULT
+! -------------------------
+keycode 9   = Escape
+keycode 23  = Tab
+keycode 22  = BackSpace
+keycode 36  = Return
+keycode 50  = Shift_L
+keycode 62  = Shift_R
+keycode 37  = Control_L
+keycode 105 = Control_R
+keycode 69  = F3
+keycode 65  = space
+
+! -------------------------
+! MAIN REMAPS (lowercase only)
+! -------------------------
+
+! numbers row
+keycode 10 = u u
+keycode 11 = b b
+keycode 12 = 4 4
+
+! q row
+keycode 25 = s s
+keycode 26 = l l
+keycode 27 = n n
+keycode 28 = r r
+
+! home row
+keycode 38 = p p
+keycode 39 = i i
+keycode 40 = a a
+keycode 41 = h h
+keycode 42 = 8 8
+
+! bottom row
+keycode 53 = g g
+keycode 54 = v v
+keycode 55 = oslash oslash
+keycode 56 = y y
+keycode 57 = e e
+
+! -------------------------
+! SPECIAL KEYS
+! -------------------------
+keycode 58 = Ntilde Ntilde
+keycode 44 = NoSymbol
+keycode 45 = NoSymbol
+keycode 30 = NoSymbol
+
+! -------------------------
+! NUMPAD (always numbers)
+! -------------------------
+keycode 77  = Num_Lock
+keycode 106 = slash KP_Divide
+
+keycode 79 = KP_Home KP_7 KP_Home KP_7
+keycode 80 = KP_Up KP_8 KP_Up KP_8
+keycode 81 = KP_Prior KP_9 KP_Prior KP_9
+keycode 83 = KP_Left KP_4 KP_Left KP_4
+keycode 84 = KP_Begin KP_5 KP_Begin KP_5
+keycode 85 = KP_Right KP_6 KP_Right KP_6
+keycode 87 = KP_End KP_1 KP_End KP_1
+keycode 88 = KP_Down KP_2 KP_Down KP_2
+keycode 89 = KP_Next KP_3 KP_Next KP_3
+keycode 90  = KP_Insert KP_0 KP_Insert KP_0
+
+! -------------------------
+! ARROWS
+! -------------------------
+keycode 111 = Up
+keycode 113 = Left
+keycode 114 = Right
+keycode 116 = Down
+
+! -------------------------
+! UNBIND UNUSED
+! -------------------------
+keycode 13 = aring aring
+keycode 14 = 6 6
+keycode 15 = 7 7
+keycode 16 = NoSymbol
+keycode 17 = 9 9
+keycode 18 = 0 0
+keycode 19 = 0 0
+keycode 20 = NoSymbol
+keycode 21 = NoSymbol
+keycode 24 = NoSymbol
+keycode 29 = NoSymbol
+keycode 31 = NoSymbol
+keycode 32 = NoSymbol
+keycode 33 = NoSymbol
+keycode 34 = NoSymbol
+keycode 35 = NoSymbol
+keycode 43 = NoSymbol
+keycode 46 = NoSymbol
+keycode 47 = NoSymbol
+keycode 48 = NoSymbol
+keycode 49 = NoSymbol
+keycode 51 = NoSymbol
+keycode 52 = k k k k
+keycode 59 = NoSymbol
+keycode 60 = NoSymbol
+keycode 61 = NoSymbol
+keycode 63 = NoSymbol
+keycode 64 = NoSymbol
+keycode 66 = NoSymbol
+keycode 67 = NoSymbol
+keycode 68 = NoSymbol
+keycode 70 = NoSymbol
+keycode 71 = NoSymbol
+keycode 72 = NoSymbol
+keycode 73 = NoSymbol
+keycode 74 = NoSymbol
+keycode 75 = NoSymbol
+keycode 76 = NoSymbol
+keycode 78 = NoSymbol
+keycode 82 = NoSymbol
+keycode 86 = NoSymbol
+keycode 91 = NoSymbol
+keycode 92 = NoSymbol
+keycode 93 = NoSymbol
+keycode 94 = NoSymbol
+keycode 95 = NoSymbol
+keycode 96 = NoSymbol
+keycode 97 = NoSymbol
+keycode 98 = NoSymbol
+keycode 99 = NoSymbol
+keycode 100 = NoSymbol
+keycode 101 = NoSymbol
+keycode 102 = NoSymbol
+keycode 103 = NoSymbol
+keycode 104 = NoSymbol
+keycode 107 = NoSymbol
+keycode 108 = NoSymbol
+keycode 109 = NoSymbol
+keycode 110 = NoSymbol
+keycode 112 = NoSymbol
+keycode 115 = NoSymbol
+keycode 117 = NoSymbol
+keycode 118 = NoSymbol
+
+keycode 191 = F13
+keycode 192 = F14
+keycode 193 = F15
+keycode 194 = F16
+
+
+! --- KEYD SPEEDRUN OUTPUT REMAPS START ---
+keycode 69  = F3 F3 F3 F3
+keycode 195 = u u u u
+keycode 196 = b b b b
+keycode 197 = 4 4 4 4
+keycode 198 = aring aring aring aring
+keycode 199 = 6 6 6 6
+keycode 200 = 7 7 7 7
+keycode 201 = NoSymbol
+keycode 202 = NoSymbol
+! --- KEYD SPEEDRUN OUTPUT REMAPS END ---

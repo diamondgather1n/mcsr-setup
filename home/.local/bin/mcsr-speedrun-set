@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+
+STATE="$HOME/.cache/mcsr-speedrun-mode"
+NORMAL_SCRIPT="$HOME/MCSR/x11/shell-scripts/british.sh"
+SPEEDRUN_SCRIPT="$HOME/MCSR/x11/shell-scripts/norwegian.sh"
+LOG="$HOME/.cache/mcsr-speedrun-last.log"
+
+current="normal"
+[ -f "$STATE" ] && current="$(cat "$STATE" 2>/dev/null || echo normal)"
+
+case "${1:-toggle}" in
+    normal)
+        target="normal"
+        ;;
+    speedrun)
+        target="speedrun"
+        ;;
+    toggle)
+        if [ "$current" = "speedrun" ]; then
+            target="normal"
+        else
+            target="speedrun"
+        fi
+        ;;
+    *)
+        echo "usage: mcsr-speedrun-set normal|speedrun|toggle" >&2
+        exit 1
+        ;;
+esac
+
+# Fast visual/state update first
+echo "$target" > "$STATE"
+"$HOME/.local/bin/mcsr-write-bar-colors" || true
+pkill -RTMIN+10 -x i3blocks 2>/dev/null || true
+i3-msg mode default >/dev/null 2>&1 || true
+i3-msg reload >/dev/null 2>&1 || true
+
+# Slow keyboard/layout work after, in the background
+if [ "$target" = "speedrun" ]; then
+    ( "$SPEEDRUN_SCRIPT" ) > "$LOG" 2>&1 &
+else
+    ( "$NORMAL_SCRIPT" ) > "$LOG" 2>&1 &
+fi

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=En Croissant
+Comment=Open chess files in En Croissant
+Exec=en-croissant %f
+Terminal=false
+Icon=applications-games
+Categories=Game;BoardGame;
+MimeType=application/x-chess-pgn;application/x-chess-database;

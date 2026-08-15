@@ -1,0 +1,26 @@
+#!/bin/sh
+iface="$(ip route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="dev") {print $(i+1); exit}}')"
+[ -z "$iface" ] && printf "%-20s\n" "offline" && exit
+
+rx="$(cat /sys/class/net/$iface/statistics/rx_bytes)"
+tx="$(cat /sys/class/net/$iface/statistics/tx_bytes)"
+state="/tmp/i3bar-net-$USER-$iface"
+
+human() {
+    awk -v b="$1" 'BEGIN {
+        if (b >= 1048576) printf "%.1fM/s", b/1048576;
+        else if (b >= 1024) printf "%.0fK/s", b/1024;
+        else printf "%dB/s", b;
+    }'
+}
+
+if [ -f "$state" ]; then
+    read old_rx old_tx < "$state"
+    down="$(human $((rx-old_rx)))"
+    up="$(human $((tx-old_tx)))"
+    printf "D:%7s U:%7s\n" "$down" "$up"
+else
+    printf "%-20s\n" "..."
+fi
+
+echo "$rx $tx" > "$state"
