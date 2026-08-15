@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+layout="/home/nathan/.config/zellij/layouts/yazi-dual.kdl"
+
+if ! command -v zellij >/dev/null 2>&1; then
+  echo "zellij is not installed. Run /home/nathan/MCSR/temp/install-terminal-file-workflow.sh first." >&2
+  exit 127
+fi
+
+if [ -n "${ZELLIJ:-}" ]; then
+  exec zellij action new-tab --name Files --layout "$layout" --cwd "$PWD"
+fi
+
+exec foot -e zellij --layout "$layout"

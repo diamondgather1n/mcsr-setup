@@ -23,10 +23,19 @@ check_pair() {
 check_pair /home/nathan/.config/jay/config.toml home/.config/jay/config.toml
 check_pair /home/nathan/.config/waywall/init.lua home/.config/waywall/init.lua
 check_pair /home/nathan/.config/waybar/config home/.config/waybar/config
+check_pair /home/nathan/.config/zellij/config.kdl home/.config/zellij/config.kdl
+check_pair /home/nathan/.config/zellij/layouts/yazi-dual.kdl home/.config/zellij/layouts/yazi-dual.kdl
 check_pair /home/nathan/.config/i3/config home/.config/i3/config
 check_pair /home/nathan/.config/i3blocks/config home/.config/i3blocks/config
 check_pair /home/nathan/.config/yazi/yazi.toml home/.config/yazi/yazi.toml
+check_pair /home/nathan/.config/yazi/keymap.toml home/.config/yazi/keymap.toml
+check_pair /home/nathan/.config/micro/settings.json home/.config/micro/settings.json
+check_pair /home/nathan/.config/environment.d/10-editor.conf home/.config/environment.d/10-editor.conf
+check_pair /home/nathan/.config/xdg-desktop-portal/portals.conf home/.config/xdg-desktop-portal/portals.conf
 check_pair /home/nathan/.config/mimeapps.list home/.config/mimeapps.list
+check_pair /home/nathan/.local/bin/foot-tabbed home/.local/bin/foot-tabbed
+check_pair /home/nathan/.local/bin/jay-desktop-launcher home/.local/bin/jay-desktop-launcher
+check_pair /home/nathan/.local/share/applications/foot.desktop home/.local/share/applications/foot.desktop
 check_pair /etc/keyd/normal.conf system/etc/keyd/normal.conf
 check_pair /etc/keyd/speedrun.conf system/etc/keyd/speedrun.conf
 

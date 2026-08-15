@@ -205,11 +205,11 @@ F11 = [
   "disable-pointer-constraint",
   "toggle-fullscreen",
 ]
-logo-d = { type = "exec", exec = "bemenu-run" }
+logo-d = { type = "exec", exec = "jay-desktop-launcher" }
 logo-shift-c = "reload-config-toml"
 logo-shift-r = "reload-config-toml"
 logo-shift-space = "toggle-floating"
-logo-Return = { type = "exec", exec = "foot" }
+logo-Return = { type = "exec", exec = "foot-tabbed" }
 logo-shift-e  = "quit"
 logo-shift-s = { type = "exec", exec = ["systemctl", "suspend"] }
 # Right Ctrl provides Jay's logo layer through keyd.

@@ -152,7 +152,7 @@ launch_helium_if_missing "main helium workspace 6" 'doogile - Twitch - Helium|Yo
 
 launch_if_missing "spotify workspace 8" 'x-class: Spotify|app-id: com\.spotify\.Client|app-id: spotify' spotify
 launch_if_missing "obs workspace 9" 'app-id: com\.obsproject\.Studio|x-class: obs|title: OBS Studio' obs
-launch_if_missing "foot workspace 10" 'app-id: foot|x-class: foot|title: foot' foot
+launch_if_missing "foot workspace 10" 'app-id: foot|x-class: foot|title: foot' foot-tabbed
 launch_if_missing "qpwgraph workspace 10" 'app-id: org\.rncbc\.qpwgraph|x-class: qpwgraph|PipeWire Graph' qpwgraph
 
 if [ "$dry_run" -eq 0 ] && [ "$focus_workspace" -eq 1 ] && command -v dotool >/dev/null 2>&1; then

@@ -70,6 +70,9 @@ copy_dir_contents "$home_dir/.config/waywall/resources" "$repo_root/home/.config
 copy_dir_contents "$home_dir/.config/waybar" "$repo_root/home/.config/waybar" \
   ! -name '*.bak' \
   ! -name '*codex*'
+copy_dir_contents "$home_dir/.config/zellij" "$repo_root/home/.config/zellij" \
+  ! -name '*.bak' \
+  ! -name '*codex*'
 copy_dir_contents "$home_dir/.config/i3" "$repo_root/home/.config/i3" \
   ! -name '*.bak' \
   ! -name '*codex*'
@@ -79,6 +82,10 @@ copy_dir_contents "$home_dir/.config/i3blocks" "$repo_root/home/.config/i3blocks
 copy_dir_contents "$home_dir/.config/yazi" "$repo_root/home/.config/yazi" \
   ! -name '*.bak' \
   ! -name '*codex*'
+copy_file "$home_dir/.config/micro/settings.json" "$repo_root/home/.config/micro/settings.json" optional
+copy_file "$home_dir/.config/micro/bindings.json" "$repo_root/home/.config/micro/bindings.json" optional
+copy_file "$home_dir/.config/environment.d/10-editor.conf" "$repo_root/home/.config/environment.d/10-editor.conf" optional
+copy_file "$home_dir/.config/xdg-desktop-portal/portals.conf" "$repo_root/home/.config/xdg-desktop-portal/portals.conf" optional
 copy_dir_contents "$home_dir/.config/xkb" "$repo_root/home/.config/xkb" \
   ! -name '*.bak' \
   ! -name '*codex*'
@@ -93,6 +100,7 @@ copy_dir_contents "$home_dir/.config/systemd/user" "$repo_root/home/.config/syst
 copy_named_desktop yazi-foot.desktop
 copy_named_desktop micro-foot.desktop
 copy_named_desktop imv.desktop
+copy_named_desktop foot.desktop
 copy_named_desktop com.obsproject.Studio.desktop
 copy_named_desktop en-croissant-file.desktop
 copy_named_desktop input-remapper-gtk.desktop
@@ -103,7 +111,8 @@ for name in \
   mcsr-macro-restart-ninjabrain \
   mcsr-speedrun-toggle mcsr-speedrun-on mcsr-speedrun-off mcsr-speedrun-set mcsr-speedrun-only \
   mcsr-place-windows mcsr-write-bar-colors mcsr-dpi \
-  jay jay-startup-windows jay-lag-monitor jay-input-sanitizer \
+  jay jay-startup-windows jay-desktop-launcher jay-lag-monitor jay-input-sanitizer \
+  foot-tabbed yazi-dual yazi-edit-right gui-files \
   i3blocks-speedrun bar-cpu bar-gpu bar-net bar-volume \
   spotify ninjabrain restart-ninjabrain \
   obs obs-audio-autolink obs-capture-visibility obs-input-overlay obs-numpad-hotkeys \

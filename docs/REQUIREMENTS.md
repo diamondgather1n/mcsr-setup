@@ -8,13 +8,16 @@ This is a practical package/application inventory for the tracked configs, not a
 - `waybar`
 - `i3blocks`
 - `foot`
+- `zellij`
 - `yazi`
 - `fd`
 - `ripgrep`
 - `micro`
 - `imv`
 - `mpv`
+- `doublecmd-qt6`
 - `helium-browser`
+- `bemenu` and `dex` for the Jay desktop-entry launcher
 - `xdg-desktop-portal`, `xdg-desktop-portal-gtk`, `xdg-desktop-portal-kde`, and the Jay portal helper currently used for OBS/Jay capture work
 
 ## MCSR / Minecraft
