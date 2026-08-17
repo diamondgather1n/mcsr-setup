@@ -1,0 +1,15 @@
+#!/bin/sh
+
+case "$BLOCK_BUTTON" in
+    1) pavucontrol >/dev/null 2>&1 & ;;              # left click = open volume mixer
+    2) pactl set-sink-mute @DEFAULT_SINK@ toggle ;; # middle click = mute/unmute
+    3) pactl set-sink-mute @DEFAULT_SINK@ toggle ;; # right click = mute/unmute
+    4) pactl set-sink-volume @DEFAULT_SINK@ +5% ;;  # scroll up = volume up
+    5) pactl set-sink-volume @DEFAULT_SINK@ -5% ;;  # scroll down = volume down
+esac
+
+mute="$(pactl get-sink-mute @DEFAULT_SINK@ 2>/dev/null | awk '{print $2}')"
+vol="$(pactl get-sink-volume @DEFAULT_SINK@ 2>/dev/null | awk -F'/' 'NR==1 {gsub(/ /,"",$2); print $2}')"
+
+[ -z "$vol" ] && printf "%5s\n" "?" && exit
+[ "$mute" = "yes" ] && printf "%5s\n" "mute" || printf "%5s\n" "$vol"

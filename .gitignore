@@ -1,3 +1,4 @@
+# Generated or temporary files.
 *.bak
 *.backup
 *.old
@@ -7,23 +8,17 @@
 *~
 *.log
 *.pyc
-*.class
 *.jar
+*.so
+*.bin
 *.core
-core
 
+__pycache__/
 .cache/
 tmp/
 MCSR/temp/
 
-__pycache__/
+# Local repository metadata and editor files.
 .DS_Store
-.git/
-
-home/.local/state/
-home/.local/share/chromebook-remote-web/
-home/.local/share/input-recorder/recordings/
-
-home/.local/bin/jay.real
-home/.local/bin/jay-*-backup-*
-applications/gocrosshair/gocrosshair
+.directory
+.gitignore.local

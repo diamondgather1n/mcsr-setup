@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+dpi="${1:?missing dpi}"
+
+{
+  echo "$(date '+%H:%M:%S') dpi -> $dpi"
+} >> /tmp/mcsr-dpi-test.log
+
+exec polychromatic-cli -d mouse --dpi "$dpi"

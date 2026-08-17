@@ -1,5 +1,0 @@
-dotool
-helium-browser-bin
-jay-git
-polychromatic
-waywall-working-git

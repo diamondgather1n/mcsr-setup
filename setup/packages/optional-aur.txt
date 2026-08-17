@@ -1,3 +1,0 @@
-audiorelay
-input-remapper-git
-obs-plugin-input-overlay-bin

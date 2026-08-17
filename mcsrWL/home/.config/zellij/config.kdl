@@ -1,0 +1,37 @@
+on_force_close "quit"
+session_serialization false
+mouse_mode true
+copy_command "wl-copy"
+copy_clipboard "system"
+copy_on_select true
+pane_frames true
+simplified_ui false
+show_startup_tips false
+show_release_notes false
+support_kitty_keyboard_protocol true
+
+env {
+    EDITOR "micro"
+    VISUAL "micro"
+}
+
+keybinds {
+      normal {
+          bind "Ctrl Shift t" { NewTab; }
+        bind "Ctrl Shift w" { CloseTab; }
+        bind "Ctrl Tab" { GoToNextTab; }
+        bind "Ctrl Shift Tab" { GoToPreviousTab; }
+        bind "Ctrl Shift Right" { NewPane "Right"; }
+        bind "Ctrl Shift Down" { NewPane "Down"; }
+        bind "Alt Left" { MoveFocus "Left"; }
+        bind "Alt Right" { MoveFocus "Right"; }
+        bind "Alt Up" { MoveFocus "Up"; }
+        bind "Alt Down" { MoveFocus "Down"; }
+        bind "Ctrl Shift y" {
+            NewTab {
+                name "Files"
+                layout "/home/nathan/.config/zellij/layouts/yazi-dual.kdl"
+            }
+        }
+    }
+}
