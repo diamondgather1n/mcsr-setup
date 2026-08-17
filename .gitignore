@@ -14,3 +14,6 @@ __pycache__/
 MCSR/temp/
 .DS_Store
 .directory
+
+# Third-party Waywall binaries
+wayland/waywall/resources/*.jar
