@@ -1,0 +1,13 @@
+fd
+foot
+gimp
+helium-browser-bin
+imv
+jre21-openjdk
+keyd
+micro
+mpv
+ripgrep
+shotcut
+yazi
+zellij

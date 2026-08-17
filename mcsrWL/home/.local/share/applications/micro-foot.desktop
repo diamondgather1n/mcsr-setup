@@ -1,9 +1,0 @@
-[Desktop Entry]
-Name=micro in foot
-Comment=Edit text files in micro using foot
-Exec=foot -e micro %F
-Terminal=false
-Type=Application
-Icon=accessories-text-editor
-Categories=Utility;TextEditor;
-MimeType=text/plain;text/x-shellscript;text/markdown;application/json;application/xml;text/html;text/css;text/javascript;application/x-yaml;text/x-python;text/x-lua;text/x-csrc;text/x-c++src;

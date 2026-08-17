@@ -1,2 +1,0 @@
-#!/usr/bin/env bash
-exec /home/nathan/.local/bin/mcsr-speedrun-set speedrun

@@ -1,8 +1,0 @@
-#!/usr/bin/env bash
-STATE="$HOME/.cache/mcsr-speedrun-mode"
-
-mode="normal"
-[ -f "$STATE" ] && mode="$(cat "$STATE" 2>/dev/null || echo normal)"
-
-[ "$mode" = "speedrun" ] || exit 0
-exec "$@"

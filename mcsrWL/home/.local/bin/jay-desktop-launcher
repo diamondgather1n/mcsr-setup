@@ -1,9 +1,0 @@
-#!/usr/bin/env bash
-set -Eeuo pipefail
-
-: "${XDG_RUNTIME_DIR:?XDG_RUNTIME_DIR is not set}"
-launcher_bin="$XDG_RUNTIME_DIR/nathan-jay-launcher-bin"
-/usr/bin/install -d -m 700 "$launcher_bin"
-/usr/bin/ln -sfn /home/nathan/.local/bin/foot-tabbed "$launcher_bin/foot"
-export PATH="$launcher_bin:$PATH"
-exec /usr/bin/bemenu-run "$@"

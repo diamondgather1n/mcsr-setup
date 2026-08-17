@@ -1,0 +1,12 @@
+bemenu
+i3blocks
+libxkbcommon
+playerctl
+polkit-gnome
+python
+waybar
+wayland
+waywall-working-git
+wl-clipboard
+xkeyboard-config
+xorg-xwayland

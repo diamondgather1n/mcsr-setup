@@ -1,4 +1,0 @@
-#!/bin/sh
-/usr/bin/python3 /home/nathan/.config/waywall/resources/fix-ninbot-hotkeys.py
-cd "/home/nathan/MCSR/CrossDisplayManager/jarfiles" || exit 1
-exec java -jar "Ninjabrain-Bot-1.5.2.jar"
