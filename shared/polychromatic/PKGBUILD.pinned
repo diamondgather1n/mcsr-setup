@@ -1,0 +1,39 @@
+# Local package recipe for the vendored Polychromatic source.
+# The source tree is copied into makepkg's src/polychromatic directory by
+# shared/polychromatic/install.sh; no network checkout is performed.
+
+_pkgname=polychromatic
+pkgname=polychromatic-git
+pkgver=0.9.6.r17.g87cff1d
+pkgrel=1
+pkgdesc='RGB lighting management front-end application for OpenRazer'
+arch=('any')
+license=('GPL-3.0-or-later')
+depends=(
+  libappindicator
+  python
+  python-colorama
+  python-colour
+  python-gobject
+  python-openrazer
+  python-pyqt6
+  python-pyqt6-webengine
+  python-requests
+  python-setproctitle
+  qt6-svg
+)
+makedepends=(
+  meson
+  ninja
+)
+source=()
+sha512sums=()
+
+build() {
+  arch-meson "$srcdir/$_pkgname" "$srcdir/build"
+  ninja -C "$srcdir/build"
+}
+
+package() {
+  DESTDIR="$pkgdir" ninja -C "$srcdir/build" install
+}

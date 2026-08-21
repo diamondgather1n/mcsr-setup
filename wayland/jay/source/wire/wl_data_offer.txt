@@ -1,0 +1,32 @@
+request accept {
+    serial: u32,
+    mime_type: optstr,
+}
+
+request receive {
+    mime_type: str,
+    fd: fd,
+}
+
+request destroy (destructor) {
+}
+
+event offer {
+    mime_type: str,
+}
+
+request finish (since = 3) {
+}
+
+request set_actions (since = 3) {
+    dnd_actions: u32,
+    preferred_action: u32,
+}
+
+event source_actions (since = 3) {
+    source_actions: u32,
+}
+
+event action (since = 3) {
+    dnd_action: u32,
+}

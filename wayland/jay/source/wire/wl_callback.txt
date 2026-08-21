@@ -1,0 +1,3 @@
+event done (destructor) {
+    callback_data: u32,
+}

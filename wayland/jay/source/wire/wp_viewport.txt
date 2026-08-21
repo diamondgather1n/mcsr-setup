@@ -1,0 +1,14 @@
+request destroy (destructor) {
+}
+
+request set_source {
+    x: fixed,
+    y: fixed,
+    width: fixed,
+    height: fixed,
+}
+
+request set_destination {
+    width: i32,
+    height: i32,
+}

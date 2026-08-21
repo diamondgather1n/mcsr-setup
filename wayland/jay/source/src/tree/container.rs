@@ -1,0 +1,2941 @@
+use {
+    crate::{
+        backend::ButtonState,
+        cursor::KnownCursor,
+        cursor_user::CursorUser,
+        fixed::Fixed,
+        gfx_api::GfxTexture,
+        ifs::{
+            wl_seat::{
+                BTN_LEFT, BTN_RIGHT, NodeSeatState, SeatId, WlSeatGlobal, collect_kb_foci,
+                collect_kb_foci2,
+                tablet::{TabletTool, TabletToolChanges, TabletToolId},
+                wl_pointer::PendingScroll,
+            },
+            wl_surface::xdg_surface::xdg_toplevel::xdg_toplevel_icon_v1::{
+                ToplevelIcon, ToplevelIconUser,
+            },
+        },
+        rect::Rect,
+        renderer::Renderer,
+        scale::Scale,
+        state::State,
+        text::TextTexture,
+        theme::ContainerBorders,
+        transactions::{TransactionData, Transactionable, TransactionableExt},
+        tree::{
+            ContainingNode, Direction, FindTreeResult, FindTreeUsecase, FloatNode, FoundNode, Node,
+            NodeBase, NodeId, NodeLayerLink, NodeLocation, OutputNode, SplitView, TddType,
+            TileDragDestination, ToplevelData, ToplevelDataTransactionOp, ToplevelNode,
+            ToplevelNodeBase, ToplevelType, TreeLink,
+            TreeTimeline::{self, LiveTL, RenderTL},
+            WorkspaceChangeReason, WorkspaceNode, default_tile_drag_bounds, toplevel_set_floating,
+            toplevel_set_workspace,
+            walker::NodeVisitor,
+        },
+        utils::{
+            asyncevent::AsyncEvent,
+            clonecell::CloneCell,
+            double_click_state::DoubleClickState,
+            errorfmt::ErrorFmt,
+            hash_map_ext::HashMapExt,
+            linkedlist::{LinkedList, LinkedNode, NodeRef},
+            numcell::NumCell,
+            on_drop_event::OnDropEvent,
+            rc_eq::rc_eq,
+            scroller::Scroller,
+            smallmap::{SmallMap, SmallMapMut},
+            threshold_counter::ThresholdCounter,
+        },
+    },
+    ahash::AHashMap,
+    jay_config::Axis,
+    smallvec::SmallVec,
+    std::{
+        cell::{Cell, RefCell},
+        fmt::{Debug, Formatter},
+        mem,
+        ops::{Deref, DerefMut, Sub},
+        rc::Rc,
+    },
+};
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Default)]
+pub enum ContainerSplit {
+    #[default]
+    Horizontal,
+    Vertical,
+}
+
+impl ContainerSplit {
+    pub fn other(self) -> Self {
+        match self {
+            ContainerSplit::Horizontal => ContainerSplit::Vertical,
+            ContainerSplit::Vertical => ContainerSplit::Horizontal,
+        }
+    }
+}
+
+impl From<Axis> for ContainerSplit {
+    fn from(a: Axis) -> Self {
+        match a {
+            Axis::Horizontal => Self::Horizontal,
+            Axis::Vertical => Self::Vertical,
+        }
+    }
+}
+
+impl Into<Axis> for ContainerSplit {
+    fn into(self) -> Axis {
+        match self {
+            ContainerSplit::Horizontal => Axis::Horizontal,
+            ContainerSplit::Vertical => Axis::Vertical,
+        }
+    }
+}
+
+#[expect(dead_code)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum ContainerFocus {
+    None,
+    Child,
+    Yes,
+}
+
+tree_id!(ContainerNodeId);
+
+pub struct ContainerTitle {
+    pub rect: Rect,
+    pub tex: Option<Rc<dyn GfxTexture>>,
+    pub icon: Option<ToplevelIcon>,
+    pub ty: ContainerChildType,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Default)]
+pub enum ContainerChildType {
+    Active,
+    AttentionRequested,
+    LastActive,
+    #[default]
+    Other,
+}
+
+#[derive(Default)]
+pub struct ContainerRenderData {
+    pub title_rects: Vec<Rect>,
+    pub active_title_rects: Vec<Rect>,
+    pub attention_title_rects: Vec<Rect>,
+    pub last_active_rect: Option<Rect>,
+    pub active_border_rects: Vec<Rect>,
+    pub border_rects: Vec<Rect>,
+    pub underline_rects: Vec<Rect>,
+    pub titles: SmallMapMut<Scale, Vec<ContainerTitle>, 2>,
+    main_axis_ranges: Vec<MainAxisRange>,
+}
+
+#[derive(Copy, Clone)]
+struct MainAxisRange {
+    lo: i32,
+    hi: i32,
+    active: bool,
+}
+
+#[derive(Default)]
+pub struct ContainerNodeState {
+    pub split: Cell<ContainerSplit>,
+    pub mono_child: CloneCell<Option<NodeRef<ContainerChild>>>,
+    pub mono_body: Cell<Rect>,
+    pub mono_content: Cell<Rect>,
+    pub abs_x1: Cell<i32>,
+    pub abs_y1: Cell<i32>,
+    pub width: Cell<i32>,
+    pub height: Cell<i32>,
+    pub content_width: Cell<i32>,
+    pub content_height: Cell<i32>,
+}
+
+pub struct ContainerNode {
+    pub id: ContainerNodeId,
+    pub node_state: SplitView<ContainerNodeState>,
+    pub sum_factors: Cell<f64>,
+    layout_scheduled: Cell<bool>,
+    compute_render_positions_scheduled: Cell<bool>,
+    render_titles_scheduled: Cell<bool>,
+    num_children: NumCell<usize>,
+    pub children: LinkedList<ContainerChild>,
+    child_types_valid: Cell<bool>,
+    focus_history: LinkedList<NodeRef<ContainerChild>>,
+    child_nodes: RefCell<AHashMap<NodeId, LinkedNode<ContainerChild>>>,
+    workspace: CloneCell<Rc<WorkspaceNode>>,
+    location: Cell<NodeLocation>,
+    cursors: RefCell<AHashMap<CursorType, CursorState>>,
+    state: Rc<State>,
+    pub render_data: RefCell<ContainerRenderData>,
+    scroller: Scroller,
+    toplevel_data: ToplevelData,
+    attention_requests: ThresholdCounter,
+    transaction_data: TransactionData<ContainerTransactionOp>,
+}
+
+impl Debug for ContainerNode {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ContainerNode").finish_non_exhaustive()
+    }
+}
+
+#[derive(Default)]
+pub struct ContainerChildNodeState {
+    pub title_rect: Cell<Rect>,
+    // fields below only valid in tabbed layout
+    pub body: Cell<Rect>,
+    pub content: Cell<Rect>,
+}
+
+pub type ContainerChild = TreeLink<ContainerChildInner>;
+
+pub struct ContainerChildInner {
+    pub node: Rc<dyn ToplevelNode>,
+    pub active: Cell<bool>,
+    pub attention_requested: Cell<bool>,
+    title: RefCell<String>,
+    pub title_tex: RefCell<SmallMapMut<Scale, TextTexture, 2>>,
+    pub icon: ToplevelIconUser,
+    pub icons: SmallMap<Scale, ToplevelIcon, 2>,
+    focus_history: Cell<Option<LinkedNode<NodeRef<ContainerChild>>>>,
+    ty: Cell<ContainerChildType>,
+    pub node_state: SplitView<ContainerChildNodeState>,
+    factor: Cell<f64>,
+    resize_handle: Cell<Option<Rect>>,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+enum CursorType {
+    Seat(SeatId),
+    TabletTool(TabletToolId),
+}
+
+struct CursorState {
+    cursor: KnownCursor,
+    target: bool,
+    x: i32,
+    y: i32,
+    op: Option<SeatOp>,
+    double_click_state: DoubleClickState,
+}
+
+impl ContainerRenderData {
+    fn add_title(&mut self, rect: Rect, child: &ContainerChild, scale: Scale, title: &TextTexture) {
+        let tex = title.texture();
+        let icon = child.icons.get(&scale);
+        if tex.is_some() || icon.is_some() {
+            let titles = self.titles.get_or_default_mut(scale);
+            titles.push(ContainerTitle {
+                rect,
+                tex,
+                icon,
+                ty: child.ty.get(),
+            })
+        }
+    }
+}
+
+impl ContainerNode {
+    fn position_child_content(self: &Rc<Self>, child: &NodeRef<ContainerChild>) {
+        let cns = &child.node_state[LiveTL];
+        let mut content = cns.content.get();
+        let body = cns.body.get();
+        let width = content.width();
+        let height = content.height();
+        // let x1 = body.x1() + (body.width() - width) / 2;
+        // let y1 = body.y1() + (body.height() - height) / 2;
+        let x1 = body.x1();
+        let y1 = body.y1();
+        content = Rect::new_sized_saturating(x1, y1, width, height);
+        // log::debug!("body: {:?}", body);
+        // log::debug!("content: {:?}", content);
+        self.set_child_ns_content(child, content);
+    }
+}
+
+impl ContainerNode {
+    pub fn new(
+        state: &Rc<State>,
+        workspace: &Rc<WorkspaceNode>,
+        child: Rc<dyn ToplevelNode>,
+        split: ContainerSplit,
+    ) -> Rc<Self> {
+        let children = LinkedList::default();
+        let child_node = children.add_last(TreeLink::new(ContainerChildInner {
+            node: child.clone(),
+            active: Default::default(),
+            factor: Cell::new(1.0),
+            title: Default::default(),
+            title_tex: Default::default(),
+            icon: state.toplevel_icon_user(),
+            icons: Default::default(),
+            focus_history: Default::default(),
+            attention_requested: Cell::new(false),
+            ty: Default::default(),
+            node_state: Default::default(),
+            resize_handle: Default::default(),
+        }));
+        child.tl_update_icon(&child_node.icon);
+        let child_node_ref = child_node.clone();
+        let mut child_nodes = AHashMap::new();
+        child_nodes.insert(child.node_id(), child_node);
+        let id = state.node_ids.next();
+        let slf = Rc::new_cyclic(|weak| Self {
+            id,
+            node_state: Default::default(),
+            sum_factors: Cell::new(1.0),
+            layout_scheduled: Cell::new(false),
+            compute_render_positions_scheduled: Cell::new(false),
+            render_titles_scheduled: Cell::new(false),
+            num_children: NumCell::new(1),
+            children,
+            child_types_valid: Cell::new(false),
+            focus_history: Default::default(),
+            child_nodes: RefCell::new(child_nodes),
+            workspace: CloneCell::new(workspace.clone()),
+            location: Cell::new(workspace.location()),
+            cursors: RefCell::new(Default::default()),
+            state: state.clone(),
+            render_data: Default::default(),
+            scroller: Default::default(),
+            toplevel_data: ToplevelData::new(
+                state,
+                Default::default(),
+                None,
+                ToplevelType::Container,
+                id,
+                weak,
+            ),
+            attention_requests: Default::default(),
+            transaction_data: TransactionData::new(&state.tree),
+        });
+        slf.set_ns_split(split);
+        child.tl_set_parent(slf.clone());
+        slf.pull_child_properties(&child_node_ref);
+        slf.schedule_validate_child(&child_node_ref);
+        slf
+    }
+
+    fn schedule_validate_child(self: &Rc<Self>, child: &NodeRef<ContainerChild>) {
+        self.add_child_op(child, ContainerChildTransactionOp::SetValid);
+    }
+
+    fn schedule_unlink_child(
+        self: &Rc<Self>,
+        child: LinkedNode<ContainerChild>,
+    ) -> NodeRef<ContainerChild> {
+        child.set_invalid();
+        child.focus_history.take();
+        let ref_ = child.to_ref();
+        self.add_transaction_op(ContainerTransactionOp::Unlink(child));
+        ref_
+    }
+
+    pub fn prepend_child(self: &Rc<Self>, new: Rc<dyn ToplevelNode>) {
+        if let Some(child) = self.children.first() {
+            self.add_child_before_(&child, new);
+        }
+    }
+
+    pub fn append_child(self: &Rc<Self>, new: Rc<dyn ToplevelNode>) {
+        if let Some(child) = self.children.last() {
+            self.add_child_after_(&child, new);
+        }
+    }
+
+    pub fn add_child_after(self: &Rc<Self>, prev: &dyn Node, new: Rc<dyn ToplevelNode>) {
+        self.add_child_x(prev, new, |prev, new| self.add_child_after_(prev, new));
+    }
+
+    pub fn add_child_before(self: &Rc<Self>, prev: &dyn Node, new: Rc<dyn ToplevelNode>) {
+        self.add_child_x(prev, new, |prev, new| self.add_child_before_(prev, new));
+    }
+
+    fn add_child_x<F>(self: &Rc<Self>, prev: &dyn Node, new: Rc<dyn ToplevelNode>, f: F)
+    where
+        F: FnOnce(&NodeRef<ContainerChild>, Rc<dyn ToplevelNode>),
+    {
+        let node = self
+            .child_nodes
+            .borrow()
+            .get(&prev.node_id())
+            .map(|n| n.to_ref());
+        if let Some(node) = node {
+            f(&node, new);
+            return;
+        }
+        log::error!(
+            "Tried to add a child to a container but the preceding node is not in the container"
+        );
+    }
+
+    fn add_child_after_(
+        self: &Rc<Self>,
+        prev: &NodeRef<ContainerChild>,
+        new: Rc<dyn ToplevelNode>,
+    ) {
+        self.add_child(|cc| prev.append(cc), new);
+    }
+
+    fn add_child_before_(
+        self: &Rc<Self>,
+        prev: &NodeRef<ContainerChild>,
+        new: Rc<dyn ToplevelNode>,
+    ) {
+        self.add_child(|cc| prev.prepend(cc), new);
+    }
+
+    fn add_child<F>(self: &Rc<Self>, f: F, new: Rc<dyn ToplevelNode>)
+    where
+        F: FnOnce(ContainerChild) -> LinkedNode<ContainerChild>,
+    {
+        let new_ref = {
+            let mut links = self.child_nodes.borrow_mut();
+            if links.contains_key(&new.node_id()) {
+                log::error!("Tried to add a child to a container that already contains the child");
+                return;
+            }
+            let link = f(TreeLink::new(ContainerChildInner {
+                node: new.clone(),
+                active: Default::default(),
+                factor: Default::default(),
+                title: Default::default(),
+                title_tex: Default::default(),
+                icon: self.state.toplevel_icon_user(),
+                icons: Default::default(),
+                focus_history: Default::default(),
+                attention_requested: Default::default(),
+                ty: Default::default(),
+                node_state: Default::default(),
+                resize_handle: Default::default(),
+            }));
+            let r = link.to_ref();
+            links.insert(new.node_id(), link);
+            r
+        };
+        self.schedule_validate_child(&new_ref);
+        new.tl_update_icon(&new_ref.icon);
+        new.tl_set_parent(self.clone());
+        self.pull_child_properties(&new_ref);
+        new.tl_set_visible(self.toplevel_data.visible[LiveTL].get());
+        let num_children = self.num_children.fetch_add(1) + 1;
+        self.update_content_size();
+        let new_child_factor = 1.0 / num_children as f64;
+        let mut sum_factors = 0.0;
+        for child in self.children.iter_valid(LiveTL) {
+            let factor = if rc_eq(&child.node, &new) {
+                new_child_factor
+            } else {
+                child.factor.get() * (1.0 - new_child_factor)
+            };
+            child.factor.set(factor);
+            sum_factors += factor;
+        }
+        self.sum_factors.set(sum_factors);
+        if self.node_state[LiveTL].mono_child.is_some() {
+            self.activate_child(&new_ref);
+        }
+        // log::info!("add_child");
+        self.schedule_layout();
+        self.cancel_seat_ops();
+    }
+
+    fn cancel_seat_ops(&self) {
+        let mut seats = self.cursors.borrow_mut();
+        for seat in seats.values_mut() {
+            seat.op = None;
+        }
+    }
+
+    pub fn on_spaces_changed(self: &Rc<Self>) {
+        for child in self.child_nodes.borrow().values() {
+            if child
+                .icon
+                .set_size(self.state.theme.title_icon_size(LiveTL))
+            {
+                child.node.tl_update_icon(&child.icon);
+            }
+        }
+        self.update_content_size();
+        // log::info!("on_spaces_changed");
+        self.schedule_layout();
+    }
+
+    pub fn on_colors_changed(self: &Rc<Self>) {
+        // log::info!("on_colors_changed");
+        self.schedule_render_titles();
+        self.schedule_compute_render_positions();
+    }
+
+    fn damage(self: &Rc<Self>) {
+        let ns = &self.node_state[LiveTL];
+        self.schedule_damage(Rect::new_sized_saturating(
+            ns.abs_x1.get(),
+            ns.abs_y1.get(),
+            ns.width.get(),
+            ns.height.get(),
+        ));
+    }
+
+    fn schedule_damage(self: &Rc<Self>, rect: Rect) {
+        self.add_transaction_op(ContainerTransactionOp::Damage(rect));
+    }
+
+    fn schedule_layout(self: &Rc<Self>) {
+        if !self.layout_scheduled.replace(true) {
+            self.state.pending_container_layout.push(self.clone());
+            if self.toplevel_data.visible[LiveTL].get() {
+                self.damage();
+            }
+        }
+    }
+
+    fn perform_layout(self: &Rc<Self>) {
+        if self.num_children.get() == 0 {
+            return;
+        }
+        self.layout_scheduled.set(false);
+        if let Some(child) = self.node_state[LiveTL].mono_child.get() {
+            self.perform_mono_layout(&child);
+        } else {
+            self.perform_split_layout();
+        }
+        self.state.tree_changed();
+        // log::info!("perform_layout");
+        self.schedule_render_titles();
+        self.schedule_compute_render_positions();
+    }
+
+    fn perform_mono_layout(self: &Rc<Self>, child: &ContainerChild) {
+        let ns = &self.node_state[LiveTL];
+        let mb = ns.mono_body.get();
+        child
+            .node
+            .clone()
+            .tl_change_extents(&mb.move_(ns.abs_x1.get(), ns.abs_y1.get()));
+        self.set_ns_mono_content(
+            child.node_state[LiveTL]
+                .content
+                .get()
+                .at_point(mb.x1(), mb.y1()),
+        );
+
+        let theme = &self.state.theme;
+        let th = theme.title_height(LiveTL);
+        let bw = theme.sizes.border_width.get(LiveTL);
+        let num_children = self.num_children.get() as i32;
+        let sp = match theme.container_borders[LiveTL].get() {
+            ContainerBorders::Separators => 0,
+            ContainerBorders::Full => bw,
+        };
+        let content_width = ns.width.get().sub(bw * (num_children - 1) + 2 * sp).max(0);
+        let width_per_child = content_width / num_children;
+        let mut rem = content_width % num_children;
+        let mut pos = sp;
+        for child in self.children.iter_valid(LiveTL) {
+            let mut width = width_per_child;
+            if rem > 0 {
+                width += 1;
+                rem -= 1;
+            }
+            self.set_child_ns_title_rect(&child, Rect::new_sized_saturating(pos, sp, width, th));
+            pos += width + bw;
+        }
+    }
+
+    fn perform_split_layout(self: &Rc<Self>) {
+        let sum_factors = self.sum_factors.get();
+        let theme = &self.state.theme;
+        let border_width = theme.sizes.border_width.get(LiveTL);
+        let title_height_tmp = theme.title_height(LiveTL);
+        let title_plus_underline_height = theme.title_plus_underline_height(LiveTL);
+        let ns = &self.node_state[LiveTL];
+        let split = ns.split.get();
+        let (content_size, other_content_size) = match split {
+            ContainerSplit::Horizontal => (ns.content_width.get(), ns.content_height.get()),
+            ContainerSplit::Vertical => (ns.content_height.get(), ns.content_width.get()),
+        };
+        let num_children = self.num_children.get();
+        if num_children == 0 {
+            return;
+        }
+        let sp = match theme.container_borders[LiveTL].get() {
+            ContainerBorders::Separators => 0,
+            ContainerBorders::Full => border_width,
+        };
+        let mut pos = sp;
+        let mut remaining_content_size = content_size;
+        for child in self.children.iter_valid(LiveTL) {
+            let factor = child.factor.get() / sum_factors;
+            child.factor.set(factor);
+            let mut body_size = (content_size as f64 * factor).round() as i32;
+            body_size = body_size.min(remaining_content_size);
+            remaining_content_size -= body_size;
+            let (x1, y1, width, height) = match split {
+                ContainerSplit::Horizontal => (
+                    pos,
+                    title_plus_underline_height + sp,
+                    body_size,
+                    other_content_size,
+                ),
+                _ => (
+                    sp,
+                    pos + title_plus_underline_height,
+                    other_content_size,
+                    body_size,
+                ),
+            };
+            let body = Rect::new_sized_saturating(x1, y1, width, height);
+            self.set_child_ns_body(&child, body);
+            pos += body_size + border_width;
+            if split == ContainerSplit::Vertical {
+                pos += title_plus_underline_height;
+            }
+        }
+        if remaining_content_size > 0 {
+            let size_per = remaining_content_size / num_children as i32;
+            let mut rem = remaining_content_size % num_children as i32;
+            pos = sp;
+            for child in self.children.iter_valid(LiveTL) {
+                let cns = &child.node_state[LiveTL];
+                let mut body = cns.body.get();
+                let mut add = size_per;
+                if rem > 0 {
+                    rem -= 1;
+                    add += 1;
+                }
+                let (x1, y1, width, height, size) = match split {
+                    ContainerSplit::Horizontal => {
+                        let width = body.width() + add;
+                        (
+                            pos,
+                            title_plus_underline_height + sp,
+                            width,
+                            other_content_size,
+                            width,
+                        )
+                    }
+                    _ => {
+                        let height = body.height() + add;
+                        (
+                            sp,
+                            pos + title_plus_underline_height,
+                            other_content_size,
+                            height,
+                            height,
+                        )
+                    }
+                };
+                body = Rect::new_sized_saturating(x1, y1, width, height);
+                self.set_child_ns_body(&child, body);
+                pos += size + border_width;
+                if split == ContainerSplit::Vertical {
+                    pos += title_plus_underline_height;
+                }
+            }
+        }
+        self.sum_factors.set(1.0);
+        let mut resize_handle = None;
+        for child in self.children.iter_valid(LiveTL) {
+            let cns = &child.node_state[LiveTL];
+            let body = cns.body.get();
+            self.set_child_ns_title_rect(
+                &child,
+                Rect::new_sized_saturating(
+                    body.x1(),
+                    body.y1() - title_plus_underline_height,
+                    body.width(),
+                    title_height_tmp,
+                ),
+            );
+            child.resize_handle.set(resize_handle);
+            resize_handle = Some(match split {
+                ContainerSplit::Horizontal => {
+                    Rect::new_sized_saturating(body.x2(), body.y1(), border_width, body.height())
+                }
+                ContainerSplit::Vertical => {
+                    Rect::new_sized_saturating(body.x1(), body.y2(), body.width(), border_width)
+                }
+            });
+            let body = body.move_(ns.abs_x1.get(), ns.abs_y1.get());
+            child.node.clone().tl_change_extents(&body);
+            self.position_child_content(&child);
+        }
+    }
+
+    fn update_content_size(self: &Rc<Self>) {
+        let theme = &self.state.theme;
+        let border_width = theme.sizes.border_width.get(LiveTL);
+        let title_plus_underline_height = theme.title_plus_underline_height(LiveTL);
+        let nc = self.num_children.get();
+        let ns = &self.node_state[LiveTL];
+        let mut mono_x = 0;
+        let mut mono_y = title_plus_underline_height;
+        let mut width = ns.width.get();
+        let mut height = ns.height.get() - title_plus_underline_height;
+        if theme.container_borders[LiveTL].get() == ContainerBorders::Full {
+            mono_x += border_width;
+            mono_y += border_width;
+            width -= 2 * border_width;
+            height -= 2 * border_width;
+        }
+        match ns.split.get() {
+            ContainerSplit::Horizontal => {
+                let new_content_size = width.sub((nc - 1) as i32 * border_width).max(0);
+                self.set_ns_content_width(new_content_size);
+                self.set_ns_content_height(height.max(0));
+            }
+            ContainerSplit::Vertical => {
+                let new_content_size = height
+                    .sub((nc - 1) as i32 * (border_width + title_plus_underline_height))
+                    .max(0);
+                self.set_ns_content_height(new_content_size);
+                self.set_ns_content_width(width.max(0));
+            }
+        }
+        self.set_ns_mono_body(Rect::new_sized_saturating(mono_x, mono_y, width, height));
+    }
+
+    fn pointer_move(
+        self: &Rc<Self>,
+        seat: &Rc<WlSeatGlobal>,
+        id: CursorType,
+        cursor: &CursorUser,
+        x: Fixed,
+        y: Fixed,
+        target: bool,
+    ) {
+        let mut x = x.round_down();
+        let mut y = y.round_down();
+        let mut seats = self.cursors.borrow_mut();
+        let seat_state = seats.entry(id).or_insert_with(|| CursorState {
+            cursor: KnownCursor::Default,
+            target,
+            x,
+            y,
+            op: None,
+            double_click_state: Default::default(),
+        });
+        let mut changed = false;
+        changed |= mem::replace(&mut seat_state.x, x) != x;
+        changed |= mem::replace(&mut seat_state.y, y) != y;
+        if !changed {
+            return;
+        }
+        let ns = &self.node_state[LiveTL];
+        if let Some(op) = &seat_state.op {
+            match op.kind {
+                SeatOpKind::Move => {
+                    if let CursorType::Seat(_) = id
+                        && self.state.ui_drag_threshold_reached((x, y), (op.x, op.y))
+                    {
+                        let node = op.child.node.clone();
+                        drop(seats);
+                        seat.start_tile_drag(&node);
+                    }
+                }
+                SeatOpKind::Resize {
+                    dist_left,
+                    dist_right,
+                } => {
+                    let prev = op.child.prev_valid(LiveTL).unwrap();
+                    let prev_body = prev.node_state[LiveTL].body.get();
+                    let child_body = op.child.node_state[LiveTL].body.get();
+                    let (prev_factor, child_factor) = match ns.split.get() {
+                        ContainerSplit::Horizontal => {
+                            let cw = ns.content_width.get();
+                            x = x
+                                .max(prev_body.x1() + dist_left)
+                                .min(child_body.x2() - dist_right);
+                            let prev_factor = (x - prev_body.x1() - dist_left) as f64 / cw as f64;
+                            let child_factor =
+                                (child_body.x2() - x - dist_right) as f64 / cw as f64;
+                            (prev_factor, child_factor)
+                        }
+                        ContainerSplit::Vertical => {
+                            let ch = ns.content_height.get();
+                            y = y
+                                .max(prev_body.y1() + dist_left)
+                                .min(child_body.y2() - dist_right);
+                            let prev_factor = (y - prev_body.y1() - dist_left) as f64 / ch as f64;
+                            let child_factor =
+                                (child_body.y2() - y - dist_right) as f64 / ch as f64;
+                            (prev_factor, child_factor)
+                        }
+                    };
+                    let sum_factors =
+                        self.sum_factors.get() - prev.factor.get() - op.child.factor.get()
+                            + prev_factor
+                            + child_factor;
+                    prev.factor.set(prev_factor);
+                    op.child.factor.set(child_factor);
+                    self.sum_factors.set(sum_factors);
+                    // log::info!("pointer_move");
+                    self.schedule_layout();
+                }
+            }
+            return;
+        }
+        let new_cursor = if ns.mono_child.is_some() {
+            KnownCursor::Default
+        } else {
+            let mut cursor = KnownCursor::Default;
+            for child in self.children.iter_valid(LiveTL) {
+                if let Some(rect) = child.resize_handle.get()
+                    && rect.contains(x, y)
+                {
+                    cursor = match ns.split.get() {
+                        ContainerSplit::Horizontal => KnownCursor::EwResize,
+                        ContainerSplit::Vertical => KnownCursor::NsResize,
+                    };
+                    break;
+                }
+            }
+            cursor
+        };
+        if new_cursor != mem::replace(&mut seat_state.cursor, new_cursor) {
+            if seat_state.target {
+                cursor.set_known(new_cursor);
+            }
+        }
+    }
+
+    fn update_title(&self) {
+        let mut title = self.toplevel_data.title.borrow_mut();
+        title.clear();
+        let ns = &self.node_state[LiveTL];
+        let split = match (ns.mono_child.is_some(), ns.split.get()) {
+            (true, _) => "T",
+            (_, ContainerSplit::Horizontal) => "H",
+            (_, ContainerSplit::Vertical) => "V",
+        };
+        title.push_str(split);
+        title.push_str("[");
+        for (i, c) in self.children.iter_valid(LiveTL).enumerate() {
+            if i > 0 {
+                title.push_str(", ");
+            }
+            title.push_str(c.title.borrow_mut().deref());
+        }
+        title.push_str("]");
+        drop(title);
+        self.tl_title_changed();
+    }
+
+    pub fn schedule_render_titles(self: &Rc<Self>) {
+        self.add_transaction_op(ContainerTransactionOp::ScheduleRenderTitles);
+    }
+
+    fn last_active(&self) -> Option<NodeId> {
+        match self.node_state[LiveTL].mono_child.get() {
+            Some(c) => Some(c.node.node_id()),
+            None => self.focus_history.last().map(|v| v.node.node_id()),
+        }
+    }
+
+    fn update_child_types(self: &Rc<Self>) {
+        if self.child_types_valid.replace(true) {
+            return;
+        }
+        let last_active = self.last_active();
+        let have_active = self.children.iter_valid(LiveTL).any(|c| c.active.get());
+        for child in self.children.iter_valid(LiveTL) {
+            let ty = if child.active.get() {
+                ContainerChildType::Active
+            } else if child.attention_requested.get() {
+                ContainerChildType::AttentionRequested
+            } else if !have_active && last_active == Some(child.node.node_id()) {
+                ContainerChildType::LastActive
+            } else {
+                ContainerChildType::Other
+            };
+            child.ty.set(ty);
+        }
+    }
+
+    fn render_titles(self: &Rc<Self>) -> Rc<AsyncEvent> {
+        let on_completed = Rc::new(OnDropEvent::default());
+        let Some(ctx) = self.state.render_ctx.get() else {
+            return on_completed.event();
+        };
+        let theme = &self.state.theme;
+        let th = theme.title_height(RenderTL);
+        let font = theme.title_font();
+        let scales = self.state.scales.lock();
+        let draw_overlay_icon = self.toplevel_data.is_overlay_root_container.get();
+        self.update_child_types();
+        for child in self.children.iter_valid(RenderTL) {
+            let cns = &child.node_state[RenderTL];
+            let rect = cns.title_rect.get();
+            let color = match child.ty.get() {
+                ContainerChildType::Active => theme.colors.focused_title_text.get(),
+                ContainerChildType::AttentionRequested => theme.colors.unfocused_title_text.get(),
+                ContainerChildType::LastActive => theme.colors.focused_inactive_title_text.get(),
+                ContainerChildType::Other => theme.colors.unfocused_title_text.get(),
+            };
+            let title = child.title.borrow_mut();
+            let tt = &mut *child.title_tex.borrow_mut();
+            child.icons.clear();
+            for (scale, _) in scales.iter() {
+                let tex = tt.get_or_insert_with(*scale, || TextTexture::new(&self.state, &ctx));
+                let mut th = th;
+                let mut scalef = None;
+                let mut width = rect.width();
+                let icon = self
+                    .state
+                    .theme
+                    .show_window_icons
+                    .get()
+                    .then(|| child.icon.get(*scale))
+                    .flatten();
+                if draw_overlay_icon {
+                    width = (width - th).max(0);
+                }
+                if let Some(icon) = icon {
+                    width = (width - th).max(0);
+                    child.icons.insert(*scale, icon);
+                }
+                if *scale != 1 {
+                    let scale = scale.to_f64();
+                    th = (th as f64 * scale).round() as _;
+                    width = (width as f64 * scale).round() as _;
+                    scalef = Some(scale);
+                }
+                tex.schedule_render(
+                    on_completed.clone(),
+                    1,
+                    None,
+                    width,
+                    th,
+                    1,
+                    &font,
+                    title.deref(),
+                    color,
+                    true,
+                    false,
+                    scalef,
+                );
+            }
+        }
+        on_completed.event()
+    }
+
+    fn compute_title_data(&self) {
+        let rd = &mut *self.render_data.borrow_mut();
+        for (_, v) in rd.titles.iter_mut() {
+            v.clear();
+        }
+        let ns = &self.node_state[RenderTL];
+        let abs_x = ns.abs_x1.get();
+        let abs_y = ns.abs_y1.get();
+        for child in self.children.iter_valid(RenderTL) {
+            let rect = child.node_state[RenderTL].title_rect.get();
+            if self.toplevel_data.visible[RenderTL].get() {
+                self.state.damage(rect.move_(abs_x, abs_y));
+            }
+            let title = child.title.borrow_mut();
+            let tt = &*child.title_tex.borrow();
+            for (&scale, tex) in tt {
+                if let Err(e) = tex.flip() {
+                    log::error!("Could not render title {}: {}", title, ErrorFmt(e));
+                }
+                rd.add_title(rect, &child, scale, tex);
+            }
+        }
+        rd.titles.remove_if(|_, v| v.is_empty());
+    }
+
+    fn schedule_compute_render_positions(self: &Rc<Self>) {
+        self.add_transaction_op(ContainerTransactionOp::ScheduleComputeRenderPositions);
+    }
+
+    fn compute_render_positions(self: &Rc<Self>) {
+        self.compute_render_positions_scheduled.set(false);
+        let mut rd = self.render_data.borrow_mut();
+        let rd = rd.deref_mut();
+        let theme = &self.state.theme;
+        let th = theme.title_height(RenderTL);
+        let tpuh = theme.title_plus_underline_height(RenderTL);
+        let tuh = theme.title_underline_height(RenderTL);
+        let bw = theme.sizes.border_width.get(RenderTL);
+        let ns = &self.node_state[RenderTL];
+        let cb = theme.container_borders[RenderTL].get();
+        let sp = match cb {
+            ContainerBorders::Separators => 0,
+            ContainerBorders::Full => bw,
+        };
+        let fwidth = ns.width.get();
+        let fheight = ns.height.get();
+        let cwidth = fwidth.sub(2 * sp).max(0);
+        let cheight = fheight.sub(2 * sp).max(0);
+        for (_, v) in rd.titles.iter_mut() {
+            v.clear();
+        }
+        rd.title_rects.clear();
+        rd.active_title_rects.clear();
+        rd.attention_title_rects.clear();
+        rd.border_rects.clear();
+        rd.active_border_rects.clear();
+        rd.underline_rects.clear();
+        rd.last_active_rect.take();
+        rd.main_axis_ranges.clear();
+        let mono = ns.mono_child.is_some();
+        let split = ns.split.get();
+        let abs_x = ns.abs_x1.get();
+        let abs_y = ns.abs_y1.get();
+        self.update_child_types();
+        let use_active_border_rects = cb == ContainerBorders::Full
+            && theme.colors.border.get() != theme.focused_border_color();
+        let fill_active_borders = !mono && use_active_border_rects;
+        let add_border = |rd: &mut ContainerRenderData,
+                          x1: i32,
+                          y1: i32,
+                          active: bool,
+                          prev_active: bool,
+                          last: bool| {
+            let rect = if mono {
+                Rect::new_sized_saturating(x1 - bw, y1, bw, th)
+            } else if split == ContainerSplit::Horizontal {
+                Rect::new_sized_saturating(x1 - bw, y1, bw, cheight)
+            } else {
+                Rect::new_sized_saturating(x1, y1 - bw, cwidth, bw)
+            };
+            if fill_active_borders && (active || prev_active) {
+                rd.active_border_rects.push(rect);
+            } else {
+                rd.border_rects.push(rect);
+            }
+            if fill_active_borders {
+                let active = prev_active;
+                let mut hi = match split {
+                    ContainerSplit::Horizontal => x1,
+                    ContainerSplit::Vertical => y1,
+                };
+                if !active && !last {
+                    hi -= bw;
+                };
+                if let Some(last) = rd.main_axis_ranges.last_mut() {
+                    if last.active == active {
+                        last.hi = hi;
+                    } else if hi > last.hi {
+                        let lo = last.hi;
+                        rd.main_axis_ranges.push(MainAxisRange { lo, hi, active });
+                    }
+                } else if hi > 0 {
+                    let lo = 0;
+                    rd.main_axis_ranges.push(MainAxisRange { lo, hi, active });
+                }
+            }
+        };
+        let mut prev_active = false;
+        for (i, child) in self.children.iter_valid(RenderTL).enumerate() {
+            let cns = &child.node_state[RenderTL];
+            let rect = cns.title_rect.get();
+            if !use_active_border_rects
+                && self.toplevel_data.visible[RenderTL].get()
+                && !mono
+                && split != ContainerSplit::Horizontal
+            {
+                self.state.damage(Rect::new_sized_saturating(
+                    abs_x + rect.x1(),
+                    abs_y + rect.y1(),
+                    cwidth,
+                    rect.height() + tuh,
+                ));
+            }
+            let active = child.ty.get() == ContainerChildType::Active;
+            if i > 0 || fill_active_borders {
+                add_border(rd, rect.x1(), rect.y1(), active, prev_active, false);
+            }
+            prev_active = active;
+            match child.ty.get() {
+                ContainerChildType::Active => rd.active_title_rects.push(rect),
+                ContainerChildType::AttentionRequested => rd.attention_title_rects.push(rect),
+                ContainerChildType::LastActive => rd.last_active_rect = Some(rect),
+                ContainerChildType::Other => rd.title_rects.push(rect),
+            }
+            if !mono {
+                let rect = Rect::new_sized_saturating(rect.x1(), rect.y2(), rect.width(), 1);
+                rd.underline_rects.push(rect);
+            }
+            let tt = &*child.title_tex.borrow();
+            for (&scale, tex) in tt {
+                rd.add_title(rect, &child, scale, tex);
+            }
+        }
+        if cb == ContainerBorders::Full {
+            let full_border = || {
+                [
+                    Rect::new_sized_saturating(0, 0, fwidth, bw),
+                    Rect::new_sized_saturating(0, fheight - bw, fwidth, bw),
+                    Rect::new_sized_saturating(0, bw, bw, cheight),
+                    Rect::new_sized_saturating(fwidth - bw, bw, bw, cheight),
+                ]
+            };
+            if !use_active_border_rects {
+                rd.border_rects.extend_from_slice(&full_border());
+            } else if let Some(child) = ns.mono_child.get() {
+                let active = child.ty.get() == ContainerChildType::Active;
+                let dst = match active {
+                    true => &mut rd.active_border_rects,
+                    false => &mut rd.border_rects,
+                };
+                dst.extend_from_slice(&full_border());
+            } else {
+                let (x, y) = match split {
+                    ContainerSplit::Horizontal => (fwidth, sp),
+                    ContainerSplit::Vertical => (sp, fheight),
+                };
+                add_border(rd, x, y, false, prev_active, true);
+                for MainAxisRange { lo, hi, active } in rd.main_axis_ranges.iter().copied() {
+                    let rects = match split {
+                        ContainerSplit::Horizontal => [
+                            Rect::new_saturating(lo, 0, hi, bw),
+                            Rect::new_saturating(lo, fheight - bw, hi, fheight),
+                        ],
+                        ContainerSplit::Vertical => [
+                            Rect::new_saturating(0, lo, bw, hi),
+                            Rect::new_saturating(fwidth - bw, lo, fwidth, hi),
+                        ],
+                    };
+                    if active {
+                        rd.active_border_rects.extend_from_slice(&rects);
+                    } else {
+                        rd.border_rects.extend_from_slice(&rects);
+                    }
+                }
+            }
+        }
+        if mono {
+            rd.underline_rects
+                .push(Rect::new_sized_saturating(sp, sp + th, cwidth, tuh));
+        }
+        if !use_active_border_rects
+            && self.toplevel_data.visible[RenderTL].get()
+            && (mono || split == ContainerSplit::Horizontal)
+        {
+            self.state.damage(Rect::new_sized_saturating(
+                abs_x + sp,
+                abs_y + sp,
+                cwidth,
+                tpuh,
+            ));
+        }
+        rd.titles.remove_if(|_, v| v.is_empty());
+        if use_active_border_rects {
+            self.state.damage(self.node_absolute_position(RenderTL));
+        }
+    }
+
+    fn activate_child(self: &Rc<Self>, child: &NodeRef<ContainerChild>) {
+        self.activate_child2(child, false);
+    }
+
+    fn activate_child2(self: &Rc<Self>, child: &NodeRef<ContainerChild>, preserve_focus: bool) {
+        let ns = &self.node_state[LiveTL];
+        if let Some(mc) = ns.mono_child.get() {
+            if mc.node.node_id() == child.node.node_id() {
+                return;
+            }
+            if !preserve_focus {
+                let seats = collect_kb_foci(mc.node.clone());
+                mc.node.tl_set_visible(false);
+                for seat in seats {
+                    child
+                        .node
+                        .clone()
+                        .node_do_focus_dyn(&seat, Direction::Unspecified);
+                }
+            }
+            self.set_ns_mono_child(Some(child.clone()));
+            if self.toplevel_data.visible[LiveTL].get() {
+                child.node.tl_set_visible(true);
+            }
+            child.node.tl_restack_popups();
+            // log::info!("activate_child2");
+            self.schedule_layout();
+        }
+    }
+
+    pub fn set_mono(self: &Rc<Self>, child: Option<&dyn ToplevelNode>) {
+        let ns = &self.node_state[LiveTL];
+        if ns.mono_child.is_some() == child.is_some() {
+            return;
+        }
+        let child = {
+            let children = self.child_nodes.borrow();
+            match child {
+                Some(c) => match children.get(&c.node_id()) {
+                    Some(c) => Some(c.to_ref()),
+                    _ => {
+                        log::warn!("set_mono called with a node that is not a child");
+                        return;
+                    }
+                },
+                _ => None,
+            }
+        };
+        if self.toplevel_data.visible[LiveTL].get() {
+            if let Some(child) = &child {
+                let child_id = child.node.node_id();
+                let mut seats = SmallVec::<[_; 3]>::new();
+                for other in self.children.iter_valid(LiveTL) {
+                    if other.node.node_id() != child_id {
+                        collect_kb_foci2(other.node.clone(), &mut seats);
+                        other.node.tl_set_visible(false);
+                    }
+                }
+                for seat in seats {
+                    child
+                        .node
+                        .clone()
+                        .node_do_focus_dyn(&seat, Direction::Unspecified);
+                }
+                child.node.tl_restack_popups();
+            } else {
+                for child in self.children.iter_valid(LiveTL) {
+                    child.node.tl_set_visible(true);
+                }
+            }
+        }
+        self.set_ns_mono_child(child);
+        // log::info!("set_mono");
+        self.schedule_layout();
+        self.update_title();
+    }
+
+    pub fn set_split(self: &Rc<Self>, split: ContainerSplit) {
+        if self.set_ns_split(split) != split {
+            self.update_content_size();
+            // log::info!("set_split");
+            self.schedule_layout();
+            self.update_title();
+        }
+    }
+
+    fn parent_container(&self) -> Option<Rc<ContainerNode>> {
+        self.toplevel_data
+            .parent
+            .get()
+            .and_then(|p| p.node_into_container())
+    }
+
+    fn find_neighboring_output(&self, direction: Direction) -> Option<Rc<OutputNode>> {
+        if self.toplevel_data.parent.is_none() {
+            return None;
+        }
+        if self.toplevel_data.float.is_some() {
+            return None;
+        }
+        self.state.find_output_in_direction(
+            &self.workspace.get().node_state[LiveTL].output.get(),
+            direction,
+        )
+    }
+
+    pub fn move_focus_from_child(
+        self: Rc<Self>,
+        seat: &Rc<WlSeatGlobal>,
+        child: &dyn ToplevelNode,
+        direction: Direction,
+    ) {
+        let child = match self.child_nodes.borrow().get(&child.node_id()) {
+            Some(c) => c.to_ref(),
+            _ => return,
+        };
+        let ns = &self.node_state[LiveTL];
+        let mc = ns.mono_child.get();
+        let in_line = if mc.is_some() {
+            matches!(direction, Direction::Left | Direction::Right)
+        } else {
+            match ns.split.get() {
+                ContainerSplit::Horizontal => {
+                    matches!(direction, Direction::Left | Direction::Right)
+                }
+                ContainerSplit::Vertical => matches!(direction, Direction::Up | Direction::Down),
+            }
+        };
+        let focus_in_parent = || {
+            if let Some(parent) = self.toplevel_data.parent.get() {
+                if let Some(c) = parent.node_into_container() {
+                    c.move_focus_from_child(seat, self.deref(), direction);
+                } else if let Some(output) = self.find_neighboring_output(direction) {
+                    output.take_keyboard_navigation_focus(seat, direction);
+                }
+            }
+        };
+        if !in_line {
+            focus_in_parent();
+            return;
+        }
+        let prev = match direction {
+            Direction::Left => true,
+            Direction::Down => false,
+            Direction::Up => true,
+            Direction::Right => false,
+            Direction::Unspecified => true,
+        };
+        let sibling = match prev {
+            true => child.prev_valid(LiveTL),
+            false => child.next_valid(LiveTL),
+        };
+        let sibling = match sibling {
+            Some(s) => s,
+            None => {
+                focus_in_parent();
+                return;
+            }
+        };
+        if mc.is_some() {
+            self.activate_child(&sibling);
+        } else {
+            sibling.node.clone().node_do_focus_dyn(seat, direction);
+        }
+    }
+
+    //
+    pub fn move_child(self: Rc<Self>, child: Rc<dyn ToplevelNode>, direction: Direction) {
+        let move_to_neighboring_output = |child: Rc<dyn ToplevelNode>| {
+            let Some(output) = self.find_neighboring_output(direction) else {
+                return;
+            };
+            let ws = output.ensure_workspace();
+            let mut foci = SmallVec::new();
+            let move_foci = !ws.container_visible();
+            if move_foci {
+                collect_kb_foci2(child.clone(), &mut foci);
+            }
+            if let Some(c) = ws.node_state[LiveTL].container.get() {
+                self.clone().cnode_remove_child2(&*child, true);
+                c.insert_child(child, direction);
+            } else {
+                toplevel_set_workspace(&self.state, child, &ws);
+            }
+            if move_foci {
+                for seat in foci {
+                    ws.do_focus(&seat, Direction::Unspecified);
+                }
+            }
+        };
+
+        // CASE 1: This is the only child of the container. Replace the container by the child.
+        if self.num_children.get() == 1 {
+            if let Some(parent) = self.toplevel_data.parent.get()
+                && !self.toplevel_data.is_fullscreen[LiveTL].get()
+            {
+                if parent.cnode_accepts_child(&*child) {
+                    parent.cnode_replace_child(self.deref(), child.clone());
+                    self.toplevel_data.parent.take();
+                    for cn in self.child_nodes.borrow_mut().drain_values() {
+                        self.schedule_unlink_child(cn);
+                    }
+                    self.tl_destroy();
+                } else {
+                    move_to_neighboring_output(child);
+                }
+            }
+            return;
+        }
+        let (split, prev) = direction_to_split(direction);
+        // CASE 2: We're moving the child within the container.
+        let ns = &self.node_state[LiveTL];
+        if split == ns.split.get()
+            || (split == ContainerSplit::Horizontal && ns.mono_child.is_some())
+        {
+            let cc = match self.child_nodes.borrow().get(&child.node_id()) {
+                Some(l) => l.to_ref(),
+                None => return,
+            };
+            let neighbor = match prev {
+                true => cc.prev_valid(LiveTL),
+                false => cc.next_valid(LiveTL),
+            };
+            if let Some(neighbor) = neighbor {
+                if let Some(cn) = neighbor.node.clone().node_into_container()
+                    && cn.cnode_accepts_child(&*child)
+                {
+                    if let Some(mc) = ns.mono_child.get()
+                        && mc.node.node_id() == child.node_id()
+                    {
+                        self.activate_child2(&neighbor, true);
+                    }
+                    self.cnode_remove_child2(&*child, true);
+                    cn.insert_child(child, direction);
+                    return;
+                }
+                match prev {
+                    true => neighbor.prepend_existing(&cc),
+                    false => neighbor.append_existing(&cc),
+                }
+                // log::info!("move_child");
+                self.schedule_layout();
+                return;
+            }
+        }
+        // CASE 3: We're moving the child out of the container.
+        let mut neighbor = self.clone();
+        let mut parent_opt = self.parent_container();
+        while let Some(parent) = &parent_opt {
+            if parent.node_state[LiveTL].split.get() == split {
+                break;
+            }
+            neighbor = parent.clone();
+            parent_opt = parent.parent_container();
+        }
+        let parent = match parent_opt {
+            Some(p) => p,
+            _ => {
+                move_to_neighboring_output(child);
+                return;
+            }
+        };
+        self.cnode_remove_child2(&*child, true);
+        match prev {
+            true => parent.add_child_before(&*neighbor, child.clone()),
+            false => parent.add_child_after(&*neighbor, child.clone()),
+        }
+    }
+
+    pub fn insert_child(self: &Rc<Self>, node: Rc<dyn ToplevelNode>, direction: Direction) {
+        let (split, right) = direction_to_split(direction);
+        if split != self.node_state[LiveTL].split.get() || right {
+            self.append_child(node);
+        } else {
+            self.prepend_child(node);
+        }
+    }
+
+    fn update_child_title(self: &Rc<Self>, child: &ContainerChild, title: &str) {
+        {
+            let mut ct = child.title.borrow_mut();
+            if ct.deref() == title {
+                return;
+            }
+            ct.clear();
+            ct.push_str(title);
+        }
+        self.update_title();
+        // log::info!("node_child_title_changed");
+        self.schedule_render_titles();
+    }
+
+    fn update_child_active(
+        self: &Rc<Self>,
+        node: &NodeRef<ContainerChild>,
+        active: bool,
+        depth: u32,
+    ) {
+        if depth == 1 {
+            node.active.set(active);
+        }
+        if active {
+            node.focus_history
+                .set(Some(self.focus_history.add_last(node.clone())));
+        }
+        // log::info!("node_child_active_changed");
+        self.schedule_render_titles();
+        self.schedule_compute_render_positions();
+        if let Some(parent) = self.toplevel_data.parent.get() {
+            parent.node_child_active_changed(self.deref(), active, depth + 1);
+        }
+    }
+
+    fn update_child_size(self: &Rc<Self>, node: &NodeRef<ContainerChild>, width: i32, height: i32) {
+        let rect = Rect::new_saturating(0, 0, width, height);
+        self.set_child_ns_content(node, rect);
+        self.position_child_content(node);
+        let ns = &self.node_state[LiveTL];
+        if let Some(mono) = ns.mono_child.get()
+            && mono.node.node_id() == node.node.node_id()
+        {
+            let body = ns.mono_body.get();
+            self.set_ns_mono_content(rect.at_point(body.x1(), body.y1()));
+        }
+    }
+
+    fn pull_child_properties(self: &Rc<Self>, child: &NodeRef<ContainerChild>) {
+        let data = child.node.tl_data();
+        {
+            let attention_requested = data.wants_attention.get();
+            child.attention_requested.set(attention_requested);
+            if attention_requested {
+                self.mod_attention_requests(true);
+            }
+        }
+        self.update_child_title(child, &data.title.borrow());
+        self.update_child_active(child, data.active(), 1);
+        {
+            let pos = data.content_size.get();
+            self.update_child_size(child, pos.width(), pos.height());
+        }
+    }
+
+    fn discard_child_properties(&self, child: &ContainerChild) {
+        if child.attention_requested.get() {
+            self.mod_attention_requests(false);
+        }
+    }
+
+    fn mod_attention_requests(&self, set: bool) {
+        let propagate = self.attention_requests.adj(set);
+        if set || propagate {
+            self.toplevel_data.set_wants_attention(set);
+        }
+        if propagate && let Some(parent) = self.toplevel_data.parent.get() {
+            parent.cnode_child_attention_request_changed(self, set);
+        }
+    }
+
+    fn toggle_mono(self: &Rc<Self>) {
+        if self.node_state[LiveTL].mono_child.is_some() {
+            self.set_mono(None);
+        } else if let Some(last) = self.focus_history.last() {
+            self.set_mono(Some(&*last.node));
+        }
+    }
+
+    fn button(
+        self: Rc<Self>,
+        id: CursorType,
+        seat: &Rc<WlSeatGlobal>,
+        time_usec: u64,
+        pressed: bool,
+        button: u32,
+    ) {
+        let mut seat_datas = self.cursors.borrow_mut();
+        let seat_data = match seat_datas.get_mut(&id) {
+            Some(s) => s,
+            _ => return,
+        };
+        let ns = &self.node_state[LiveTL];
+        if button == BTN_RIGHT && pressed {
+            for child in self.children.iter_valid(LiveTL) {
+                if child.node_state[LiveTL]
+                    .title_rect
+                    .get()
+                    .contains(seat_data.x, seat_data.y)
+                {
+                    self.toggle_mono();
+                }
+            }
+            return;
+        }
+        if button != BTN_LEFT {
+            return;
+        }
+        if seat_data.op.is_none() {
+            if !pressed {
+                return;
+            }
+            let (kind, child) = 'res: {
+                let mono = ns.mono_child.is_some();
+                for child in self.children.iter_valid(LiveTL) {
+                    let cns = &child.node_state[LiveTL];
+                    let rect = cns.title_rect.get();
+                    if rect.contains(seat_data.x, seat_data.y) {
+                        self.activate_child(&child);
+                        child
+                            .node
+                            .clone()
+                            .node_do_focus_dyn(seat, Direction::Unspecified);
+                        break 'res (SeatOpKind::Move, child);
+                    } else if !mono
+                        && let Some(resize_handle) = child.resize_handle.get()
+                        && resize_handle.contains(seat_data.x, seat_data.y)
+                    {
+                        let op = if ns.split.get() == ContainerSplit::Horizontal {
+                            SeatOpKind::Resize {
+                                dist_left: seat_data.x - resize_handle.x1(),
+                                dist_right: cns.body.get().x1() - seat_data.x,
+                            }
+                        } else {
+                            SeatOpKind::Resize {
+                                dist_left: seat_data.y - resize_handle.y1(),
+                                dist_right: cns.body.get().y1() - seat_data.y,
+                            }
+                        };
+                        break 'res (op, child);
+                    }
+                }
+                return;
+            };
+            if seat_data
+                .double_click_state
+                .click(&self.state, time_usec, seat_data.x, seat_data.y)
+                && kind == SeatOpKind::Move
+            {
+                drop(seat_datas);
+                toplevel_set_floating(&self.state, child.node.clone(), true);
+                return;
+            }
+            seat_data.op = Some(SeatOp {
+                child,
+                kind,
+                x: seat_data.x,
+                y: seat_data.y,
+            })
+        } else if !pressed {
+            seat_data.op = None;
+            drop(seat_datas);
+        }
+    }
+
+    fn tile_drag_destination_mono_titles(
+        self: &Rc<Self>,
+        source: NodeId,
+        abs_bounds: Rect,
+        abs_x: i32,
+        abs_y: i32,
+    ) -> Option<TileDragDestination> {
+        let mut prev_is_source = false;
+        let mut prev_center = 0;
+        let ns = &self.node_state[LiveTL];
+        for child in self.children.iter_valid(LiveTL) {
+            if child.node.node_id() == source {
+                prev_is_source = true;
+                continue;
+            }
+            let rect = child.node_state[LiveTL].title_rect.get();
+            let center = (rect.x1() + rect.x2()) / 2;
+            if !prev_is_source {
+                let rect = Rect::new(prev_center, 0, center, rect.height())?
+                    .move_(ns.abs_x1.get(), ns.abs_y1.get())
+                    .intersect(abs_bounds);
+                if rect.contains(abs_x, abs_y) {
+                    return Some(TileDragDestination {
+                        highlight: rect,
+                        ty: TddType::Insert {
+                            container: self.clone(),
+                            neighbor: child.node.clone(),
+                            before: true,
+                        },
+                    });
+                }
+            }
+            prev_center = center;
+            prev_is_source = false;
+        }
+        if prev_is_source {
+            return None;
+        }
+        let last = self.children.last_valid(LiveTL)?;
+        let rect = Rect::new(
+            prev_center,
+            0,
+            ns.width.get(),
+            self.state.theme.title_height(LiveTL),
+        )?
+        .move_(ns.abs_x1.get(), ns.abs_y1.get())
+        .intersect(abs_bounds);
+        if rect.contains(abs_x, abs_y) {
+            return Some(TileDragDestination {
+                highlight: rect,
+                ty: TddType::Insert {
+                    container: self.clone(),
+                    neighbor: last.node.clone(),
+                    before: false,
+                },
+            });
+        }
+        None
+    }
+
+    fn tile_drag_destination_mono(
+        self: &Rc<Self>,
+        mc: &ContainerChild,
+        source: NodeId,
+        abs_bounds: Rect,
+        abs_x: i32,
+        abs_y: i32,
+    ) -> Option<TileDragDestination> {
+        let th = self.state.theme.title_height(LiveTL);
+        let ns = &self.node_state[LiveTL];
+        if abs_y < ns.abs_y1.get() + th {
+            return self.tile_drag_destination_mono_titles(source, abs_bounds, abs_x, abs_y);
+        }
+        let body = ns.mono_body.get();
+        let mut bounds = body
+            .move_(ns.abs_x1.get(), ns.abs_y1.get())
+            .intersect(abs_bounds);
+        if mc.node.node_id() != source && !mc.node.node_is_container() {
+            let delta = bounds.width() / 5;
+            for before in [true, false] {
+                let (x1, x2);
+                match before {
+                    true => {
+                        x1 = bounds.x1();
+                        x2 = bounds.x1() + delta;
+                    }
+                    false => {
+                        x1 = bounds.x2() - delta;
+                        x2 = bounds.x2();
+                    }
+                }
+                if abs_x >= x1 && abs_x < x2 {
+                    return Some(TileDragDestination {
+                        highlight: Rect::new(x1, bounds.y1(), x2, bounds.y2())?,
+                        ty: TddType::Insert {
+                            container: self.clone(),
+                            neighbor: mc.node.clone(),
+                            before,
+                        },
+                    });
+                }
+            }
+            bounds = Rect::new(
+                bounds.x1() + delta,
+                bounds.y1(),
+                bounds.x2() - delta,
+                bounds.y2(),
+            )?;
+        }
+        return mc
+            .node
+            .clone()
+            .tl_tile_drag_destination(source, None, bounds, abs_x, abs_y);
+    }
+
+    pub fn tile_drag_destination(
+        self: &Rc<Self>,
+        source: NodeId,
+        abs_bounds: Rect,
+        abs_x: i32,
+        abs_y: i32,
+    ) -> Option<TileDragDestination> {
+        if source == self.node_id() {
+            return None;
+        }
+        let ns = &self.node_state[LiveTL];
+        if let Some(mc) = ns.mono_child.get() {
+            return self.tile_drag_destination_mono(&mc, source, abs_bounds, abs_x, abs_y);
+        }
+        let mut prev_is_source = false;
+        let mut prev_border_start = 0;
+        let split = ns.split.get();
+        for child in self.children.iter_valid(LiveTL) {
+            if child.node.node_id() == source {
+                prev_is_source = true;
+                continue;
+            }
+            let start_drag_bounds = child.node.tl_tile_drag_bounds(split, true);
+            let end_drag_bounds = child.node.tl_tile_drag_bounds(split, false);
+            let body = child.node_state[LiveTL].body.get();
+            let main_body_rect = {
+                match split {
+                    ContainerSplit::Horizontal => Rect::new(
+                        body.x1() + start_drag_bounds,
+                        body.y1(),
+                        body.x2() - end_drag_bounds,
+                        body.y2(),
+                    )?,
+                    ContainerSplit::Vertical => Rect::new(
+                        body.x1(),
+                        body.y1() + start_drag_bounds,
+                        body.x2(),
+                        body.y2() - end_drag_bounds,
+                    )?,
+                }
+                .move_(ns.abs_x1.get(), ns.abs_y1.get())
+                .intersect(abs_bounds)
+            };
+            if main_body_rect.contains(abs_x, abs_y) {
+                return child.node.clone().tl_tile_drag_destination(
+                    source,
+                    Some(split),
+                    main_body_rect,
+                    abs_x,
+                    abs_y,
+                );
+            }
+            if !prev_is_source {
+                let left_border_rect = {
+                    match split {
+                        ContainerSplit::Horizontal => Rect::new(
+                            prev_border_start,
+                            body.y1(),
+                            body.x1() + start_drag_bounds,
+                            body.y2(),
+                        )?,
+                        ContainerSplit::Vertical => Rect::new(
+                            body.x1(),
+                            prev_border_start,
+                            body.x2(),
+                            body.y1() + start_drag_bounds,
+                        )?,
+                    }
+                    .move_(ns.abs_x1.get(), ns.abs_y1.get())
+                    .intersect(abs_bounds)
+                };
+                if left_border_rect.contains(abs_x, abs_y) {
+                    return Some(TileDragDestination {
+                        highlight: left_border_rect,
+                        ty: TddType::Insert {
+                            container: self.clone(),
+                            neighbor: child.node.clone(),
+                            before: true,
+                        },
+                    });
+                }
+            }
+            prev_is_source = false;
+            prev_border_start = match split {
+                ContainerSplit::Horizontal => body.x2() - end_drag_bounds,
+                ContainerSplit::Vertical => body.y2() - end_drag_bounds,
+            };
+        }
+        if prev_is_source {
+            return None;
+        }
+        let last = self.children.last_valid(LiveTL)?;
+        let body = last.node_state[LiveTL].body.get();
+        let right_border_rect = match split {
+            ContainerSplit::Horizontal => {
+                Rect::new(prev_border_start, body.y1(), body.x2(), body.y2())?
+            }
+            ContainerSplit::Vertical => {
+                Rect::new(body.x1(), prev_border_start, body.x2(), body.y2())?
+            }
+        }
+        .move_(ns.abs_x1.get(), ns.abs_y1.get())
+        .intersect(abs_bounds);
+        if right_border_rect.contains(abs_x, abs_y) {
+            return Some(TileDragDestination {
+                highlight: right_border_rect,
+                ty: TddType::Insert {
+                    container: self.clone(),
+                    neighbor: last.node.clone(),
+                    before: false,
+                },
+            });
+        }
+        None
+    }
+
+    fn set_ns_split(self: &Rc<Self>, v: ContainerSplit) -> ContainerSplit {
+        self.add_transaction_op(ContainerTransactionOp::SetSplit(v));
+        self.node_state[LiveTL].split.replace(v)
+    }
+
+    fn set_ns_mono_child(self: &Rc<Self>, v: Option<NodeRef<ContainerChild>>) {
+        self.add_transaction_op(ContainerTransactionOp::SetMonoChild(v.clone()));
+        self.node_state[LiveTL].mono_child.set(v);
+    }
+
+    fn set_ns_mono_body(self: &Rc<Self>, v: Rect) {
+        self.add_transaction_op(ContainerTransactionOp::SetMonoBody(v));
+        self.node_state[LiveTL].mono_body.set(v);
+    }
+
+    fn set_ns_mono_content(self: &Rc<Self>, v: Rect) {
+        self.add_transaction_op(ContainerTransactionOp::SetMonoContent(v));
+        self.node_state[LiveTL].mono_content.set(v);
+    }
+
+    fn set_ns_abs_x1(self: &Rc<Self>, v: i32) {
+        self.add_transaction_op(ContainerTransactionOp::SetAbsX1(v));
+        self.node_state[LiveTL].abs_x1.set(v);
+    }
+
+    fn set_ns_abs_y1(self: &Rc<Self>, v: i32) {
+        self.add_transaction_op(ContainerTransactionOp::SetAbsY1(v));
+        self.node_state[LiveTL].abs_y1.set(v);
+    }
+
+    fn set_ns_width(self: &Rc<Self>, v: i32) -> i32 {
+        self.add_transaction_op(ContainerTransactionOp::SetWidth(v));
+        self.node_state[LiveTL].width.replace(v)
+    }
+
+    fn set_ns_height(self: &Rc<Self>, v: i32) -> i32 {
+        self.add_transaction_op(ContainerTransactionOp::SetHeight(v));
+        self.node_state[LiveTL].height.replace(v)
+    }
+
+    fn set_ns_content_width(self: &Rc<Self>, v: i32) {
+        self.add_transaction_op(ContainerTransactionOp::SetContentWidth(v));
+        self.node_state[LiveTL].content_width.set(v);
+    }
+
+    fn set_ns_content_height(self: &Rc<Self>, v: i32) {
+        self.add_transaction_op(ContainerTransactionOp::SetContentHeight(v));
+        self.node_state[LiveTL].content_height.set(v);
+    }
+
+    fn add_child_op(
+        self: &Rc<Self>,
+        child: &NodeRef<ContainerChild>,
+        op: ContainerChildTransactionOp,
+    ) {
+        self.add_transaction_op(ContainerTransactionOp::ChildOp(child.clone(), op));
+    }
+
+    fn set_child_ns_title_rect(self: &Rc<Self>, child: &NodeRef<ContainerChild>, v: Rect) {
+        self.add_child_op(child, ContainerChildTransactionOp::SetTitleRect(v));
+        child.node_state[LiveTL].title_rect.set(v);
+    }
+
+    fn set_child_ns_body(self: &Rc<Self>, child: &NodeRef<ContainerChild>, v: Rect) {
+        self.add_child_op(child, ContainerChildTransactionOp::SetBody(v));
+        child.node_state[LiveTL].body.set(v);
+    }
+
+    fn set_child_ns_content(self: &Rc<Self>, child: &NodeRef<ContainerChild>, v: Rect) {
+        self.add_child_op(child, ContainerChildTransactionOp::SetContent(v));
+        child.node_state[LiveTL].content.set(v);
+    }
+}
+
+struct SeatOp {
+    child: NodeRef<ContainerChild>,
+    kind: SeatOpKind,
+    x: i32,
+    y: i32,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+enum SeatOpKind {
+    Move,
+    Resize { dist_left: i32, dist_right: i32 },
+}
+
+pub async fn container_layout(state: Rc<State>) {
+    loop {
+        let container = state.pending_container_layout.pop().await;
+        if container.layout_scheduled.get() {
+            container.perform_layout();
+        }
+    }
+}
+
+pub async fn container_render_positions(state: Rc<State>) {
+    loop {
+        let container = state.pending_container_render_positions.pop().await;
+        if container.compute_render_positions_scheduled.get() {
+            container.compute_render_positions();
+        }
+    }
+}
+
+pub async fn container_render_titles(state: Rc<State>) {
+    loop {
+        let container = state.pending_container_render_title.pop().await;
+        if container.render_titles_scheduled.get() {
+            container.render_titles_scheduled.set(false);
+            container.render_titles().triggered().await;
+            container.compute_title_data();
+        }
+    }
+}
+
+impl NodeBase for ContainerNode {
+    fn node_id(&self) -> NodeId {
+        self.id.into()
+    }
+
+    fn node_seat_state(&self) -> &NodeSeatState {
+        &self.toplevel_data.seat_state
+    }
+
+    fn node_visit(self: &Rc<Self>, visitor: &mut dyn NodeVisitor) {
+        visitor.visit_container(&self);
+    }
+
+    fn node_visit_children(&self, visitor: &mut dyn NodeVisitor) {
+        for child in self.children.iter_valid(LiveTL) {
+            child.node.clone().node_visit_dyn(visitor);
+        }
+    }
+
+    fn node_visible(&self, tl: TreeTimeline) -> bool {
+        self.toplevel_data.visible[tl].get()
+    }
+
+    fn node_absolute_position(&self, tl: TreeTimeline) -> Rect {
+        let ns = &self.node_state[tl];
+        Rect::new_sized_saturating(
+            ns.abs_x1.get(),
+            ns.abs_y1.get(),
+            ns.width.get(),
+            ns.height.get(),
+        )
+    }
+
+    fn node_output(&self) -> Option<Rc<OutputNode>> {
+        self.toplevel_data.output_opt(LiveTL)
+    }
+
+    fn node_workspace(&self) -> Option<Rc<WorkspaceNode>> {
+        self.toplevel_data.workspace[LiveTL].get()
+    }
+
+    fn node_location(&self) -> Option<NodeLocation> {
+        Some(self.location.get())
+    }
+
+    fn node_layer(&self) -> NodeLayerLink {
+        self.toplevel_data.node_layer()
+    }
+
+    fn node_child_title_changed(self: Rc<Self>, child: &dyn Node, title: &str) {
+        if let Some(child) = self.child_nodes.borrow().get(&child.node_id()) {
+            self.update_child_title(child, title);
+        }
+    }
+
+    fn node_do_focus(self: &Rc<Self>, seat: &Rc<WlSeatGlobal>, direction: Direction) {
+        let ns = &self.node_state[LiveTL];
+        let node = if let Some(cn) = ns.mono_child.get() {
+            Some(cn)
+        } else {
+            let split = ns.split.get();
+            match (direction, split) {
+                (Direction::Left, ContainerSplit::Horizontal) => self.children.last_valid(LiveTL),
+                (Direction::Down, ContainerSplit::Vertical) => self.children.first_valid(LiveTL),
+                (Direction::Up, ContainerSplit::Vertical) => self.children.last_valid(LiveTL),
+                (Direction::Right, ContainerSplit::Horizontal) => self.children.first_valid(LiveTL),
+                _ => match self.focus_history.last() {
+                    Some(n) => Some(n.deref().clone()),
+                    None => self.children.last_valid(LiveTL),
+                },
+            }
+        };
+        if let Some(node) = node {
+            node.node.clone().node_do_focus_dyn(seat, direction);
+        }
+    }
+
+    fn node_active_changed(&self, active: bool) {
+        self.toplevel_data.update_self_active(self, active);
+    }
+
+    fn node_find_tree_at(
+        &self,
+        x: i32,
+        y: i32,
+        tree: &mut Vec<FoundNode>,
+        usecase: FindTreeUsecase,
+    ) -> FindTreeResult {
+        let mut recurse = |content: Rect, child: NodeRef<ContainerChild>| {
+            if content.contains(x, y) {
+                let (x, y) = content.translate(x, y);
+                tree.push(FoundNode {
+                    node: child.node.clone(),
+                    x,
+                    y,
+                });
+                child.node.node_find_tree_at(x, y, tree, usecase);
+            }
+        };
+        let ns = &self.node_state[LiveTL];
+        if let Some(child) = ns.mono_child.get() {
+            recurse(ns.mono_content.get(), child);
+        } else {
+            for child in self.children.iter_valid(LiveTL) {
+                let cns = &child.node_state[LiveTL];
+                if cns.body.get().contains(x, y) {
+                    recurse(cns.content.get(), child);
+                    break;
+                }
+            }
+        }
+        FindTreeResult::AcceptsInput
+    }
+
+    fn node_child_size_changed(self: Rc<Self>, child: &dyn Node, width: i32, height: i32) {
+        let cn = self.child_nodes.borrow();
+        if let Some(node) = cn.get(&child.node_id()) {
+            self.update_child_size(node, width, height);
+        }
+    }
+
+    fn node_child_active_changed(self: Rc<Self>, child: &dyn Node, active: bool, depth: u32) {
+        if let Some(l) = self.child_nodes.borrow().get(&child.node_id()) {
+            self.update_child_active(l, active, depth);
+        }
+    }
+
+    fn node_render(&self, renderer: &mut Renderer, x: i32, y: i32, _bounds: Option<&Rect>) {
+        renderer.render_container(self, x, y);
+    }
+
+    fn node_toplevel(self: Rc<Self>) -> Option<Rc<dyn crate::tree::ToplevelNode>> {
+        Some(self)
+    }
+
+    fn node_make_visible(self: &Rc<Self>) {
+        self.toplevel_data.make_visible(&**self);
+    }
+
+    fn node_grab_workspace_changed(
+        self: Rc<Self>,
+        seat: &Rc<WlSeatGlobal>,
+        _on: &Rc<OutputNode>,
+        _ws: Option<&Rc<WorkspaceNode>>,
+        reason: WorkspaceChangeReason,
+    ) {
+        if reason != WorkspaceChangeReason::OutputChanged {
+            return;
+        }
+        let seats = self.cursors.borrow();
+        if let Some(seat_state) = seats.get(&CursorType::Seat(seat.id()))
+            && let Some(op) = &seat_state.op
+            && let SeatOpKind::Move = op.kind
+        {
+            let node = op.child.node.clone();
+            drop(seats);
+            seat.start_tile_drag(&node);
+        }
+    }
+
+    fn node_on_button(
+        self: Rc<Self>,
+        seat: &Rc<WlSeatGlobal>,
+        time_usec: u64,
+        button: u32,
+        state: ButtonState,
+        _serial: u64,
+    ) {
+        let id = CursorType::Seat(seat.id());
+        self.button(id, seat, time_usec, state == ButtonState::Pressed, button);
+    }
+
+    fn node_on_axis_event(self: Rc<Self>, seat: &Rc<WlSeatGlobal>, event: &PendingScroll) {
+        let mut seat_datas = self.cursors.borrow_mut();
+        let id = CursorType::Seat(seat.id());
+        let seat_data = match seat_datas.get_mut(&id) {
+            Some(s) => s,
+            _ => return,
+        };
+        let cur_mc = match self.node_state[LiveTL].mono_child.get() {
+            Some(mc) => mc,
+            _ => return,
+        };
+        let title_rect = cur_mc.node_state[LiveTL].title_rect.get();
+        if seat_data.y < title_rect.y1() || seat_data.y >= title_rect.y2() {
+            return;
+        }
+        let discrete = match self.scroller.handle(event) {
+            Some(d) => d,
+            _ => return,
+        };
+        let mut new_mc = cur_mc.clone();
+        for _ in 0..discrete.abs() {
+            let new = if discrete < 0 {
+                new_mc.prev_valid(LiveTL)
+            } else {
+                new_mc.next_valid(LiveTL)
+            };
+            new_mc = match new {
+                Some(n) => n,
+                None => break,
+            };
+        }
+        self.activate_child(&new_mc);
+        new_mc
+            .node
+            .clone()
+            .node_do_focus_dyn(seat, Direction::Unspecified);
+    }
+
+    fn node_on_leave(&self, seat: &WlSeatGlobal) {
+        let mut seats = self.cursors.borrow_mut();
+        let id = CursorType::Seat(seat.id());
+        if let Some(seat_state) = seats.get_mut(&id) {
+            seat_state.op = None;
+        }
+    }
+
+    fn node_on_pointer_enter(self: Rc<Self>, seat: &Rc<WlSeatGlobal>, x: Fixed, y: Fixed) {
+        // log::info!("node_on_pointer_enter");
+        self.pointer_move(
+            seat,
+            CursorType::Seat(seat.id()),
+            seat.pointer_cursor(),
+            x,
+            y,
+            false,
+        );
+    }
+
+    fn node_on_pointer_unfocus(&self, seat: &Rc<WlSeatGlobal>) {
+        // log::info!("unfocus");
+        let mut seats = self.cursors.borrow_mut();
+        let id = CursorType::Seat(seat.id());
+        if let Some(seat_state) = seats.get_mut(&id) {
+            seat_state.target = false;
+        }
+    }
+
+    fn node_on_pointer_focus(&self, seat: &Rc<WlSeatGlobal>) {
+        // log::info!("container focus");
+        let mut seats = self.cursors.borrow_mut();
+        let id = CursorType::Seat(seat.id());
+        if let Some(seat_state) = seats.get_mut(&id) {
+            seat_state.target = true;
+            seat.pointer_cursor().set_known(seat_state.cursor);
+        }
+    }
+
+    fn node_on_pointer_motion(self: Rc<Self>, seat: &Rc<WlSeatGlobal>, x: Fixed, y: Fixed) {
+        // log::info!("node_on_pointer_motion");
+        self.pointer_move(
+            seat,
+            CursorType::Seat(seat.id()),
+            seat.pointer_cursor(),
+            x,
+            y,
+            false,
+        );
+    }
+
+    fn node_on_tablet_tool_leave(&self, tool: &Rc<TabletTool>, _time_usec: u64) {
+        let id = CursorType::TabletTool(tool.id);
+        self.cursors.borrow_mut().remove(&id);
+    }
+
+    fn node_on_tablet_tool_enter(
+        self: Rc<Self>,
+        tool: &Rc<TabletTool>,
+        _time_usec: u64,
+        x: Fixed,
+        y: Fixed,
+    ) {
+        tool.cursor().set_known(KnownCursor::Default);
+        self.pointer_move(
+            tool.seat(),
+            CursorType::TabletTool(tool.id),
+            tool.cursor(),
+            x,
+            y,
+            true,
+        );
+    }
+
+    fn node_on_tablet_tool_apply_changes(
+        self: Rc<Self>,
+        tool: &Rc<TabletTool>,
+        time_usec: u64,
+        changes: Option<&TabletToolChanges>,
+        x: Fixed,
+        y: Fixed,
+    ) {
+        let id = CursorType::TabletTool(tool.id);
+        self.pointer_move(tool.seat(), id, tool.cursor(), x, y, false);
+        if let Some(changes) = changes
+            && let Some(pressed) = changes.down
+        {
+            self.button(id, tool.seat(), time_usec, pressed, BTN_LEFT);
+        }
+    }
+
+    fn node_into_container(self: Rc<Self>) -> Option<Rc<ContainerNode>> {
+        Some(self.clone())
+    }
+
+    fn node_into_containing_node(self: Rc<Self>) -> Option<Rc<dyn ContainingNode>> {
+        Some(self)
+    }
+
+    fn node_into_toplevel(self: Rc<Self>) -> Option<Rc<dyn ToplevelNode>> {
+        Some(self)
+    }
+
+    fn node_is_container(&self) -> bool {
+        true
+    }
+}
+
+impl ContainingNode for ContainerNode {
+    fn cnode_replace_child(self: Rc<Self>, old: &dyn Node, new: Rc<dyn ToplevelNode>) {
+        let node = match self.child_nodes.borrow_mut().remove(&old.node_id()) {
+            Some(c) => c,
+            None => {
+                log::error!("Trying to replace a node that isn't a child of this container");
+                return;
+            }
+        };
+        let ns = &self.node_state[LiveTL];
+        let (have_mc, was_mc) = match ns.mono_child.get() {
+            None => (false, false),
+            Some(mc) => (true, mc.node.node_id() == old.node_id()),
+        };
+        self.discard_child_properties(&node);
+        let link = node.append(TreeLink::new(ContainerChildInner {
+            node: new.clone(),
+            active: Cell::new(false),
+            node_state: Default::default(),
+            factor: Cell::new(node.factor.get()),
+            title: Default::default(),
+            title_tex: Default::default(),
+            icon: self.state.toplevel_icon_user(),
+            icons: Default::default(),
+            focus_history: Cell::new(None),
+            attention_requested: Cell::new(false),
+            ty: Default::default(),
+            resize_handle: Cell::new(node.resize_handle.get()),
+        }));
+        self.set_child_ns_title_rect(&link, node.node_state[LiveTL].title_rect.get());
+        self.set_child_ns_body(&link, node.node_state[LiveTL].body.get());
+        if let Some(fh) = node.focus_history.take() {
+            link.focus_history.set(Some(fh.append(link.to_ref())));
+        }
+        let visible = node.node.node_visible(LiveTL);
+        self.schedule_unlink_child(node);
+        let mut body = None;
+        if was_mc {
+            self.set_ns_mono_child(Some(link.to_ref()));
+            link.node.tl_restack_popups();
+            body = Some(ns.mono_body.get());
+        } else if !have_mc {
+            body = Some(link.node_state[LiveTL].body.get());
+        };
+        let link_ref = link.to_ref();
+        self.schedule_validate_child(&link);
+        self.child_nodes.borrow_mut().insert(new.node_id(), link);
+        new.tl_update_icon(&link_ref.icon);
+        new.tl_set_parent(self.clone());
+        self.pull_child_properties(&link_ref);
+        new.tl_set_visible(visible);
+        if let Some(body) = body {
+            let body = body.move_(ns.abs_x1.get(), ns.abs_y1.get());
+            new.clone().tl_change_extents(&body);
+            self.schedule_damage(body);
+        }
+    }
+
+    fn cnode_remove_child2(self: Rc<Self>, child: &dyn Node, preserve_focus: bool) {
+        let node = match self.child_nodes.borrow_mut().remove(&child.node_id()) {
+            Some(c) => c,
+            None => return,
+        };
+        node.focus_history.set(None);
+        self.discard_child_properties(&node);
+        if let Some(mono) = self.node_state[LiveTL].mono_child.get() {
+            if mono.node.node_id() == child.node_id() {
+                let mut new = self.focus_history.last().map(|n| n.deref().clone());
+                if new.is_none() {
+                    new = node.next_valid(LiveTL);
+                    if new.is_none() {
+                        new = node.prev_valid(LiveTL);
+                    }
+                }
+                if let Some(child) = &new {
+                    self.activate_child2(child, preserve_focus);
+                }
+            }
+        }
+        let node = self.schedule_unlink_child(node);
+        let num_children = self.num_children.fetch_sub(1) - 1;
+        if num_children == 0 {
+            self.tl_destroy();
+            return;
+        }
+        self.update_content_size();
+        let rem = 1.0 - node.factor.get();
+        let mut sum = 0.0;
+        if rem <= 0.0 {
+            let factor = 1.0 / num_children as f64;
+            for child in self.children.iter_valid(LiveTL) {
+                child.factor.set(factor)
+            }
+            sum = 1.0;
+        } else {
+            for child in self.children.iter_valid(LiveTL) {
+                let factor = child.factor.get() / rem;
+                child.factor.set(factor);
+                sum += factor;
+            }
+        }
+        self.sum_factors.set(sum);
+        self.update_title();
+        // log::info!("cnode_remove_child2");
+        self.schedule_layout();
+        self.cancel_seat_ops();
+    }
+
+    fn cnode_accepts_child(&self, _node: &dyn Node) -> bool {
+        true
+    }
+
+    fn cnode_child_attention_request_changed(self: Rc<Self>, child: &dyn Node, set: bool) {
+        let children = self.child_nodes.borrow();
+        let child = match children.get(&child.node_id()) {
+            Some(c) => c,
+            _ => return,
+        };
+        if child.attention_requested.replace(set) == set {
+            return;
+        }
+        self.mod_attention_requests(set);
+        self.schedule_compute_render_positions();
+    }
+
+    fn cnode_workspace(self: Rc<Self>) -> Rc<WorkspaceNode> {
+        self.workspace.get()
+    }
+
+    fn cnode_make_visible(self: Rc<Self>, child: &dyn Node) {
+        let Some(child) = self
+            .child_nodes
+            .borrow()
+            .get(&child.node_id())
+            .map(|n| n.to_ref())
+        else {
+            return;
+        };
+        self.toplevel_data.make_visible(&*self);
+        if !self.node_visible(LiveTL) {
+            return;
+        }
+        let Some(cur) = self.node_state[LiveTL].mono_child.get() else {
+            return;
+        };
+        if cur.node.node_id() == child.node.node_id() {
+            return;
+        }
+        self.activate_child(&child);
+    }
+
+    fn cnode_set_child_position(self: Rc<Self>, child: &dyn Node, x: i32, y: i32) {
+        let Some(parent) = self.toplevel_data.parent.get() else {
+            return;
+        };
+        let tpuh = self.state.theme.title_plus_underline_height(LiveTL);
+        if self.node_state[LiveTL].mono_child.is_some() {
+            parent.cnode_set_child_position(&*self, x, y - tpuh);
+        } else {
+            let children = self.child_nodes.borrow();
+            let Some(child) = children.get(&child.node_id()) else {
+                return;
+            };
+            let pos = child.node_state[LiveTL].body.get();
+            let (x, y) = pos.translate(x, y);
+            parent.cnode_set_child_position(&*self, x, y);
+        }
+    }
+
+    fn cnode_resize_child(
+        self: Rc<Self>,
+        child: &dyn Node,
+        new_x1: Option<i32>,
+        new_y1: Option<i32>,
+        new_x2: Option<i32>,
+        new_y2: Option<i32>,
+    ) {
+        let theme = &self.state.theme;
+        let tpuh = theme.title_plus_underline_height(LiveTL);
+        let bw = theme.sizes.border_width.get(LiveTL);
+        let mut left_outside = false;
+        let mut right_outside = false;
+        let mut top_outside = false;
+        let mut bottom_outside = false;
+        let ns = &self.node_state[LiveTL];
+        if ns.mono_child.is_some() {
+            top_outside = true;
+            right_outside = true;
+            bottom_outside = true;
+            left_outside = true;
+        } else {
+            let children = self.child_nodes.borrow();
+            let Some(child) = children.get(&child.node_id()) else {
+                return;
+            };
+            let pos = child.node_state[LiveTL].body.get();
+            let split = ns.split.get();
+            let mut changed_any = false;
+            let (mut i1, mut i2, new_i1, new_i2, mut ci) = match split {
+                ContainerSplit::Horizontal => {
+                    top_outside = true;
+                    bottom_outside = true;
+                    (pos.x1(), pos.x2(), new_x1, new_x2, ns.content_width.get())
+                }
+                ContainerSplit::Vertical => {
+                    right_outside = true;
+                    left_outside = true;
+                    (pos.y1(), pos.y2(), new_y1, new_y2, ns.content_height.get())
+                }
+            };
+            if ci == 0 {
+                ci = 1;
+            }
+            let (new_delta, between) = match split {
+                ContainerSplit::Horizontal => (ns.abs_x1.get(), bw),
+                ContainerSplit::Vertical => (ns.abs_y1.get(), bw + tpuh),
+            };
+            let new_i1 = new_i1.map(|v| v - new_delta);
+            let new_i2 = new_i2.map(|v| v - new_delta);
+            let (orig_i1, orig_i2) = (i1, i2);
+            let mut sum_factors = self.sum_factors.get();
+            if let Some(new_i1) = new_i1 {
+                if let Some(peer) = child.prev_valid(LiveTL) {
+                    let peer_pos = peer.node_state[LiveTL].body.get();
+                    let peer_i1 = match ns.split.get() {
+                        ContainerSplit::Horizontal => peer_pos.x1(),
+                        ContainerSplit::Vertical => peer_pos.y1(),
+                    };
+                    i1 = new_i1.max(peer_i1 + between).min(i2);
+                    if i1 != orig_i1 {
+                        let peer_factor = (i1 - between - peer_i1) as f64 / ci as f64;
+                        sum_factors = sum_factors - peer.factor.get() + peer_factor;
+                        peer.factor.set(peer_factor);
+                        changed_any = true;
+                    }
+                } else {
+                    match split {
+                        ContainerSplit::Horizontal => left_outside = true,
+                        ContainerSplit::Vertical => top_outside = true,
+                    }
+                }
+            }
+            if let Some(new_i2) = new_i2 {
+                if let Some(peer) = child.next_valid(LiveTL) {
+                    let peer_pos = peer.node_state[LiveTL].body.get();
+                    let peer_i2 = match ns.split.get() {
+                        ContainerSplit::Horizontal => peer_pos.x2(),
+                        ContainerSplit::Vertical => peer_pos.y2(),
+                    };
+                    i2 = new_i2.min(peer_i2 - between).max(i1);
+                    if i2 != orig_i2 {
+                        let peer_factor = (peer_i2 - between - i2) as f64 / ci as f64;
+                        sum_factors = sum_factors - peer.factor.get() + peer_factor;
+                        peer.factor.set(peer_factor);
+                        changed_any = true;
+                    }
+                } else {
+                    match split {
+                        ContainerSplit::Horizontal => right_outside = true,
+                        ContainerSplit::Vertical => bottom_outside = true,
+                    }
+                }
+            }
+            if changed_any {
+                let factor = (i2 - i1) as f64 / ci as f64;
+                sum_factors = sum_factors - child.factor.get() + factor;
+                child.factor.set(factor);
+                self.sum_factors.set(sum_factors);
+                self.schedule_layout();
+            }
+        }
+        let pos = self.node_absolute_position(LiveTL);
+        let mut x1 = None;
+        let mut x2 = None;
+        let mut y1 = None;
+        let mut y2 = None;
+        if left_outside {
+            x1 = new_x1.map(|v| v.min(pos.x2()));
+        }
+        if right_outside {
+            x2 = new_x2.map(|v| v.max(x1.unwrap_or(pos.x1())));
+        }
+        if top_outside {
+            y1 = new_y1.map(|v| (v - tpuh).min(pos.y2() - tpuh));
+        }
+        if bottom_outside {
+            y2 = new_y2.map(|v| v.max(y1.unwrap_or(pos.y1()) + tpuh));
+        }
+        if ((x1.is_some() && x1 != Some(pos.x1()))
+            || (x2.is_some() && x2 != Some(pos.x2()))
+            || (y1.is_some() && y1 != Some(pos.y1()))
+            || (y2.is_some() && y2 != Some(pos.y2())))
+            && let Some(parent) = self.toplevel_data.parent.get()
+        {
+            parent.cnode_resize_child(&*self, x1, y1, x2, y2);
+        }
+    }
+
+    fn cnode_pinned(&self) -> bool {
+        self.tl_pinned()
+    }
+
+    fn cnode_set_pinned(self: Rc<Self>, pinned: bool) {
+        self.tl_set_pinned(false, pinned);
+    }
+
+    fn cnode_get_float(self: Rc<Self>) -> Option<Rc<FloatNode>> {
+        self.tl_data().float.get()
+    }
+
+    fn cnode_self_or_ancestor_fullscreen(&self) -> bool {
+        self.tl_data().self_or_ancestor_is_fullscreen.get()
+    }
+
+    fn cnode_child_icon_changed(self: Rc<Self>, child: &dyn ToplevelNode) {
+        let children = self.child_nodes.borrow();
+        let Some(cc) = children.get(&child.node_id()) else {
+            return;
+        };
+        child.tl_update_icon(&cc.icon);
+        self.schedule_render_titles();
+    }
+}
+
+impl ToplevelNodeBase for ContainerNode {
+    fn tl_data(&self) -> &ToplevelData {
+        &self.toplevel_data
+    }
+
+    fn tl_set_workspace_ext(&self, ws: &Rc<WorkspaceNode>) {
+        self.workspace.set(ws.clone());
+        self.location.set(ws.location());
+        for child in self.children.iter_valid(LiveTL) {
+            child.node.clone().tl_set_workspace(ws);
+        }
+    }
+
+    fn tl_change_extents_impl(self: Rc<Self>, rect: &Rect) {
+        self.toplevel_data.content_size.set(*rect);
+        let ns = &self.node_state[LiveTL];
+        self.set_ns_abs_x1(rect.x1());
+        self.set_ns_abs_y1(rect.y1());
+        let mut size_changed = false;
+        size_changed |= self.set_ns_width(rect.width()) != rect.width();
+        size_changed |= self.set_ns_height(rect.height()) != rect.height();
+        if size_changed {
+            self.update_content_size();
+            // log::info!("tl_change_extents");
+            self.perform_layout();
+            self.cancel_seat_ops();
+            if let Some(parent) = self.toplevel_data.parent.get() {
+                parent.node_child_size_changed(self.deref(), rect.width(), rect.height());
+            }
+        } else {
+            if let Some(c) = ns.mono_child.get() {
+                let body = ns.mono_body.get().move_(ns.abs_x1.get(), ns.abs_y1.get());
+                c.node.clone().tl_change_extents(&body);
+            } else {
+                for child in self.children.iter_valid(LiveTL) {
+                    let body = child.node_state[LiveTL]
+                        .body
+                        .get()
+                        .move_(ns.abs_x1.get(), ns.abs_y1.get());
+                    child.node.clone().tl_change_extents(&body);
+                }
+            }
+        }
+    }
+
+    fn tl_close(self: Rc<Self>) {
+        for child in self.children.iter_valid(LiveTL) {
+            child.node.clone().tl_close();
+        }
+    }
+
+    fn tl_set_visible_impl(&self, visible: bool) {
+        if let Some(mc) = self.node_state[LiveTL].mono_child.get() {
+            mc.node.tl_set_visible(visible);
+        } else {
+            for child in self.children.iter_valid(LiveTL) {
+                child.node.tl_set_visible(visible);
+            }
+        }
+    }
+
+    fn tl_destroy_impl(self: &Rc<Self>) {
+        mem::take(self.cursors.borrow_mut().deref_mut());
+        let mut cn = self.child_nodes.borrow_mut();
+        for n in cn.drain_values() {
+            n.node.clone().tl_destroy_dyn();
+        }
+    }
+
+    fn tl_last_active_child(self: Rc<Self>) -> Rc<dyn ToplevelNode> {
+        if let Some(last) = self.focus_history.last() {
+            return last.node.clone().tl_last_active_child();
+        }
+        self
+    }
+
+    fn tl_restack_popups(&self) {
+        if let Some(mc) = self.node_state[LiveTL].mono_child.get() {
+            mc.node.tl_restack_popups();
+        } else {
+            for child in self.children.iter_valid(LiveTL) {
+                child.node.tl_restack_popups();
+            }
+        }
+    }
+
+    fn tl_admits_children(&self) -> bool {
+        true
+    }
+
+    fn tl_tile_drag_destination(
+        self: Rc<Self>,
+        source: NodeId,
+        _split: Option<ContainerSplit>,
+        abs_bounds: Rect,
+        abs_x: i32,
+        abs_y: i32,
+    ) -> Option<TileDragDestination> {
+        self.tile_drag_destination(source, abs_bounds, abs_x, abs_y)
+    }
+
+    fn tl_tile_drag_bounds(&self, split: ContainerSplit, start: bool) -> i32 {
+        if split != self.node_state[LiveTL].split.get() {
+            return default_tile_drag_bounds(self, split);
+        }
+        let child = match start {
+            true => self.children.first_valid(LiveTL),
+            false => self.children.last_valid(LiveTL),
+        };
+        let Some(child) = child else {
+            return 0;
+        };
+        child.node.tl_tile_drag_bounds(split, start) / 2
+    }
+
+    fn tl_push_float(&self, float: Option<&Rc<FloatNode>>) {
+        for child in self.children.iter_valid(LiveTL) {
+            child.node.tl_set_float(float);
+        }
+    }
+
+    fn tl_mark_ancestor_fullscreen_ext(&self, fullscreen: bool) {
+        for child in self.children.iter_valid(LiveTL) {
+            child.node.tl_mark_ancestor_fullscreen(fullscreen);
+        }
+    }
+
+    fn tl_schedule_data_op(self: Rc<Self>, op: ToplevelDataTransactionOp) {
+        self.add_transaction_op(ContainerTransactionOp::ToplevelData(op));
+    }
+}
+
+fn direction_to_split(dir: Direction) -> (ContainerSplit, bool) {
+    match dir {
+        Direction::Left => (ContainerSplit::Horizontal, true),
+        Direction::Down => (ContainerSplit::Vertical, false),
+        Direction::Up => (ContainerSplit::Vertical, true),
+        Direction::Right => (ContainerSplit::Horizontal, false),
+        Direction::Unspecified => (ContainerSplit::Horizontal, true),
+    }
+}
+
+fn tile_drag_destination_in_mono(
+    tl: Rc<dyn ToplevelNode>,
+    abs_bounds: Rect,
+    abs_x: i32,
+    abs_y: i32,
+) -> TileDragDestination {
+    let mut x1 = abs_bounds.x1();
+    let mut x2 = abs_bounds.x2();
+    let mut y1 = abs_bounds.y1();
+    let mut y2 = abs_bounds.y2();
+    let dx = (x2 - x1) / 3;
+    let dy = (y2 - y1) / 3;
+    let mut split_before = true;
+    let mut split = ContainerSplit::Horizontal;
+    if abs_x < x1 + dx {
+        x2 = x1 + dx;
+    } else if abs_x > x2 - dx {
+        split_before = false;
+        x1 = x2 - dx;
+    } else {
+        split = ContainerSplit::Vertical;
+        x1 += dx;
+        x2 -= dx;
+        if abs_y < y1 + dy {
+            y2 = y1 + dy;
+        } else if abs_y > y2 - dy {
+            split_before = false;
+            y1 = y2 - dy;
+        } else {
+            let rect = Rect::new_saturating(x1, y1 + dy, x2, y2 - dy);
+            return TileDragDestination {
+                highlight: rect,
+                ty: TddType::Replace(tl),
+            };
+        }
+    }
+    let rect = Rect::new_saturating(x1, y1, x2, y2);
+    TileDragDestination {
+        highlight: rect,
+        ty: TddType::Split {
+            node: tl,
+            split,
+            before: split_before,
+        },
+    }
+}
+
+fn tile_drag_destination_in_split(
+    tl: Rc<dyn ToplevelNode>,
+    split: ContainerSplit,
+    abs_bounds: Rect,
+    mut abs_x: i32,
+    mut abs_y: i32,
+) -> TileDragDestination {
+    let mut x1 = abs_bounds.x1();
+    let mut x2 = abs_bounds.x2();
+    let mut y1 = abs_bounds.y1();
+    let mut y2 = abs_bounds.y2();
+    macro_rules! swap {
+        () => {
+            if split == ContainerSplit::Horizontal {
+                mem::swap(&mut x1, &mut y1);
+                mem::swap(&mut x2, &mut y2);
+                mem::swap(&mut abs_x, &mut abs_y);
+            }
+        };
+    }
+    swap!();
+    let mut split_before = false;
+    let mut split_after = false;
+    let dx = (x2 - x1) / 3;
+    if abs_x < x1 + dx {
+        split_before = true;
+        x2 = x1 + dx;
+    } else if abs_x < x2 - dx {
+        x1 += dx;
+        x2 -= dx;
+    } else {
+        split_after = true;
+        x1 = x2 - dx;
+    }
+    swap!();
+    let rect = Rect::new_saturating(x1, y1, x2, y2);
+    let ty = if split_before || split_after {
+        TddType::Split {
+            node: tl,
+            split: split.other(),
+            before: split_before,
+        }
+    } else {
+        TddType::Replace(tl)
+    };
+    TileDragDestination {
+        highlight: rect,
+        ty,
+    }
+}
+
+pub fn default_tile_drag_destination(
+    tl: Rc<dyn ToplevelNode>,
+    source: NodeId,
+    split: Option<ContainerSplit>,
+    abs_bounds: Rect,
+    abs_x: i32,
+    abs_y: i32,
+) -> Option<TileDragDestination> {
+    if tl.node_id() == source {
+        return None;
+    }
+    Some(match split {
+        None => tile_drag_destination_in_mono(tl, abs_bounds, abs_x, abs_y),
+        Some(s) => tile_drag_destination_in_split(tl, s, abs_bounds, abs_x, abs_y),
+    })
+}
+
+pub enum ContainerTransactionOp {
+    SetSplit(ContainerSplit),
+    SetMonoChild(Option<NodeRef<ContainerChild>>),
+    SetMonoBody(Rect),
+    SetMonoContent(Rect),
+    SetAbsX1(i32),
+    SetAbsY1(i32),
+    SetWidth(i32),
+    SetHeight(i32),
+    SetContentWidth(i32),
+    SetContentHeight(i32),
+    ChildOp(NodeRef<ContainerChild>, ContainerChildTransactionOp),
+    Unlink(LinkedNode<ContainerChild>),
+    ToplevelData(ToplevelDataTransactionOp),
+    ScheduleRenderTitles,
+    ScheduleComputeRenderPositions,
+    Damage(Rect),
+}
+
+pub enum ContainerChildTransactionOp {
+    SetTitleRect(Rect),
+    SetBody(Rect),
+    SetContent(Rect),
+    SetValid,
+}
+
+impl Transactionable for ContainerNode {
+    type T = ContainerTransactionOp;
+
+    fn data(&self) -> &TransactionData<Self::T> {
+        &self.transaction_data
+    }
+
+    fn apply(self: &Rc<Self>, op: Self::T) {
+        let s = &self.node_state[RenderTL];
+        match op {
+            ContainerTransactionOp::SetSplit(v) => {
+                s.split.set(v);
+            }
+            ContainerTransactionOp::SetMonoChild(v) => {
+                s.mono_child.set(v);
+            }
+            ContainerTransactionOp::SetMonoBody(v) => {
+                s.mono_body.set(v);
+            }
+            ContainerTransactionOp::SetMonoContent(v) => {
+                s.mono_content.set(v);
+            }
+            ContainerTransactionOp::SetAbsX1(v) => {
+                s.abs_x1.set(v);
+            }
+            ContainerTransactionOp::SetAbsY1(v) => {
+                s.abs_y1.set(v);
+            }
+            ContainerTransactionOp::SetWidth(v) => {
+                s.width.set(v);
+            }
+            ContainerTransactionOp::SetHeight(v) => {
+                s.height.set(v);
+            }
+            ContainerTransactionOp::SetContentWidth(v) => {
+                s.content_width.set(v);
+            }
+            ContainerTransactionOp::SetContentHeight(v) => {
+                s.content_height.set(v);
+            }
+            ContainerTransactionOp::ChildOp(child, op) => {
+                let cs = &child.node_state[RenderTL];
+                match op {
+                    ContainerChildTransactionOp::SetTitleRect(v) => {
+                        cs.title_rect.set(v);
+                    }
+                    ContainerChildTransactionOp::SetBody(v) => {
+                        cs.body.set(v);
+                    }
+                    ContainerChildTransactionOp::SetContent(v) => {
+                        cs.content.set(v);
+                    }
+                    ContainerChildTransactionOp::SetValid => {
+                        child.set_valid();
+                    }
+                }
+            }
+            ContainerTransactionOp::Unlink(v) => {
+                drop(v);
+            }
+            ContainerTransactionOp::ToplevelData(v) => {
+                self.toplevel_data.run_op(v);
+            }
+            ContainerTransactionOp::ScheduleRenderTitles => {
+                self.child_types_valid.set(false);
+                if !self.render_titles_scheduled.replace(true) {
+                    self.state.pending_container_render_title.push(self.clone());
+                }
+            }
+            ContainerTransactionOp::ScheduleComputeRenderPositions => {
+                self.child_types_valid.set(false);
+                if !self.compute_render_positions_scheduled.replace(true) {
+                    self.state
+                        .pending_container_render_positions
+                        .push(self.clone());
+                }
+            }
+            ContainerTransactionOp::Damage(v) => {
+                self.state.damage(v);
+            }
+        }
+    }
+}

@@ -1,0 +1,42 @@
+request start_drag {
+    source: id(wl_data_source),
+    origin: id(wl_surface),
+    icon: id(wl_surface),
+    serial: u32,
+}
+
+request set_selection {
+    source: id(wl_data_source),
+    serial: u32,
+}
+
+event data_offer {
+    id: id(wl_data_offer) (new),
+}
+
+event enter {
+    serial: u32,
+    surface: id(wl_surface),
+    x: fixed,
+    y: fixed,
+    id: id(wl_data_offer),
+}
+
+event leave {
+}
+
+event motion {
+    time: u32,
+    x: fixed,
+    y: fixed,
+}
+
+event drop {
+}
+
+event selection {
+    id: id(wl_data_offer),
+}
+
+request release (destructor, since = 2) {
+}

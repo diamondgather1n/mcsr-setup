@@ -1,0 +1,19 @@
+request destroy (destructor) {
+}
+
+request create_positioner {
+    id: id(xdg_positioner) (new),
+}
+
+request get_xdg_surface {
+    id: id(xdg_surface) (new),
+    surface: id(wl_surface),
+}
+
+request pong {
+    serial: u32,
+}
+
+event ping {
+    serial: u32,
+}

@@ -1,0 +1,41 @@
+event down {
+    serial: u32,
+    time: u32,
+    surface: id(wl_surface),
+    id: i32,
+    x: fixed,
+    y: fixed,
+}
+
+event up {
+    serial: u32,
+    time: u32,
+    id: i32,
+}
+
+event motion {
+    time: u32,
+    id: i32,
+    x: fixed,
+    y: fixed,
+}
+
+event frame {
+}
+
+event cancel {
+}
+
+request release (destructor, since = 3) {
+}
+
+event shape (since = 6) {
+    id: i32,
+    major: fixed,
+    minor: fixed,
+}
+
+event orientation (since = 6) {
+    id: i32,
+    orientation: fixed,
+}

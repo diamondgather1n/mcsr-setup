@@ -1,0 +1,20 @@
+event name {
+    name: str,
+}
+
+event description {
+    description: str,
+}
+
+event connector_id {
+    connector_id: u32,
+}
+
+event done {
+}
+
+event withdrawn {
+}
+
+request destroy (destructor) {
+}

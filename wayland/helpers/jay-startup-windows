@@ -1,0 +1,160 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PATH="$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+
+state_dir="${XDG_STATE_HOME:-$HOME/.local/state}"
+log_file="$state_dir/jay-startup-windows.log"
+lock_file="$state_dir/jay-startup-windows.lock"
+mkdir -p "$state_dir"
+
+force=0
+focus_workspace=1
+dry_run=0
+
+for arg in "$@"; do
+  case "$arg" in
+    --dry-run)
+      dry_run=1
+      ;;
+    --force)
+      force=1
+      ;;
+    --no-focus)
+      focus_workspace=0
+      ;;
+    *)
+      echo "usage: jay-startup-windows [--dry-run] [--force] [--no-focus]" >&2
+      exit 2
+      ;;
+  esac
+done
+
+exec >>"$log_file" 2>&1
+echo
+echo "=== $(date -Is) jay-startup-windows $* ==="
+
+exec 9>"$lock_file"
+if ! flock -n 9; then
+  echo "another startup run is already active"
+  exit 0
+fi
+
+# Let Jay finish presenting its initial desktop before starting heavyweight apps.
+# The launches below remain asynchronous, but the short stagger avoids a burst
+# of Chromium/Qt startup work on the compositor thread.
+if [ "$dry_run" -eq 0 ]; then
+  sleep "${JAY_STARTUP_DELAY:-5}"
+fi
+
+tree_file="$(mktemp "${TMPDIR:-/tmp}/jay-startup-tree.XXXXXX")"
+trap 'rm -f "$tree_file"' EXIT
+
+refresh_tree() {
+  if command -v jay >/dev/null 2>&1; then
+    timeout --kill-after=0.2s 0.8s jay tree query -r root >"$tree_file" 2>/dev/null || true
+  else
+    : >"$tree_file"
+  fi
+}
+
+has_window() {
+  local pattern="$1"
+
+  if [ "$force" -eq 1 ]; then
+    return 1
+  fi
+
+  grep -Eiq "$pattern" "$tree_file"
+}
+
+launch_if_missing() {
+  local label="$1"
+  local pattern="$2"
+  shift 2
+
+  refresh_tree
+  if has_window "$pattern"; then
+    echo "skip $label"
+    return 0
+  fi
+
+  if ! command -v "$1" >/dev/null 2>&1; then
+    echo "missing command for $label: $1"
+    return 0
+  fi
+
+  if [ "$dry_run" -eq 1 ]; then
+    echo "would launch $label: $*"
+  else
+    echo "launch $label: $*"
+    "$@" &
+    sleep "${JAY_STARTUP_STAGGER:-1}"
+  fi
+}
+
+launch_helium_if_missing() {
+  local label="$1"
+  local pattern="$2"
+  shift 2
+
+  refresh_tree
+  if has_window "$pattern"; then
+    echo "skip $label"
+    return 0
+  fi
+
+  if ! command -v helium-browser >/dev/null 2>&1; then
+    echo "missing command for $label: helium-browser"
+    return 0
+  fi
+
+  if [ "$dry_run" -eq 1 ]; then
+    echo "would launch $label: helium-browser --new-window $*"
+  else
+    echo "launch $label: helium-browser --new-window $*"
+    helium-browser --new-window "$@" &
+    sleep "${JAY_STARTUP_STAGGER:-1}"
+  fi
+}
+
+# Workspace placement is handled by ~/.config/jay/config.toml window rules.
+launch_if_missing "discord workspace 1" 'x-class: discord|app-id: com\.discordapp\.Discord|title: .*Discord' discord
+
+launch_helium_if_missing \
+  "twitch quick actions workspace 2" \
+  'Quick Actions - Twitch' \
+  "https://dashboard.twitch.tv/popout/u/2adhd1/stream-manager/quick-actions"
+
+launch_helium_if_missing \
+  "twitch chat workspace 2" \
+  '2adhd1 - Chat - Twitch' \
+  "https://dashboard.twitch.tv/popout/u/2adhd1/stream-manager/chat"
+
+launch_helium_if_missing \
+  "twitch activity feed workspace 2" \
+  'Activity Feed - Twitch' \
+  "https://dashboard.twitch.tv/popout/u/2adhd1/stream-manager/activity-feed"
+
+launch_if_missing "mcsr launcher workspace 5" 'MCSR Launcher|com-redlimerl-mcsrlauncher-MCSRLauncher' mcsrlauncher
+
+main_urls=(
+  "https://discord.com/channels/1286062493826940981/1286062493826940984"
+  "https://twitch.tv/doogile"
+  "https://youtube.com"
+  "https://mcsrranked.com/stats/doogile"
+  "https://www.bbc.co.uk/iplayer/episodes/p0ggwr8l/doctor-who-19631996"
+  "https://instagram.com"
+)
+launch_helium_if_missing "main helium workspace 6" 'doogile - Twitch - Helium|YouTube - Helium|ChatGPT' "${main_urls[@]}"
+
+launch_if_missing "spotify workspace 8" 'x-class: Spotify|app-id: com\.spotify\.Client|app-id: spotify' spotify
+launch_if_missing "obs workspace 9" 'app-id: com\.obsproject\.Studio|x-class: obs|title: OBS Studio' obs
+launch_if_missing "foot workspace 10" 'app-id: foot|x-class: foot|title: foot' foot-tabbed
+launch_if_missing "qpwgraph workspace 10" 'app-id: org\.rncbc\.qpwgraph|x-class: qpwgraph|PipeWire Graph' qpwgraph
+
+if [ "$dry_run" -eq 0 ] && [ "$focus_workspace" -eq 1 ] && command -v dotool >/dev/null 2>&1; then
+  printf 'key super+7\n' | dotool &
+fi
+
+echo "startup launches queued"

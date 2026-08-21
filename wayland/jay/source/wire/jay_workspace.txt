@@ -1,0 +1,31 @@
+# requests
+
+request destroy {
+
+}
+
+# events
+
+event linear_id {
+    linear_id: u32,
+}
+
+event name {
+    name: str,
+}
+
+event destroyed {
+
+}
+
+event done {
+
+}
+
+event output {
+    global_name: u32,
+}
+
+event visible {
+    visible: u32,
+}

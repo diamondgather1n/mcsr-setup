@@ -1,0 +1,1604 @@
+{
+    "1532:0013": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Orochi 2011",
+        "since": "1.1.14"
+    },
+    "1532:0015": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Naga",
+        "since": "3.9.0"
+    },
+    "1532:0016": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer DeathAdder 3.5G",
+        "since": "2.6.0"
+    },
+    "1532:001F": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Naga Epic",
+        "since": "3.9.0"
+    },
+    "1532:0020": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Abyssus 1800",
+        "since": "2.2.1"
+    },
+    "1532:0024": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Mamba 2012 (Wired)",
+        "since": "1.1.10"
+    },
+    "1532:0025": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Mamba 2012 (Wireless)",
+        "since": "1.1.10"
+    },
+    "1532:0029": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer DeathAdder 3.5G Black",
+        "since": "3.4.0"
+    },
+    "1532:002E": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Naga 2012",
+        "since": "2.7.0"
+    },
+    "1532:002F": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Imperator 2012",
+        "since": "1.1.1"
+    },
+    "1532:0032": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Ouroboros",
+        "since": "1.1.6"
+    },
+    "1532:0034": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Taipan",
+        "since": "1.1.10"
+    },
+    "1532:0036": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Naga Hex (Red)",
+        "since": "1.1.13"
+    },
+    "1532:0037": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer DeathAdder 2013",
+        "since": "2.5.0"
+    },
+    "1532:0038": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer DeathAdder 1800",
+        "since": "2.7.0"
+    },
+    "1532:0039": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Orochi 2013",
+        "since": "1.1.15"
+    },
+    "1532:003E": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Naga Epic Chroma",
+        "since": "3.3.0"
+    },
+    "1532:003F": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Naga Epic Chroma Dock",
+        "since": "3.3.0"
+    },
+    "1532:0040": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Naga 2014",
+        "since": "1.1.11"
+    },
+    "1532:0041": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Naga Hex",
+        "since": "1.1.9"
+    },
+    "1532:0042": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Abyssus 2014",
+        "since": "1.1.1"
+    },
+    "1532:0043": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer DeathAdder Chroma",
+        "since": "1.1.1"
+    },
+    "1532:0044": {
+        "form_factor": "mouse",
+        "matrix": "15,1",
+        "name": "Razer Mamba (Wired)",
+        "since": "1.1.1"
+    },
+    "1532:0045": {
+        "form_factor": "mouse",
+        "matrix": "15,1",
+        "name": "Razer Mamba (Wireless)",
+        "since": "1.1.1"
+    },
+    "1532:0046": {
+        "form_factor": "mouse",
+        "matrix": "16,1",
+        "name": "Razer Mamba Tournament Edition",
+        "since": "1.1.1"
+    },
+    "1532:0048": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Orochi (Wired)",
+        "since": "1.1.1"
+    },
+    "1532:004C": {
+        "form_factor": "mouse",
+        "matrix": "21,1",
+        "name": "Razer Diamondback Chroma",
+        "since": "1.1.6"
+    },
+    "1532:004F": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer DeathAdder 2000",
+        "since": "2.9.0"
+    },
+    "1532:0050": {
+        "form_factor": "mouse",
+        "matrix": "3,1",
+        "name": "Razer Naga Hex V2",
+        "since": "1.1.5"
+    },
+    "1532:0053": {
+        "form_factor": "mouse",
+        "matrix": "3,1",
+        "name": "Razer Naga Chroma",
+        "since": "1.1.16"
+    },
+    "1532:0054": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer DeathAdder 3500",
+        "since": "2.5.0"
+    },
+    "1532:0059": {
+        "form_factor": "mouse",
+        "matrix": "16,1",
+        "name": "Razer Lancehead (Wired)",
+        "since": "2.8.0"
+    },
+    "1532:005A": {
+        "form_factor": "mouse",
+        "matrix": "16,1",
+        "name": "Razer Lancehead (Wireless)",
+        "since": "2.8.0"
+    },
+    "1532:005B": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Abyssus V2",
+        "since": "1.1.16"
+    },
+    "1532:005C": {
+        "form_factor": "mouse",
+        "matrix": "2,1",
+        "name": "Razer DeathAdder Elite",
+        "since": "1.1.12"
+    },
+    "1532:005E": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Abyssus 2000",
+        "since": "2.5.0"
+    },
+    "1532:0060": {
+        "form_factor": "mouse",
+        "matrix": "16,1",
+        "name": "Razer Lancehead Tournament Edition",
+        "since": "2.6.0"
+    },
+    "1532:0062": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Atheris (Receiver)",
+        "since": "2.9.0"
+    },
+    "1532:0064": {
+        "form_factor": "mouse",
+        "matrix": "2,1",
+        "name": "Razer Basilisk",
+        "since": "2.8.0"
+    },
+    "1532:0065": {
+        "form_factor": "mouse",
+        "matrix": "1,1",
+        "name": "Razer Basilisk Essential",
+        "since": "3.1.0"
+    },
+    "1532:0067": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Naga Trinity",
+        "since": "2.7.0"
+    },
+    "1532:0068": {
+        "form_factor": "mousemat",
+        "matrix": "17,1",
+        "name": "Razer Firefly Hyperflux",
+        "since": "2.7.0"
+    },
+    "1532:006A": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Abyssus Elite (D.Va Edition)",
+        "since": "2.8.0"
+    },
+    "1532:006B": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Abyssus Essential",
+        "since": "2.8.0"
+    },
+    "1532:006C": {
+        "form_factor": "mouse",
+        "matrix": "20,1",
+        "name": "Razer Mamba Elite",
+        "since": "2.8.0"
+    },
+    "1532:006E": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer DeathAdder Essential",
+        "since": "2.6.0"
+    },
+    "1532:006F": {
+        "form_factor": "mouse",
+        "matrix": "16,1",
+        "name": "Razer Lancehead Wireless (Receiver)",
+        "since": "2.8.0"
+    },
+    "1532:0070": {
+        "form_factor": "mouse",
+        "matrix": "16,1",
+        "name": "Razer Lancehead Wireless (Wired)",
+        "since": "2.8.0"
+    },
+    "1532:0071": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer DeathAdder Essential (White Edition)",
+        "since": "2.8.0"
+    },
+    "1532:0072": {
+        "form_factor": "mouse",
+        "matrix": "16,1",
+        "name": "Razer Mamba Wireless (Receiver)",
+        "since": "2.8.0"
+    },
+    "1532:0073": {
+        "form_factor": "mouse",
+        "matrix": "16,1",
+        "name": "Razer Mamba Wireless (Wired)",
+        "since": "2.8.0"
+    },
+    "1532:0077": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Pro Click (Receiver)",
+        "since": "3.3.0"
+    },
+    "1532:0078": {
+        "form_factor": "mouse",
+        "matrix": "1,1",
+        "name": "Razer Viper",
+        "since": "2.8.0"
+    },
+    "1532:007A": {
+        "form_factor": "mouse",
+        "matrix": "1,1",
+        "name": "Razer Viper Ultimate (Wired)",
+        "since": "2.8.0"
+    },
+    "1532:007B": {
+        "form_factor": "mouse",
+        "matrix": "1,1",
+        "name": "Razer Viper Ultimate (Wireless)",
+        "since": "2.8.0"
+    },
+    "1532:007C": {
+        "form_factor": "mouse",
+        "matrix": "1,1",
+        "name": "Razer DeathAdder V2 Pro (Wired)",
+        "since": "3.0.0"
+    },
+    "1532:007D": {
+        "form_factor": "mouse",
+        "matrix": "1,1",
+        "name": "Razer DeathAdder V2 Pro (Wireless)",
+        "since": "3.0.0"
+    },
+    "1532:007E": {
+        "form_factor": "accessory",
+        "matrix": "1,1",
+        "name": "Razer Mouse Dock",
+        "since": "3.0.0"
+    },
+    "1532:0080": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Pro Click (Wired)",
+        "since": "3.3.0"
+    },
+    "1532:0083": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Basilisk X HyperSpeed",
+        "since": "2.9.0"
+    },
+    "1532:0084": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer DeathAdder V2",
+        "since": "2.8.0"
+    },
+    "1532:0085": {
+        "form_factor": "mouse",
+        "matrix": "1,1",
+        "name": "Razer Basilisk V2",
+        "since": "3.0.0"
+    },
+    "1532:0086": {
+        "form_factor": "mouse",
+        "matrix": "14,1",
+        "name": "Razer Basilisk Ultimate (Wired)",
+        "since": "3.0.0"
+    },
+    "1532:0088": {
+        "form_factor": "mouse",
+        "matrix": "14,1",
+        "name": "Razer Basilisk Ultimate (Receiver)",
+        "since": "3.0.0"
+    },
+    "1532:008A": {
+        "form_factor": "mouse",
+        "matrix": "1,1",
+        "name": "Razer Viper Mini",
+        "since": "2.9.0"
+    },
+    "1532:008C": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer DeathAdder V2 Mini",
+        "since": "3.0.0"
+    },
+    "1532:008D": {
+        "form_factor": "mouse",
+        "matrix": "3,1",
+        "name": "Razer Naga Left-Handed Edition 2020",
+        "since": "3.0.0"
+    },
+    "1532:008F": {
+        "form_factor": "mouse",
+        "matrix": "3,1",
+        "name": "Razer Naga Pro (Wired)",
+        "since": "3.3.0"
+    },
+    "1532:0090": {
+        "form_factor": "mouse",
+        "matrix": "3,1",
+        "name": "Razer Naga Pro (Wireless)",
+        "since": "3.3.0"
+    },
+    "1532:0091": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Viper 8KHz",
+        "since": "3.2.0"
+    },
+    "1532:0094": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Orochi V2 (Receiver)",
+        "since": "3.3.0"
+    },
+    "1532:0095": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Orochi V2 (Bluetooth)",
+        "since": "3.3.0"
+    },
+    "1532:0096": {
+        "form_factor": "mouse",
+        "matrix": "2,1",
+        "name": "Razer Naga X",
+        "since": "3.5.0"
+    },
+    "1532:0098": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer DeathAdder Essential (2021)",
+        "since": "3.2.0"
+    },
+    "1532:0099": {
+        "form_factor": "mouse",
+        "matrix": "11,1",
+        "name": "Razer Basilisk V3",
+        "since": "3.3.0"
+    },
+    "1532:009A": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Pro Click Mini (Receiver)",
+        "since": "3.7.0"
+    },
+    "1532:009C": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer DeathAdder V2 X HyperSpeed",
+        "since": "3.4.0"
+    },
+    "1532:009E": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Viper Mini Signature Edition (Wired)",
+        "since": "3.7.0"
+    },
+    "1532:009F": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Viper Mini Signature Edition (Wireless)",
+        "since": "3.7.0"
+    },
+    "1532:00A1": {
+        "form_factor": "mouse",
+        "matrix": "1,1",
+        "name": "Razer DeathAdder V2 Lite",
+        "since": "3.7.0"
+    },
+    "1532:00A3": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Cobra",
+        "since": "3.8.0"
+    },
+    "1532:00A4": {
+        "form_factor": "accessory",
+        "matrix": "8,1",
+        "name": "Razer Mouse Dock Pro",
+        "since": "3.12.0"
+    },
+    "1532:00A5": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Viper V2 Pro (Wired)",
+        "since": "3.4.0"
+    },
+    "1532:00A6": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Viper V2 Pro (Wireless)",
+        "since": "3.4.0"
+    },
+    "1532:00A7": {
+        "form_factor": "mouse",
+        "matrix": "3,1",
+        "name": "Razer Naga V2 Pro (Wired)",
+        "since": "3.10.3"
+    },
+    "1532:00A8": {
+        "form_factor": "mouse",
+        "matrix": "3,1",
+        "name": "Razer Naga V2 Pro (Wireless)",
+        "since": "3.10.3"
+    },
+    "1532:00AA": {
+        "form_factor": "mouse",
+        "matrix": "13,1",
+        "name": "Razer Basilisk V3 Pro (Wired)",
+        "since": "3.6.0"
+    },
+    "1532:00AB": {
+        "form_factor": "mouse",
+        "matrix": "13,1",
+        "name": "Razer Basilisk V3 Pro (Wireless)",
+        "since": "3.6.0"
+    },
+    "1532:00AF": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Cobra Pro (Wired)",
+        "since": "3.8.0"
+    },
+    "1532:00B0": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Cobra Pro",
+        "since": "3.7.0"
+    },
+    "1532:00B2": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer DeathAdder V3",
+        "since": "3.7.0"
+    },
+    "1532:00B3": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer HyperPolling Wireless Dongle",
+        "since": "3.6.0"
+    },
+    "1532:00B4": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Naga V2 HyperSpeed (Receiver)",
+        "since": "3.7.0"
+    },
+    "1532:00B6": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer DeathAdder V3 Pro (Wired)",
+        "since": "3.5.0"
+    },
+    "1532:00B7": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer DeathAdder V3 Pro (Wireless)",
+        "since": "3.5.0"
+    },
+    "1532:00B8": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Viper V3 HyperSpeed",
+        "since": "3.7.0"
+    },
+    "1532:00B9": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Basilisk V3 X HyperSpeed",
+        "since": "3.8.0"
+    },
+    "1532:00BE": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer DeathAdder V4 Pro (Wired)",
+        "since": "3.11.0"
+    },
+    "1532:00BF": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer DeathAdder V4 Pro (Wireless)",
+        "since": "3.11.0"
+    },
+    "1532:00C0": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Viper V3 Pro (Wired)",
+        "since": "3.9.0"
+    },
+    "1532:00C1": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Viper V3 Pro (Wireless)",
+        "since": "3.9.0"
+    },
+    "1532:00C2": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer DeathAdder V3 Pro (Wired)",
+        "since": "3.9.0"
+    },
+    "1532:00C3": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer DeathAdder V3 Pro (Wireless)",
+        "since": "3.9.0"
+    },
+    "1532:00C4": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer DeathAdder V3 HyperSpeed (Wired)",
+        "since": "3.10.0"
+    },
+    "1532:00C5": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer DeathAdder V3 HyperSpeed (Wireless)",
+        "since": "3.10.0"
+    },
+    "1532:00C7": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Pro Click V2 Vertical Edition (Wired)",
+        "since": "3.11.0"
+    },
+    "1532:00C8": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Pro Click V2 Vertical Edition (Wireless)",
+        "since": "3.11.0"
+    },
+    "1532:00CB": {
+        "form_factor": "mouse",
+        "matrix": "13,1",
+        "name": "Razer Basilisk V3 35K",
+        "since": "3.10.0"
+    },
+    "1532:00CC": {
+        "form_factor": "mouse",
+        "matrix": "13,1",
+        "name": "Razer Basilisk V3 Pro 35K (Wired)",
+        "since": "3.10.0"
+    },
+    "1532:00CD": {
+        "form_factor": "mouse",
+        "matrix": "13,1",
+        "name": "Razer Basilisk V3 Pro 35K (Wireless)",
+        "since": "3.10.0"
+    },
+    "1532:00D0": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Pro Click V2 (Wired)",
+        "since": "3.11.0"
+    },
+    "1532:00D1": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Pro Click V2 (Wireless)",
+        "since": "3.11.0"
+    },
+    "1532:00D3": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Basilisk Mobile (Wired)",
+        "since": "3.12.1"
+    },
+    "1532:00D4": {
+        "form_factor": "mouse",
+        "matrix": null,
+        "name": "Razer Basilisk Mobile (Receiver)",
+        "since": "3.12.1"
+    },
+    "1532:00D6": {
+        "form_factor": "mouse",
+        "matrix": "12,1",
+        "name": "Razer Basilisk V3 Pro 35K Phantom Green Edition (Wired)",
+        "since": "3.11.0"
+    },
+    "1532:00D7": {
+        "form_factor": "mouse",
+        "matrix": "12,1",
+        "name": "Razer Basilisk V3 Pro 35K Phantom Green Edition (Wireless)",
+        "since": "3.11.0"
+    },
+    "1532:010D": {
+        "form_factor": "keyboard",
+        "matrix": null,
+        "name": "Razer BlackWidow Ultimate 2012",
+        "since": "1.1.1"
+    },
+    "1532:010E": {
+        "form_factor": "keyboard",
+        "matrix": null,
+        "name": "Razer BlackWidow Stealth Edition",
+        "since": "1.1.9"
+    },
+    "1532:010F": {
+        "form_factor": "keyboard",
+        "matrix": null,
+        "name": "Razer Anansi",
+        "since": "1.1.5"
+    },
+    "1532:0111": {
+        "form_factor": "keypad",
+        "matrix": null,
+        "name": "Razer Nostromo",
+        "since": "1.1.10"
+    },
+    "1532:0113": {
+        "form_factor": "keypad",
+        "matrix": null,
+        "name": "Razer Orbweaver",
+        "since": "1.1.7"
+    },
+    "1532:0118": {
+        "form_factor": "keyboard",
+        "matrix": null,
+        "name": "Razer Deathstalker (Essential)",
+        "since": "3.7.0"
+    },
+    "1532:011A": {
+        "form_factor": "keyboard",
+        "matrix": null,
+        "name": "Razer BlackWidow Ultimate 2013",
+        "since": "1.1.1"
+    },
+    "1532:011B": {
+        "form_factor": "keyboard",
+        "matrix": null,
+        "name": "Razer BlackWidow Stealth",
+        "since": "1.1.1"
+    },
+    "1532:011C": {
+        "form_factor": "keyboard",
+        "matrix": null,
+        "name": "Razer BlackWidow Tournament Edition 2014",
+        "since": "3.1.0"
+    },
+    "1532:0201": {
+        "form_factor": "keypad",
+        "matrix": null,
+        "name": "Razer Tartarus",
+        "since": "1.1.15"
+    },
+    "1532:0202": {
+        "form_factor": "keyboard",
+        "matrix": null,
+        "name": "Razer Deathstalker Expert",
+        "since": "1.1.14"
+    },
+    "1532:0203": {
+        "form_factor": "keyboard",
+        "matrix": "22,6",
+        "name": "Razer BlackWidow Chroma",
+        "since": "1.1.1"
+    },
+    "1532:0204": {
+        "form_factor": "keyboard",
+        "matrix": "6,1",
+        "name": "Razer DeathStalker Chroma",
+        "since": "1.1.6"
+    },
+    "1532:0205": {
+        "form_factor": "laptop",
+        "matrix": "22,6",
+        "name": "Razer Blade Stealth",
+        "since": "1.1.1"
+    },
+    "1532:0207": {
+        "form_factor": "keypad",
+        "matrix": "22,5",
+        "name": "Razer Orbweaver Chroma",
+        "since": "1.0.7"
+    },
+    "1532:0208": {
+        "form_factor": "keypad",
+        "matrix": null,
+        "name": "Razer Tartarus Chroma",
+        "since": "1.1.1"
+    },
+    "1532:0209": {
+        "form_factor": "keyboard",
+        "matrix": "22,6",
+        "name": "Razer BlackWidow Chroma Tournament Edition",
+        "since": "1.1.1"
+    },
+    "1532:020F": {
+        "form_factor": "laptop",
+        "matrix": "16,6",
+        "name": "Razer Blade Stealth (QHD)",
+        "since": "1.1.3"
+    },
+    "1532:0210": {
+        "form_factor": "laptop",
+        "matrix": "22,6",
+        "name": "Razer Blade Pro (Late 2016)",
+        "since": "1.1.3"
+    },
+    "1532:0211": {
+        "form_factor": "keyboard",
+        "matrix": "22,6",
+        "name": "Razer BlackWidow Chroma (Overwatch)",
+        "since": "1.1.11"
+    },
+    "1532:0214": {
+        "form_factor": "keyboard",
+        "matrix": "22,6",
+        "name": "Razer BlackWidow Ultimate 2016",
+        "since": "1.1.1"
+    },
+    "1532:0215": {
+        "form_factor": "gpu",
+        "matrix": "9,1",
+        "name": "Razer Core",
+        "since": "1.1.9"
+    },
+    "1532:0216": {
+        "form_factor": "keyboard",
+        "matrix": "22,6",
+        "name": "Razer BlackWidow X Chroma",
+        "since": "1.1.1"
+    },
+    "1532:0217": {
+        "form_factor": "keyboard",
+        "matrix": "22,6",
+        "name": "Razer BlackWidow X Ultimate",
+        "since": "1.1.6"
+    },
+    "1532:021A": {
+        "form_factor": "keyboard",
+        "matrix": "22,6",
+        "name": "Razer BlackWidow X Chroma Tournament Edition",
+        "since": "1.1.1"
+    },
+    "1532:021E": {
+        "form_factor": "keyboard",
+        "matrix": "22,6",
+        "name": "Razer Ornata Chroma",
+        "since": "1.1.3"
+    },
+    "1532:021F": {
+        "form_factor": "keyboard",
+        "matrix": "22,6",
+        "name": "Razer Ornata",
+        "since": "1.1.8"
+    },
+    "1532:0220": {
+        "form_factor": "laptop",
+        "matrix": "16,6",
+        "name": "Razer Blade Stealth (Late 2016)",
+        "since": "1.1.1"
+    },
+    "1532:0221": {
+        "form_factor": "keyboard",
+        "matrix": "22,6",
+        "name": "Razer BlackWidow Chroma V2",
+        "since": "1.1.9"
+    },
+    "1532:0224": {
+        "form_factor": "laptop",
+        "matrix": "16,6",
+        "name": "Razer Blade (Late 2016)",
+        "since": "1.1.10"
+    },
+    "1532:0225": {
+        "form_factor": "laptop",
+        "matrix": "25,6",
+        "name": "Razer Blade Pro (2017)",
+        "since": "2.1.0"
+    },
+    "1532:0226": {
+        "form_factor": "keyboard",
+        "matrix": "22,9",
+        "name": "Razer Huntsman Elite",
+        "since": "2.5.0"
+    },
+    "1532:0227": {
+        "form_factor": "keyboard",
+        "matrix": "22,6",
+        "name": "Razer Huntsman",
+        "since": "2.7.0"
+    },
+    "1532:0228": {
+        "form_factor": "keyboard",
+        "matrix": "22,6",
+        "name": "Razer BlackWidow Elite",
+        "since": "2.6.0"
+    },
+    "1532:022A": {
+        "form_factor": "keyboard",
+        "matrix": "22,6",
+        "name": "Razer Cynosa Chroma",
+        "since": "2.3.1"
+    },
+    "1532:022B": {
+        "form_factor": "keypad",
+        "matrix": "6,4",
+        "name": "Razer Tartarus V2",
+        "since": "2.8.0"
+    },
+    "1532:022C": {
+        "form_factor": "keyboard",
+        "matrix": "22,6",
+        "name": "Razer Cynosa Chroma Pro",
+        "since": "3.0.0"
+    },
+    "1532:022D": {
+        "form_factor": "laptop",
+        "matrix": "16,6",
+        "name": "Razer Blade Stealth (Mid 2017)",
+        "since": "1.1.16"
+    },
+    "1532:022F": {
+        "form_factor": "laptop",
+        "matrix": "25,6",
+        "name": "Razer Blade Pro FullHD (2017)",
+        "since": "2.2.0"
+    },
+    "1532:0232": {
+        "form_factor": "laptop",
+        "matrix": "16,6",
+        "name": "Razer Blade Stealth (Late 2017)",
+        "since": "2.1.0"
+    },
+    "1532:0233": {
+        "form_factor": "laptop",
+        "matrix": "16,6",
+        "name": "Razer Blade 15 (2018)",
+        "since": "2.4.0"
+    },
+    "1532:0234": {
+        "form_factor": "laptop",
+        "matrix": "16,6",
+        "name": "Razer Blade Pro (2019)",
+        "since": "2.8.0"
+    },
+    "1532:0235": {
+        "form_factor": "keyboard",
+        "matrix": null,
+        "name": "Razer BlackWidow Lite",
+        "since": "2.6.0"
+    },
+    "1532:0237": {
+        "form_factor": "keyboard",
+        "matrix": "22,6",
+        "name": "Razer BlackWidow Essential",
+        "since": "2.8.0"
+    },
+    "1532:0239": {
+        "form_factor": "laptop",
+        "matrix": null,
+        "name": "Razer Blade Stealth (2019)",
+        "since": "2.5.0"
+    },
+    "1532:023A": {
+        "form_factor": "laptop",
+        "matrix": "16,6",
+        "name": "Razer Blade 15 (2019) Advanced",
+        "since": "2.5.0"
+    },
+    "1532:023B": {
+        "form_factor": "laptop",
+        "matrix": null,
+        "name": "Razer Blade 15 (2018) Base Model",
+        "since": "2.5.0"
+    },
+    "1532:023F": {
+        "form_factor": "keyboard",
+        "matrix": null,
+        "name": "Razer Cynosa Lite",
+        "since": "2.9.0"
+    },
+    "1532:0240": {
+        "form_factor": "laptop",
+        "matrix": "16,6",
+        "name": "Razer Blade 15 (2018) Mercury",
+        "since": "2.5.0"
+    },
+    "1532:0241": {
+        "form_factor": "keyboard",
+        "matrix": "22,6",
+        "name": "Razer BlackWidow 2019",
+        "since": "2.6.0"
+    },
+    "1532:0243": {
+        "form_factor": "keyboard",
+        "matrix": "18,6",
+        "name": "Razer Huntsman Tournament Edition",
+        "since": "2.8.0"
+    },
+    "1532:0244": {
+        "form_factor": "keypad",
+        "matrix": "21,1",
+        "name": "Razer Tartarus Pro",
+        "since": "3.12.0"
+    },
+    "1532:0245": {
+        "form_factor": "laptop",
+        "matrix": "16,6",
+        "name": "Razer Blade 15 (Mid 2019) Mercury White",
+        "since": "2.6.0"
+    },
+    "1532:0246": {
+        "form_factor": "laptop",
+        "matrix": null,
+        "name": "Razer Blade 15 (2019) Base Model",
+        "since": "2.7.0"
+    },
+    "1532:024A": {
+        "form_factor": "laptop",
+        "matrix": null,
+        "name": "Razer Blade Stealth (Late 2019)",
+        "since": "2.7.0"
+    },
+    "1532:024B": {
+        "form_factor": "laptop",
+        "matrix": "16,6",
+        "name": "Razer Blade Advanced (Late 2019)",
+        "since": "3.8.0"
+    },
+    "1532:024C": {
+        "form_factor": "laptop",
+        "matrix": "16,6",
+        "name": "Razer Blade Pro (Late 2019)",
+        "since": "2.8.0"
+    },
+    "1532:024D": {
+        "form_factor": "laptop",
+        "matrix": "16,6",
+        "name": "Razer Blade 15 Studio Edition (2019)",
+        "since": "2.8.0"
+    },
+    "1532:024E": {
+        "form_factor": "keyboard",
+        "matrix": "22,6",
+        "name": "Razer BlackWidow V3",
+        "since": "3.2.0"
+    },
+    "1532:0252": {
+        "form_factor": "laptop",
+        "matrix": null,
+        "name": "Razer Blade Stealth (Early 2020)",
+        "since": "2.9.0"
+    },
+    "1532:0253": {
+        "form_factor": "laptop",
+        "matrix": "16,6",
+        "name": "Razer Blade 15 Advanced (2020)",
+        "since": "2.9.0"
+    },
+    "1532:0255": {
+        "form_factor": "laptop",
+        "matrix": "16,1",
+        "name": "Razer Blade 15 Base (Early 2020)",
+        "since": "2.9.0"
+    },
+    "1532:0256": {
+        "form_factor": "laptop",
+        "matrix": "16,6",
+        "name": "Razer Blade Pro (Early 2020)",
+        "since": "3.2.0"
+    },
+    "1532:0257": {
+        "form_factor": "keyboard",
+        "matrix": "15,5",
+        "name": "Razer Huntsman Mini",
+        "since": "3.0.0"
+    },
+    "1532:0258": {
+        "form_factor": "keyboard",
+        "matrix": "16,5",
+        "name": "Razer BlackWidow V3 Mini HyperSpeed (Wired)",
+        "since": "3.2.0"
+    },
+    "1532:0259": {
+        "form_factor": "laptop",
+        "matrix": null,
+        "name": "Razer Blade Stealth (Late 2020)",
+        "since": "3.0.0"
+    },
+    "1532:025A": {
+        "form_factor": "keyboard",
+        "matrix": "22,6",
+        "name": "Razer BlackWidow V3 Pro (Wired)",
+        "since": "3.2.0"
+    },
+    "1532:025C": {
+        "form_factor": "keyboard",
+        "matrix": "22,6",
+        "name": "Razer BlackWidow V3 Pro (Wireless)",
+        "since": "3.9.0"
+    },
+    "1532:025D": {
+        "form_factor": "keyboard",
+        "matrix": "22,6",
+        "name": "Razer Ornata V2",
+        "since": "3.0.0"
+    },
+    "1532:025E": {
+        "form_factor": "keyboard",
+        "matrix": "22,6",
+        "name": "Razer Cynosa V2",
+        "since": "2.9.0"
+    },
+    "1532:0266": {
+        "form_factor": "keyboard",
+        "matrix": "22,8",
+        "name": "Razer Huntsman V2 Analog",
+        "since": "3.1.0"
+    },
+    "1532:0268": {
+        "form_factor": "laptop",
+        "matrix": null,
+        "name": "Razer Blade 15 Base (Late 2020)",
+        "since": "3.10.1"
+    },
+    "1532:0269": {
+        "form_factor": "keyboard",
+        "matrix": "15,5",
+        "name": "Razer Huntsman Mini (JP)",
+        "since": "3.3.0"
+    },
+    "1532:026A": {
+        "form_factor": "keyboard",
+        "matrix": null,
+        "name": "Razer Book 13 (2020)",
+        "since": "3.0.0"
+    },
+    "1532:026B": {
+        "form_factor": "keyboard",
+        "matrix": "18,6",
+        "name": "Razer Huntsman V2 Tenkeyless",
+        "since": "3.5.0"
+    },
+    "1532:026C": {
+        "form_factor": "keyboard",
+        "matrix": "22,6",
+        "name": "Razer Huntsman V2",
+        "since": "3.3.0"
+    },
+    "1532:026D": {
+        "form_factor": "laptop",
+        "matrix": "16,6",
+        "name": "Razer Blade 15 Advanced (Early 2021)",
+        "since": "3.1.0"
+    },
+    "1532:026E": {
+        "form_factor": "laptop",
+        "matrix": "16,6",
+        "name": "Razer Blade 17 Pro (Early 2021)",
+        "since": "3.5.0"
+    },
+    "1532:026F": {
+        "form_factor": "laptop",
+        "matrix": "16,1",
+        "name": "Razer Blade 15 Base (Early 2021)",
+        "since": "3.2.0"
+    },
+    "1532:0270": {
+        "form_factor": "laptop",
+        "matrix": "16,6",
+        "name": "Razer Blade 14 (2021)",
+        "since": "3.2.0"
+    },
+    "1532:0271": {
+        "form_factor": "keyboard",
+        "matrix": "16,5",
+        "name": "Razer BlackWidow V3 Mini HyperSpeed (Wireless)",
+        "since": "3.2.0"
+    },
+    "1532:0276": {
+        "form_factor": "laptop",
+        "matrix": "16,6",
+        "name": "Razer Blade 15 Advanced (Mid 2021)",
+        "since": "3.1.0"
+    },
+    "1532:0279": {
+        "form_factor": "laptop",
+        "matrix": "16,6",
+        "name": "Razer Blade 17 Pro (Mid 2021)",
+        "since": "3.2.0"
+    },
+    "1532:027A": {
+        "form_factor": "laptop",
+        "matrix": null,
+        "name": "Razer Blade 15 Base (2022)",
+        "since": "3.6.0"
+    },
+    "1532:0282": {
+        "form_factor": "keyboard",
+        "matrix": "15,5",
+        "name": "Razer Huntsman Mini Analog",
+        "since": "3.4.0"
+    },
+    "1532:0287": {
+        "form_factor": "keyboard",
+        "matrix": "23,8",
+        "name": "Razer BlackWidow V4",
+        "since": "3.8.0"
+    },
+    "1532:028A": {
+        "form_factor": "laptop",
+        "matrix": "16,6",
+        "name": "Razer Blade 15 Advanced (Early 2022)",
+        "since": "3.3.0"
+    },
+    "1532:028B": {
+        "form_factor": "laptop",
+        "matrix": "16,6",
+        "name": "Razer Blade 17 (2022)",
+        "since": "3.3.0"
+    },
+    "1532:028C": {
+        "form_factor": "laptop",
+        "matrix": "16,6",
+        "name": "Razer Blade 14 (2022)",
+        "since": "3.6.0"
+    },
+    "1532:028D": {
+        "form_factor": "keyboard",
+        "matrix": "23,8",
+        "name": "Razer BlackWidow V4 Pro",
+        "since": "3.7.0"
+    },
+    "1532:028F": {
+        "form_factor": "keyboard",
+        "matrix": "10,1",
+        "name": "Razer Ornata V3",
+        "since": "3.9.0"
+    },
+    "1532:0290": {
+        "form_factor": "keyboard",
+        "matrix": "22,6",
+        "name": "Razer DeathStalker V2 Pro (Wireless)",
+        "since": "3.6.0"
+    },
+    "1532:0292": {
+        "form_factor": "keyboard",
+        "matrix": "22,6",
+        "name": "Razer DeathStalker V2 Pro (Wired)",
+        "since": "3.6.0"
+    },
+    "1532:0293": {
+        "form_factor": "keyboard",
+        "matrix": "22,6",
+        "name": "Razer BlackWidow V4 X",
+        "since": "3.9.0"
+    },
+    "1532:0294": {
+        "form_factor": "keyboard",
+        "matrix": "1,1",
+        "name": "Razer Ornata V3 X",
+        "since": "3.7.0"
+    },
+    "1532:0295": {
+        "form_factor": "keyboard",
+        "matrix": "22,6",
+        "name": "Razer DeathStalker V2",
+        "since": "3.5.0"
+    },
+    "1532:0296": {
+        "form_factor": "keyboard",
+        "matrix": "17,6",
+        "name": "Razer DeathStalker V2 Pro TKL (Wireless)",
+        "since": "3.7.0"
+    },
+    "1532:0298": {
+        "form_factor": "keyboard",
+        "matrix": "17,6",
+        "name": "Razer DeathStalker V2 Pro TKL (Wired)",
+        "since": "3.7.0"
+    },
+    "1532:029D": {
+        "form_factor": "laptop",
+        "matrix": "16,6",
+        "name": "Razer Blade 14 (2023)",
+        "since": "3.9.0"
+    },
+    "1532:029E": {
+        "form_factor": "laptop",
+        "matrix": "16,6",
+        "name": "Razer Blade 15 (2023)",
+        "since": "3.7.0"
+    },
+    "1532:029F": {
+        "form_factor": "laptop",
+        "matrix": "16,6",
+        "name": "Razer Blade 16 (2023)",
+        "since": "3.7.0"
+    },
+    "1532:02A0": {
+        "form_factor": "laptop",
+        "matrix": "16,6",
+        "name": "Razer Blade 18 (2023)",
+        "since": "3.7.0"
+    },
+    "1532:02A1": {
+        "form_factor": "keyboard",
+        "matrix": "10,1",
+        "name": "Razer Ornata V3",
+        "since": "3.8.0"
+    },
+    "1532:02A2": {
+        "form_factor": "keyboard",
+        "matrix": "1,1",
+        "name": "Razer Ornata V3 X",
+        "since": "3.7.0"
+    },
+    "1532:02A3": {
+        "form_factor": "keyboard",
+        "matrix": "8,1",
+        "name": "Razer Ornata V3 Tenkeyless",
+        "since": "3.9.0"
+    },
+    "1532:02A5": {
+        "form_factor": "keyboard",
+        "matrix": "16,6",
+        "name": "Razer BlackWidow V4 75%",
+        "since": "3.9.0"
+    },
+    "1532:02A6": {
+        "form_factor": "keyboard",
+        "matrix": "22,6",
+        "name": "Razer Huntsman V3 Pro",
+        "since": "3.10.1"
+    },
+    "1532:02A7": {
+        "form_factor": "keyboard",
+        "matrix": "22,6",
+        "name": "Razer Huntsman V3 Pro TKL",
+        "since": "3.11.0"
+    },
+    "1532:02B0": {
+        "form_factor": "keyboard",
+        "matrix": "15,5",
+        "name": "Razer Huntsman V3 Pro Mini",
+        "since": "3.12.0"
+    },
+    "1532:02B6": {
+        "form_factor": "laptop",
+        "matrix": "16,6",
+        "name": "Razer Blade 14 (2024)",
+        "since": "3.9.0"
+    },
+    "1532:02B8": {
+        "form_factor": "laptop",
+        "matrix": "16,6",
+        "name": "Razer Blade 18 (2024)",
+        "since": "3.10.0"
+    },
+    "1532:02B9": {
+        "form_factor": "keyboard",
+        "matrix": "14,5",
+        "name": "Razer BlackWidow V4 Mini Hyperspeed (Wired)",
+        "since": "3.11.0"
+    },
+    "1532:02BA": {
+        "form_factor": "keyboard",
+        "matrix": "14,5",
+        "name": "Razer BlackWidow V4 Mini Hyperspeed (Wireless)",
+        "since": "3.11.0"
+    },
+    "1532:02C5": {
+        "form_factor": "laptop",
+        "matrix": "16,6",
+        "name": "Razer Blade 14 (2025)",
+        "since": "3.11.0"
+    },
+    "1532:02C6": {
+        "form_factor": "laptop",
+        "matrix": "17,6",
+        "name": "Razer Blade 16 (2025)",
+        "since": "3.11.0"
+    },
+    "1532:02C7": {
+        "form_factor": "laptop",
+        "matrix": "19,6",
+        "name": "Razer Blade 18 (2025)",
+        "since": "3.11.0"
+    },
+    "1532:02CF": {
+        "form_factor": "keyboard",
+        "matrix": "22,6",
+        "name": "Razer Huntsman V3 Pro 8KHz",
+        "since": "3.12.0"
+    },
+    "1532:02D5": {
+        "form_factor": "keyboard",
+        "matrix": "18,6",
+        "name": "Razer BlackWidow V4 Tenkeyless HyperSpeed (Wireless)",
+        "since": "3.12.0"
+    },
+    "1532:02D7": {
+        "form_factor": "keyboard",
+        "matrix": "18,6",
+        "name": "Razer BlackWidow V4 Tenkeyless HyperSpeed (Wired)",
+        "since": "3.12.0"
+    },
+    "1532:0501": {
+        "form_factor": "headset",
+        "matrix": null,
+        "name": "Razer Kraken 7.1",
+        "since": "1.1.15"
+    },
+    "1532:0504": {
+        "form_factor": "headset",
+        "matrix": null,
+        "name": "Razer Kraken 7.1 Chroma",
+        "since": "1.1.5"
+    },
+    "1532:0506": {
+        "form_factor": "headset",
+        "matrix": null,
+        "name": "Razer Kraken 7.1",
+        "since": "2.5.0"
+    },
+    "1532:0510": {
+        "form_factor": "headset",
+        "matrix": null,
+        "name": "Razer Kraken 7.1 V2",
+        "since": "1.1.5"
+    },
+    "1532:0517": {
+        "form_factor": "speaker",
+        "matrix": "24,2",
+        "name": "Razer Nommo Chroma",
+        "since": "2.8.0"
+    },
+    "1532:0518": {
+        "form_factor": "speaker",
+        "matrix": "8,2",
+        "name": "Razer Nommo Pro",
+        "since": "2.8.0"
+    },
+    "1532:0520": {
+        "form_factor": "headset",
+        "matrix": null,
+        "name": "Razer Kraken Tournament Edition",
+        "since": "3.12.0"
+    },
+    "1532:0527": {
+        "form_factor": "headset",
+        "matrix": null,
+        "name": "Razer Kraken Ultimate",
+        "since": "2.9.0"
+    },
+    "1532:0560": {
+        "form_factor": "headset",
+        "matrix": null,
+        "name": "Razer Kraken Kitty V2",
+        "since": "3.10.1"
+    },
+    "1532:0A24": {
+        "form_factor": "keyboard",
+        "matrix": "18,6",
+        "name": "Razer BlackWidow V3 Tenkeyless",
+        "since": "3.1.0"
+    },
+    "1532:0C00": {
+        "form_factor": "mousemat",
+        "matrix": "15,1",
+        "name": "Razer Firefly",
+        "since": "1.1.1"
+    },
+    "1532:0C01": {
+        "form_factor": "mousemat",
+        "matrix": "1,1",
+        "name": "Razer Goliathus",
+        "since": "2.5.0"
+    },
+    "1532:0C02": {
+        "form_factor": "mousemat",
+        "matrix": "1,1",
+        "name": "Razer Goliathus Extended",
+        "since": "2.5.0"
+    },
+    "1532:0C04": {
+        "form_factor": "mousemat",
+        "matrix": "19,1",
+        "name": "Razer Firefly V2",
+        "since": "3.0.0"
+    },
+    "1532:0C05": {
+        "form_factor": "mousemat",
+        "matrix": "19,1",
+        "name": "Razer Strider Chroma",
+        "since": "3.10.3"
+    },
+    "1532:0C06": {
+        "form_factor": "mousemat",
+        "matrix": "1,1",
+        "name": "Razer Goliathus Chroma 3XL",
+        "since": "3.9.0"
+    },
+    "1532:0C08": {
+        "form_factor": "mousemat",
+        "matrix": "17,1",
+        "name": "Razer Firefly V2 Pro",
+        "since": "3.11.0"
+    },
+    "1532:0F07": {
+        "form_factor": "accessory",
+        "matrix": "15,1",
+        "name": "Razer Chroma Mug Holder",
+        "since": "1.1.5"
+    },
+    "1532:0F08": {
+        "form_factor": "stand",
+        "matrix": "15,1",
+        "name": "Razer Base Station Chroma",
+        "since": "2.8.0"
+    },
+    "1532:0F09": {
+        "form_factor": "accessory",
+        "matrix": "16,4",
+        "name": "Razer Chroma HDK",
+        "since": "2.8.0"
+    },
+    "1532:0F0D": {
+        "form_factor": "accessory",
+        "matrix": "16,1",
+        "name": "Razer Laptop Stand Chroma",
+        "since": "3.6.0"
+    },
+    "1532:0F12": {
+        "form_factor": "display",
+        "matrix": "12,1",
+        "name": "Razer Raptor 27",
+        "since": "3.3.0"
+    },
+    "1532:0F13": {
+        "form_factor": "accessory",
+        "matrix": "16,4",
+        "name": "Lian Li O11 Dynamic - Razer Edition",
+        "since": "3.12.1"
+    },
+    "1532:0F17": {
+        "form_factor": "accessory",
+        "matrix": "20,1",
+        "name": "Razer Tomahawk ATX",
+        "since": "3.11.0"
+    },
+    "1532:0F19": {
+        "form_factor": "headset",
+        "matrix": "4,1",
+        "name": "Razer Kraken Kitty Edition",
+        "since": "2.9.0"
+    },
+    "1532:0F1A": {
+        "form_factor": "gpu",
+        "matrix": "16,1",
+        "name": "Razer Core X Chroma",
+        "since": "3.6.0"
+    },
+    "1532:0F1D": {
+        "form_factor": "accessory",
+        "matrix": "8,1",
+        "name": "Razer Mouse Bungee V3 Chroma",
+        "since": "3.0.0"
+    },
+    "1532:0F1F": {
+        "form_factor": "accessory",
+        "matrix": "80,6",
+        "name": "Razer Chroma Addressable RGB Controller",
+        "since": "3.5.0"
+    },
+    "1532:0F20": {
+        "form_factor": "stand",
+        "matrix": "8,1",
+        "name": "Razer Base Station V2 Chroma",
+        "since": "3.0.0"
+    },
+    "1532:0F21": {
+        "form_factor": "accessory",
+        "matrix": "12,1",
+        "name": "Razer Thunderbolt 4 Dock Chroma",
+        "since": "3.2.0"
+    },
+    "1532:0F26": {
+        "form_factor": "accessory",
+        "matrix": "10,1",
+        "name": "Razer Charging Pad Chroma",
+        "since": "3.0.0"
+    },
+    "1532:0F2B": {
+        "form_factor": "accessory",
+        "matrix": "15,1",
+        "name": "Razer Laptop Stand Chroma V2",
+        "since": "3.7.0"
+    }
+}

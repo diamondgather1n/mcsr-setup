@@ -1,0 +1,466 @@
+#!/usr/bin/env python3
+"""Forward keyd keyboard and pointer events to a local OBS browser source."""
+
+import asyncio
+import functools
+import http.server
+import json
+import os
+import signal
+import threading
+from pathlib import Path
+
+from evdev import InputDevice, ecodes, list_devices
+from websockets.asyncio.server import serve
+from websockets.exceptions import ConnectionClosed
+
+
+HOST = "127.0.0.1"
+HTTP_PORT = 16897
+WEBSOCKET_PORT = 16898
+STATIC_DIR = Path.home() / ".local/share/obs-input-overlay"
+TREE_QUERY_TIMEOUT = 2.0
+WORKSPACE_STATE_FILE = (
+    Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}"))
+    / "obs-input-overlay/current-workspace"
+)
+DEVICE_NAMES = {
+    "keyboard": "keyd virtual keyboard",
+    "pointer": "keyd virtual pointer",
+}
+JAY_TREE_COMMAND = (
+    "/home/nathan/.local/bin/jay",
+    "--json",
+    "--all-json-fields",
+    "tree",
+    "query",
+    "-r",
+    "root",
+)
+WORKSPACE_KEYS = {
+    ecodes.KEY_1: "1",
+    ecodes.KEY_2: "2",
+    ecodes.KEY_3: "3",
+    ecodes.KEY_4: "4",
+    ecodes.KEY_5: "5",
+    ecodes.KEY_6: "6",
+    ecodes.KEY_7: "7",
+    ecodes.KEY_8: "8",
+    ecodes.KEY_9: "9",
+    ecodes.KEY_0: "10",
+}
+META_KEYS = {ecodes.KEY_LEFTMETA, ecodes.KEY_RIGHTMETA}
+WORKSPACE_MODIFIERS = {
+    ecodes.KEY_LEFTSHIFT,
+    ecodes.KEY_RIGHTSHIFT,
+    ecodes.KEY_LEFTCTRL,
+    ecodes.KEY_RIGHTCTRL,
+    ecodes.KEY_LEFTALT,
+    ecodes.KEY_RIGHTALT,
+}
+
+clients = set()
+pressed_keys = set()
+pressed_buttons = set()
+motion_x = 0
+motion_y = 0
+overlay_visible = False
+current_workspace = None
+workspace_sync_task = None
+
+
+def event_name(code, pointer=False):
+    names = ecodes.BTN.get(code) if pointer else ecodes.KEY.get(code)
+    if isinstance(names, tuple):
+        names = names[0]
+    if not names:
+        return f"{'BTN' if pointer else 'KEY'}_{code}"
+    return names
+
+
+def friendly_name(code, pointer=False):
+    special = {
+        "KEY_ESC": "Esc",
+        "KEY_SPACE": "Space",
+        "KEY_TAB": "Tab",
+        "KEY_ENTER": "Enter",
+        "KEY_BACKSPACE": "Backspace",
+        "KEY_LEFTSHIFT": "L Shift",
+        "KEY_RIGHTSHIFT": "R Shift",
+        "KEY_LEFTCTRL": "L Ctrl",
+        "KEY_RIGHTCTRL": "R Ctrl",
+        "KEY_LEFTALT": "L Alt",
+        "KEY_RIGHTALT": "R Alt",
+        "KEY_LEFTMETA": "L Meta",
+        "KEY_RIGHTMETA": "R Meta",
+        "KEY_UP": "Up",
+        "KEY_DOWN": "Down",
+        "KEY_LEFT": "Left",
+        "KEY_RIGHT": "Right",
+        "BTN_LEFT": "LMB",
+        "BTN_RIGHT": "RMB",
+        "BTN_MIDDLE": "MMB",
+        "BTN_SIDE": "Mouse 4",
+        "BTN_EXTRA": "Mouse 5",
+    }
+    name = event_name(code, pointer)
+    if name in special:
+        return special[name]
+    if name.startswith("KEY_"):
+        return name[4:].replace("_", " ").title()
+    if name.startswith("BTN_"):
+        return name[4:].replace("_", " ").title()
+    return name
+
+
+async def broadcast(payload):
+    if not clients:
+        return
+    message = json.dumps(payload, separators=(",", ":"))
+    stale = []
+    for websocket in tuple(clients):
+        try:
+            await websocket.send(message)
+        except ConnectionClosed:
+            stale.append(websocket)
+    for websocket in stale:
+        clients.discard(websocket)
+
+
+async def set_overlay_visibility(visible, force=False):
+    global overlay_visible
+
+    if not force and visible == overlay_visible:
+        return
+    overlay_visible = visible
+    print(
+        "Input highlights enabled" if visible else "Input highlights disabled",
+        flush=True,
+    )
+    await broadcast({"type": "visibility", "visible": visible})
+
+
+def save_current_workspace():
+    if current_workspace is None:
+        return
+    try:
+        WORKSPACE_STATE_FILE.write_text(f"{current_workspace}\n")
+    except OSError as error:
+        print(f"Could not save workspace state: {error}", flush=True)
+
+
+async def sync_workspace_after_hotkey(fallback_workspace):
+    global current_workspace
+
+    current_workspace = fallback_workspace
+    save_current_workspace()
+    await set_overlay_visibility(current_workspace == "7")
+
+
+async def update_workspace_from_hotkey(code, down, repeat):
+    global workspace_sync_task
+
+    workspace = WORKSPACE_KEYS.get(code)
+    if (
+        workspace is None
+        or not down
+        or repeat
+        or not pressed_keys.intersection(META_KEYS)
+        or pressed_keys.intersection(WORKSPACE_MODIFIERS)
+    ):
+        return
+
+    if workspace_sync_task is not None:
+        workspace_sync_task.cancel()
+    workspace_sync_task = asyncio.create_task(
+        sync_workspace_after_hotkey(workspace)
+    )
+
+
+async def websocket_client(websocket):
+    clients.add(websocket)
+    print(f"Browser connected ({len(clients)} client(s))", flush=True)
+    try:
+        await websocket.send(
+            json.dumps(
+                {
+                    "type": "snapshot",
+                    "keys": sorted(pressed_keys),
+                    "buttons": sorted(pressed_buttons),
+                    "visible": overlay_visible,
+                },
+                separators=(",", ":"),
+            )
+        )
+        await websocket.wait_closed()
+    finally:
+        clients.discard(websocket)
+        print(f"Browser disconnected ({len(clients)} client(s))", flush=True)
+
+
+def find_device(expected_name):
+    for path in list_devices():
+        device = InputDevice(path)
+        if device.name == expected_name:
+            return device
+        device.close()
+    return None
+
+
+async def release_stuck_inputs(kind):
+    active = pressed_keys if kind == "keyboard" else pressed_buttons
+    pointer = kind == "pointer"
+    for code in tuple(active):
+        active.discard(code)
+        await broadcast(
+            {
+                "type": "mouse_button" if pointer else "key",
+                "code": code,
+                "name": friendly_name(code, pointer),
+                "down": False,
+                "repeat": False,
+            }
+        )
+
+
+async def watch_device(kind):
+    global motion_x, motion_y
+
+    expected_name = DEVICE_NAMES[kind]
+    while True:
+        device = None
+        try:
+            while device is None:
+                device = find_device(expected_name)
+                if device is None:
+                    print(f"Waiting for {expected_name}", flush=True)
+                    await asyncio.sleep(1)
+
+            print(f"Reading {expected_name} from {device.path}", flush=True)
+            async for event in device.async_read_loop():
+                if event.type == ecodes.EV_KEY:
+                    down = event.value != 0
+                    repeat = event.value == 2
+                    pointer = kind == "pointer" or event.code >= ecodes.BTN_MISC
+                    active = pressed_buttons if pointer else pressed_keys
+                    if down:
+                        active.add(event.code)
+                    else:
+                        active.discard(event.code)
+                    if kind == "keyboard":
+                        await update_workspace_from_hotkey(
+                            event.code,
+                            down,
+                            repeat,
+                        )
+                    await broadcast(
+                        {
+                            "type": "mouse_button" if pointer else "key",
+                            "code": event.code,
+                            "name": friendly_name(event.code, pointer),
+                            "down": down,
+                            "repeat": repeat,
+                        }
+                    )
+                elif kind == "pointer" and event.type == ecodes.EV_REL:
+                    if event.code == ecodes.REL_X:
+                        motion_x += event.value
+                    elif event.code == ecodes.REL_Y:
+                        motion_y += event.value
+                    elif event.code in (ecodes.REL_WHEEL, ecodes.REL_HWHEEL):
+                        await broadcast(
+                            {
+                                "type": "wheel",
+                                "x": event.value if event.code == ecodes.REL_HWHEEL else 0,
+                                "y": event.value if event.code == ecodes.REL_WHEEL else 0,
+                            }
+                        )
+        except asyncio.CancelledError:
+            raise
+        except OSError as error:
+            print(f"{expected_name} disconnected: {error}", flush=True)
+        finally:
+            if device is not None:
+                device.close()
+            await release_stuck_inputs(kind)
+        await asyncio.sleep(1)
+
+
+async def flush_motion():
+    global motion_x, motion_y
+
+    while True:
+        await asyncio.sleep(1 / 30)
+        if motion_x or motion_y:
+            dx, dy = motion_x, motion_y
+            motion_x = 0
+            motion_y = 0
+            await broadcast({"type": "mouse_move", "dx": dx, "dy": dy})
+
+
+def is_minecraft_surface(node):
+    client = node.get("client") or {}
+    title = str(node.get("title") or "").casefold().strip()
+    if title == "waywall":
+        return True
+    if (
+        title.startswith(("minecraft", "lunar client"))
+        and "launcher" not in title
+    ):
+        return True
+
+    identifiers = (
+        node.get("app_id"),
+        node.get("x_class"),
+        node.get("x_instance"),
+        client.get("comm"),
+        Path(client.get("exe") or "").name,
+    )
+    for value in identifiers:
+        compact = "".join(
+            character
+            for character in str(value or "").casefold()
+            if character.isalnum()
+        )
+        if "waywall" in compact or "lunarclient" in compact:
+            return True
+        if "minecraft" in compact and "launcher" not in compact:
+            return True
+
+    return False
+
+
+def tree_visibility_state(node):
+    if not isinstance(node, dict):
+        return set(), False
+
+    workspaces = set()
+    minecraft_visible = False
+    if node.get("visible"):
+        workspace = node.get("workspace")
+        if workspace is not None:
+            workspaces.add(str(workspace))
+
+        minecraft_visible = is_minecraft_surface(node)
+
+    for child in node.get("children", []):
+        child_workspaces, child_minecraft_visible = tree_visibility_state(child)
+        workspaces.update(child_workspaces)
+        minecraft_visible = minecraft_visible or child_minecraft_visible
+
+    return workspaces, minecraft_visible
+
+
+async def query_workspace_state():
+    process = None
+    try:
+        process = await asyncio.create_subprocess_exec(
+            *JAY_TREE_COMMAND,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        stdout, _stderr = await asyncio.wait_for(
+            process.communicate(),
+            timeout=TREE_QUERY_TIMEOUT,
+        )
+    except (OSError, TimeoutError):
+        if process is not None and process.returncode is None:
+            try:
+                process.kill()
+            except ProcessLookupError:
+                pass
+            await process.wait()
+        return None
+
+    if process.returncode != 0:
+        return None
+
+    workspaces = set()
+    minecraft_visible = False
+    for line in stdout.splitlines():
+        try:
+            tree = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        tree_workspaces, tree_minecraft_visible = tree_visibility_state(tree)
+        workspaces.update(tree_workspaces)
+        minecraft_visible = minecraft_visible or tree_minecraft_visible
+    return workspaces, minecraft_visible
+
+
+async def initialize_overlay_visibility():
+    global current_workspace
+
+    try:
+        saved_workspace = WORKSPACE_STATE_FILE.read_text().strip()
+        if saved_workspace in set(WORKSPACE_KEYS.values()):
+            current_workspace = saved_workspace
+    except OSError:
+        pass
+
+    minecraft_visible = False
+    state = await query_workspace_state()
+    if state is not None:
+        visible_workspaces, minecraft_visible = state
+        if visible_workspaces:
+            current_workspace = (
+                "7"
+                if "7" in visible_workspaces
+                else sorted(visible_workspaces)[0]
+            )
+            save_current_workspace()
+
+    await set_overlay_visibility(
+        current_workspace == "7" or minecraft_visible,
+        force=True,
+    )
+
+
+async def main():
+    stop = asyncio.Event()
+    loop = asyncio.get_running_loop()
+    for signum in (signal.SIGINT, signal.SIGTERM):
+        loop.add_signal_handler(signum, stop.set)
+
+    await initialize_overlay_visibility()
+
+    tasks = [
+        asyncio.create_task(watch_device("keyboard")),
+        asyncio.create_task(watch_device("pointer")),
+        asyncio.create_task(flush_motion()),
+    ]
+
+    class QuietStaticHandler(http.server.SimpleHTTPRequestHandler):
+        def log_message(self, _format, *_args):
+            pass
+
+    handler = functools.partial(QuietStaticHandler, directory=str(STATIC_DIR))
+    httpd = http.server.ThreadingHTTPServer((HOST, HTTP_PORT), handler)
+    http_thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    http_thread.start()
+    print(f"Overlay page available at http://{HOST}:{HTTP_PORT}", flush=True)
+
+    try:
+        async with serve(
+            websocket_client,
+            HOST,
+            WEBSOCKET_PORT,
+            ping_interval=20,
+            ping_timeout=20,
+        ):
+            print(
+                f"OBS input overlay listening on ws://{HOST}:{WEBSOCKET_PORT}",
+                flush=True,
+            )
+            await stop.wait()
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        http_thread.join(timeout=2)
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

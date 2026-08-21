@@ -1,0 +1,13 @@
+fn SetEnvironment(
+    names: array(string),
+) {
+}
+
+fn StartTransientUnit(
+    name: string,
+    mode: string,
+    properties: array(struct(string, variant)),
+    aux: array(struct(string, array(struct(string, variant)))),
+) {
+    job: object_path,
+}

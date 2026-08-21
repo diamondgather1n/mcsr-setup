@@ -1,0 +1,251 @@
+# requests
+
+request destroy {
+
+}
+
+request get {
+
+}
+
+request set_api {
+    dev: str,
+    api: str,
+}
+
+request make_render_device {
+    dev: str,
+}
+
+request set_direct_scanout {
+    dev: str,
+    enabled: u32,
+}
+
+request set_transform {
+    output: str,
+    transform: i32,
+}
+
+request set_scale {
+    output: str,
+    scale: u32,
+}
+
+request set_mode {
+    output: str,
+    width: i32,
+    height: i32,
+    refresh_rate_millihz: u32,
+}
+
+request set_position {
+    output: str,
+    x: i32,
+    y: i32,
+}
+
+request set_enabled {
+    output: str,
+    enabled: u32,
+}
+
+request set_non_desktop {
+    output: str,
+    non_desktop: u32,
+}
+
+request set_vrr_mode (since = 2) {
+    output: str,
+    mode: u32,
+}
+
+request set_vrr_cursor_hz (since = 2) {
+    output: str,
+    hz: pod(f64),
+}
+
+request set_tearing_mode (since = 3) {
+    output: str,
+    mode: u32,
+}
+
+request set_fb_format (since = 8) {
+    output: str,
+    format: str,
+}
+
+request set_flip_margin (since = 10) {
+    dev: str,
+    margin_ns: pod(u64),
+}
+
+request set_colors (since = 15) {
+    output: str,
+    color_space: str,
+    eotf: str,
+}
+
+request set_brightness (since = 16) {
+    output: str,
+    lux: pod(f64),
+}
+
+request unset_brightness (since = 16) {
+    output: str,
+}
+
+request set_blend_space (since = 21) {
+    output: str,
+    blend_space: str,
+}
+
+request set_use_native_gamut (since = 23) {
+    output: str,
+    use_native_gamut: u32,
+}
+
+request create_virtual_output (since = 30) {
+    name: str,
+}
+
+request remove_virtual_output (since = 30) {
+    name: str,
+}
+
+request set_scaling_filter (since = 37) {
+    output: str,
+    scaling_filter: u32,
+}
+
+# events
+
+event global {
+    default_gfx_api: str,
+}
+
+event drm_device {
+    id: pod(u64),
+    syspath: str,
+    vendor: u32,
+    vendor_name: str,
+    model: u32,
+    model_name: str,
+    devnode: str,
+    gfx_api: str,
+    render_device: u32,
+}
+
+event connector {
+    id: pod(u64),
+    drm_device: pod(u64),
+    name: str,
+    enabled: u32,
+}
+
+event output {
+    scale: u32,
+    width: i32,
+    height: i32,
+    x: i32,
+    y: i32,
+    transform: i32,
+    manufacturer: str,
+    product: str,
+    serial_number: str,
+    width_mm: i32,
+    height_mm: i32,
+}
+
+event mode {
+    width: i32,
+    height: i32,
+    refresh_rate_millihz: u32,
+    current: u32,
+}
+
+event error {
+    msg: str,
+}
+
+event non_desktop_output {
+    manufacturer: str,
+    product: str,
+    serial_number: str,
+    width_mm: i32,
+    height_mm: i32,
+}
+
+event vrr_state (since = 2) {
+    capable: u32,
+    enabled: u32,
+    mode: u32,
+}
+
+event vrr_cursor_hz (since = 2) {
+    hz: pod(f64),
+}
+
+event tearing_state (since = 3) {
+    mode: u32,
+}
+
+event fb_format (since = 8) {
+    name: str,
+    current: u32,
+}
+
+event flip_margin (since = 10) {
+    margin_ns: pod(u64),
+}
+
+event supported_color_space (since = 15) {
+    color_space: str,
+}
+
+event current_color_space (since = 15) {
+    color_space: str,
+}
+
+event supported_eotf (since = 15) {
+    eotf: str,
+}
+
+event current_eotf (since = 15) {
+    eotf: str,
+}
+
+event brightness_range (since = 16) {
+    min: pod(f64),
+    max: pod(f64),
+    max_fall: pod(f64),
+}
+
+event brightness (since = 16) {
+    lux: pod(f64),
+}
+
+event blend_space (since = 21) {
+    blend_space: str,
+}
+
+event native_gamut (since = 23) {
+    r_x: pod(f64),
+    r_y: pod(f64),
+    g_x: pod(f64),
+    g_y: pod(f64),
+    b_x: pod(f64),
+    b_y: pod(f64),
+    w_x: pod(f64),
+    w_y: pod(f64),
+}
+
+event use_native_gamut (since = 23) {
+}
+
+event arbitrary_modes (since = 29) {
+}
+
+event scaling_filter (since = 37) {
+    scaling_filter: u32,
+}

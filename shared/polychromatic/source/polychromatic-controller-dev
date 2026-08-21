@@ -1,0 +1,30 @@
+#!/bin/bash
+#
+# Starts Polychromatic Controller and performs essential tasks like
+# compiling the styles and locales.
+#
+# The save data is isolated into a directory named "savedatadev".
+#
+# Parameters: Uses --verbose by default, as well as any others passed when
+# executing this script.
+#
+params=$*
+
+cd "$(dirname "$0")"
+
+function abort_on_error() {
+    if [ $1 != 0 ]; then exit 1; fi
+}
+
+# Compile locales
+./scripts/build-locales.sh
+abort_on_error $?
+
+# Isolate configuration
+export POLYCHROMATIC_DEV_CFG=true
+
+# Uncomment to inspect the editor (navigate to localhost:9000 in Chromium)
+#export QTWEBENGINE_REMOTE_DEBUGGING=9000
+
+# Start!
+exec ./polychromatic-controller --verbose $params

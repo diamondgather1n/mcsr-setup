@@ -1,0 +1,17 @@
+request destroy (destructor) {
+}
+
+request set_cursor_position_hint {
+    surface_x: fixed,
+    surface_y: fixed,
+}
+
+request set_region {
+    region: id(wl_region),
+}
+
+event locked {
+}
+
+event unlocked {
+}

@@ -1,0 +1,169 @@
+use {
+    crate::{fixed::Fixed, globals::GlobalName, object::ObjectId},
+    bstr::{BStr, ByteSlice},
+    std::{collections::VecDeque, ptr, rc::Rc},
+    thiserror::Error,
+    uapi::{OwnedFd, Pod},
+};
+
+#[derive(Debug, Error)]
+pub enum MsgParserError {
+    #[error("The message ended unexpectedly")]
+    UnexpectedEof,
+    #[error("The binary array contains more than the required number of bytes")]
+    BinaryArrayTooLarge,
+    #[error("The size of the binary array is not a multiple of the element size")]
+    BinaryArraySize,
+    #[error("The message contained a string of size 0")]
+    EmptyString,
+    #[error("Message is missing a required file descriptor")]
+    MissingFd,
+    #[error("There is trailing data after the message")]
+    TrailingData,
+    #[error("String is not UTF-8")]
+    NonUtf8,
+    #[error("The message has an unexpected size")]
+    UnexpectedMessageSize,
+}
+
+pub struct MsgParser<'a, 'b> {
+    fds: &'a mut VecDeque<Rc<OwnedFd>>,
+    pos: usize,
+    data: &'b [u32],
+}
+
+impl<'a, 'b> MsgParser<'a, 'b> {
+    pub fn new(fds: &'a mut VecDeque<Rc<OwnedFd>>, data: &'b [u32]) -> Self {
+        Self { fds, pos: 0, data }
+    }
+
+    #[inline(always)]
+    pub fn data(&self) -> &[u32] {
+        self.data
+    }
+
+    pub fn int(&mut self) -> Result<i32, MsgParserError> {
+        if self.pos >= self.data.len() {
+            return Err(MsgParserError::UnexpectedEof);
+        }
+        let res = unsafe { *(self.data.as_ptr().add(self.pos) as *const i32) };
+        self.pos += 1;
+        Ok(res)
+    }
+
+    pub fn uint(&mut self) -> Result<u32, MsgParserError> {
+        self.int().map(|i| i as u32)
+    }
+
+    #[expect(dead_code)]
+    pub fn u64(&mut self) -> Result<u64, MsgParserError> {
+        let hi = self.uint()?;
+        let lo = self.uint()?;
+        Ok(((hi as u64) << 32) | lo as u64)
+    }
+
+    #[expect(dead_code)]
+    pub fn u64_rev(&mut self) -> Result<u64, MsgParserError> {
+        let lo = self.uint()?;
+        let hi = self.uint()?;
+        Ok(((hi as u64) << 32) | lo as u64)
+    }
+
+    pub fn object<T>(&mut self) -> Result<T, MsgParserError>
+    where
+        ObjectId: Into<T>,
+    {
+        self.int().map(|i| ObjectId::from_raw(i as u32).into())
+    }
+
+    #[expect(dead_code)]
+    pub fn global(&mut self) -> Result<GlobalName, MsgParserError> {
+        self.int().map(|i| GlobalName::from_raw(i as u32))
+    }
+
+    pub fn fixed(&mut self) -> Result<Fixed, MsgParserError> {
+        self.int().map(Fixed)
+    }
+
+    pub fn bstr(&mut self) -> Result<&'b BStr, MsgParserError> {
+        let s = self.array()?;
+        if s.len() == 0 {
+            return Err(MsgParserError::EmptyString);
+        }
+        Ok(s[..s.len() - 1].as_bstr())
+    }
+
+    pub fn optstr(&mut self) -> Result<Option<&'b str>, MsgParserError> {
+        let s = self.array()?;
+        if s.len() == 0 {
+            return Ok(None);
+        }
+        match s[..s.len() - 1].as_bstr().to_str() {
+            Ok(s) => Ok(Some(s)),
+            _ => Err(MsgParserError::NonUtf8),
+        }
+    }
+
+    pub fn str(&mut self) -> Result<&'b str, MsgParserError> {
+        match self.bstr()?.to_str() {
+            Ok(s) => Ok(s),
+            _ => Err(MsgParserError::NonUtf8),
+        }
+    }
+
+    pub fn fd(&mut self) -> Result<Rc<OwnedFd>, MsgParserError> {
+        match self.fds.pop_front() {
+            Some(fd) => Ok(fd),
+            _ => Err(MsgParserError::MissingFd),
+        }
+    }
+
+    pub fn eof(&self) -> Result<(), MsgParserError> {
+        if self.pos == self.data.len() {
+            Ok(())
+        } else {
+            Err(MsgParserError::TrailingData)
+        }
+    }
+
+    pub fn array(&mut self) -> Result<&'b [u8], MsgParserError> {
+        let len = self.uint()? as usize;
+        let cap = (len + 3) >> 2;
+        if cap > self.data.len() - self.pos {
+            return Err(MsgParserError::UnexpectedEof);
+        }
+        let pos = self.pos;
+        self.pos += cap;
+        Ok(&uapi::as_bytes(&self.data[pos..])[..len])
+    }
+
+    pub fn binary<T: Pod>(&mut self) -> Result<T, MsgParserError> {
+        let array = self.array()?;
+        if array.len() < size_of::<T>() {
+            return Err(MsgParserError::UnexpectedEof);
+        }
+        if array.len() > size_of::<T>() {
+            return Err(MsgParserError::BinaryArrayTooLarge);
+        }
+        unsafe { Ok(ptr::read_unaligned(array.as_ptr() as _)) }
+    }
+
+    pub fn binary_array<T: Pod>(&mut self) -> Result<&'b [T], MsgParserError> {
+        if align_of::<T>() > 4 {
+            panic!("Alignment of binary array element is too large");
+        };
+        if size_of::<T>() == 0 {
+            panic!("Size of binary array element is 0");
+        };
+        let array = self.array()?;
+        if array.len() % size_of::<T>() != 0 {
+            return Err(MsgParserError::BinaryArraySize);
+        }
+        unsafe {
+            Ok(std::slice::from_raw_parts(
+                array.as_ptr() as _,
+                array.len() / size_of::<T>(),
+            ))
+        }
+    }
+}

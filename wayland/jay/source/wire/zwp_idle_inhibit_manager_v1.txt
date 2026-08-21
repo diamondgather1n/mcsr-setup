@@ -1,0 +1,7 @@
+request destroy (destructor) {
+}
+
+request create_inhibitor {
+    id: id(zwp_idle_inhibitor_v1) (new),
+    surface: id(wl_surface),
+}

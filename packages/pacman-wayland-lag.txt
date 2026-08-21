@@ -1,0 +1,15 @@
+waybar
+i3blocks
+polkit-gnome
+curl
+xdg-desktop-portal
+xdg-desktop-portal-wlr
+xdg-desktop-portal-gtk
+qpwgraph
+python-evdev
+python-websockets
+libnotify
+gawk
+iproute2
+libpulse
+dotool

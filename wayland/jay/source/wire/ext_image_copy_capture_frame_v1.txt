@@ -1,0 +1,39 @@
+request destroy (destructor) {
+}
+
+request attach_buffer {
+    buffer: id(wl_buffer),
+}
+
+request damage_buffer {
+    x: i32,
+    y: i32,
+    width: i32,
+    height: i32,
+}
+
+request capture {
+}
+
+event transform {
+    transform: u32,
+}
+
+event damage {
+    x: i32,
+    y: i32,
+    width: i32,
+    height: i32,
+}
+
+event presentation_time {
+    tv_sec: u64,
+    tv_nsec: u32,
+}
+
+event ready {
+}
+
+event failed {
+    reason: u32,
+}

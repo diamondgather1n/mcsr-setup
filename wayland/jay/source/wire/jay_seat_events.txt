@@ -1,0 +1,280 @@
+# events
+
+event key {
+    seat: u32,
+    time_usec: pod(u64),
+    key: u32,
+    state: u32,
+}
+
+event pointer_abs {
+    seat: u32,
+    time_usec: pod(u64),
+    x: fixed,
+    y: fixed,
+}
+
+event pointer_rel {
+    seat: u32,
+    time_usec: pod(u64),
+    x: fixed,
+    y: fixed,
+    dx: fixed,
+    dy: fixed,
+    dx_unaccelerated: fixed,
+    dy_unaccelerated: fixed,
+}
+
+event button {
+    seat: u32,
+    time_usec: pod(u64),
+    button: u32,
+    state: u32,
+}
+
+event unused {
+
+}
+
+event axis_source {
+    source: u32,
+}
+
+event axis_px {
+    dist: fixed,
+    axis: u32,
+}
+
+event axis_stop {
+    axis: u32,
+}
+
+event axis_120 {
+    dist: i32,
+    axis: u32,
+}
+
+event axis_frame {
+    seat: u32,
+    time_usec: pod(u64),
+}
+
+event modifiers {
+    seat: u32,
+    modifiers: u32,
+    group: u32,
+}
+
+event axis_inverted {
+    inverted: u32,
+    axis: u32,
+}
+
+event swipe_begin {
+    seat: u32,
+    time_usec: pod(u64),
+    fingers: u32,
+}
+
+event swipe_update {
+    seat: u32,
+    time_usec: pod(u64),
+    dx: fixed,
+    dy: fixed,
+    dx_unaccelerated: fixed,
+    dy_unaccelerated: fixed,
+}
+
+event swipe_end {
+    seat: u32,
+    time_usec: pod(u64),
+    cancelled: i32,
+}
+
+event pinch_begin {
+    seat: u32,
+    time_usec: pod(u64),
+    fingers: u32,
+}
+
+event pinch_update {
+    seat: u32,
+    time_usec: pod(u64),
+    dx: fixed,
+    dy: fixed,
+    dx_unaccelerated: fixed,
+    dy_unaccelerated: fixed,
+    scale: fixed,
+    rotation: fixed,
+}
+
+event pinch_end {
+    seat: u32,
+    time_usec: pod(u64),
+    cancelled: i32,
+}
+
+event hold_begin {
+    seat: u32,
+    time_usec: pod(u64),
+    fingers: u32,
+}
+
+event hold_end {
+    seat: u32,
+    time_usec: pod(u64),
+    cancelled: i32,
+}
+
+event switch_event {
+    seat: u32,
+    time_usec: pod(u64),
+    input_device: u32,
+    event: u32,
+}
+
+event tablet_tool_proximity_in {
+}
+
+event tablet_tool_proximity_out {
+}
+
+event tablet_tool_down {
+}
+
+event tablet_tool_up {
+}
+
+event tablet_tool_motion {
+    x: fixed,
+    y: fixed,
+}
+
+event tablet_tool_pressure {
+    pressure: pod(f64),
+}
+
+event tablet_tool_distance {
+    distance: pod(f64),
+}
+
+event tablet_tool_tilt {
+    tilt_x: pod(f64),
+    tilt_y: pod(f64),
+}
+
+event tablet_tool_rotation {
+    degrees: pod(f64),
+}
+
+event tablet_tool_slider {
+    position: pod(f64),
+}
+
+event tablet_tool_wheel {
+    degrees: pod(f64),
+    clicks: i32,
+}
+
+event tablet_tool_button {
+    button: u32,
+    state: u32,
+}
+
+event tablet_tool_frame {
+    seat: u32,
+    time_usec: pod(u64),
+    input_device: u32,
+    tool: u32,
+}
+
+event tablet_pad_mode_switch {
+    seat: u32,
+    time_usec: pod(u64),
+    input_device: u32,
+    group: u32,
+    mode: u32,
+}
+
+event tablet_pad_button {
+    seat: u32,
+    time_usec: pod(u64),
+    input_device: u32,
+    button: u32,
+    state: u32,
+}
+
+event tablet_pad_strip_source {
+    source: u32,
+}
+
+event tablet_pad_strip_position {
+    position: pod(f64),
+}
+
+event tablet_pad_strip_stop {
+}
+
+event tablet_pad_strip_frame {
+    seat: u32,
+    time_usec: pod(u64),
+    input_device: u32,
+    strip: u32,
+}
+
+event tablet_pad_ring_source {
+    source: u32,
+}
+
+event tablet_pad_ring_angle {
+    degrees: pod(f64),
+}
+
+event tablet_pad_ring_stop {
+}
+
+event tablet_pad_ring_frame {
+    seat: u32,
+    time_usec: pod(u64),
+    input_device: u32,
+    ring: u32,
+}
+
+event touch_down {
+    seat: u32,
+    time_usec: pod(u64),
+    id: i32,
+    x: fixed,
+    y: fixed,
+}
+
+event touch_up {
+    seat: u32,
+    time_usec: pod(u64),
+    id: i32,
+}
+
+event touch_motion {
+    seat: u32,
+    time_usec: pod(u64),
+    id: i32,
+    x: fixed,
+    y: fixed,
+}
+
+event touch_cancel {
+    seat: u32,
+    time_usec: pod(u64),
+    id: i32,
+}
+
+event tablet_pad_dial_delta {
+    value120: i32,
+}
+
+event tablet_pad_dial_frame {
+    seat: u32,
+    time_usec: pod(u64),
+    input_device: u32,
+    dial: u32,
+}

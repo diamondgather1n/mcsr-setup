@@ -13,7 +13,5 @@ if [ -z "${jar:-}" ]; then
   exit 1
 fi
 
-mcsr-update-launcher --prompt || true
-
 cd "$HOME"
 exec java -jar "$jar"

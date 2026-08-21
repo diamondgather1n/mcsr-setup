@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="overlay.css?v=21">
+  <title>Keyboard and Mouse Inputs</title>
+</head>
+<body>
+  <main id="overlay">
+    <section class="keyboard" aria-label="Keyboard inputs">
+      <div class="board">
+        <div class="row row-number">
+          <span class="key key-normal" data-codes="1,41">`</span>
+          <span class="key key-normal" data-codes="2,61">1</span>
+          <span class="key key-normal" data-codes="3,190">2</span>
+          <span class="key key-normal" data-codes="4,191">3</span>
+          <span class="key key-normal" data-codes="5,192">4</span>
+          <span class="key key-normal" data-codes="6,193">5</span>
+        </div>
+
+        <div class="row row-qwert">
+          <span class="key key-tab" data-codes="15,187">Tab</span>
+          <span class="key key-normal" data-codes="16">Q</span>
+          <span class="key key-normal" data-codes="17">W</span>
+          <span class="key key-normal" data-codes="18">E</span>
+          <span class="key key-normal" data-codes="19">R</span>
+          <span class="key key-normal" data-codes="20">T</span>
+        </div>
+
+        <div class="row row-home">
+          <span class="key key-caps" data-codes="58">Caps</span>
+          <span class="key key-normal" data-codes="30">A</span>
+          <span class="key key-normal" data-codes="31">S</span>
+          <span class="key key-normal" data-codes="32">D</span>
+          <span class="key key-normal" data-codes="33">F</span>
+          <span class="key key-normal" data-codes="34">G</span>
+          <span class="key key-normal" data-codes="35">H</span>
+        </div>
+
+        <div class="row row-lower">
+          <span class="key key-shift" data-codes="42,54">Shift</span>
+          <span class="key key-normal" data-codes="86">\</span>
+          <span class="key key-normal" data-codes="44">Z</span>
+          <span class="key key-normal" data-codes="45,15">X</span>
+          <span class="key key-normal" data-codes="46">C</span>
+          <span class="key key-normal" data-codes="47">V</span>
+          <span class="key key-normal" data-codes="48">B</span>
+          <span class="key key-normal" data-codes="49">N</span>
+        </div>
+
+        <div class="row row-bottom">
+          <span class="key key-bottom" data-codes="29,97">Ctrl</span>
+          <span class="key key-bottom" data-codes="125,183">Win</span>
+          <span class="key key-bottom" data-codes="56,184">Alt</span>
+          <span class="key key-space" data-codes="57">Space</span>
+        </div>
+      </div>
+
+      <div class="simple-mouse" aria-label="Mouse buttons">
+        <div class="simple-mouse-row">
+          <span class="key simple-mouse-key" data-button="272">LMB</span>
+          <span class="key simple-mouse-key" data-button="273">RMB</span>
+        </div>
+
+        <div class="simple-mouse-row">
+          <span
+            class="key simple-mouse-key"
+            data-button="275"
+            data-codes="102"
+          >MB4</span>
+
+          <span
+            class="key simple-mouse-key"
+            data-button="276"
+            data-codes="14"
+          >MB5</span>
+        </div>
+      </div>
+
+    </section>
+
+    <section class="history" aria-hidden="true">
+      <ol id="history-list"></ol>
+    </section>
+
+    <div id="hidden-telemetry" aria-hidden="true">
+      <span id="motion-dot"></span>
+      <span id="wheel-up"></span>
+      <span id="wheel-down"></span>
+    </div>
+
+    <span id="connection" aria-hidden="true"></span>
+  </main>
+
+  <script src="overlay.js?v=21"></script>
+</body>
+</html>

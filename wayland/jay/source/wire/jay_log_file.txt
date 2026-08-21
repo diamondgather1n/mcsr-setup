@@ -1,0 +1,10 @@
+# requests
+
+request destroy {
+}
+
+# events
+
+event path {
+    path: bstr,
+}

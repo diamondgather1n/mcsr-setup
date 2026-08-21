@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=Jay
+Comment=A Wayland Compositor
+Exec=/home/nathan/.local/bin/jay run
+Type=Application
+DesktopNames=jay

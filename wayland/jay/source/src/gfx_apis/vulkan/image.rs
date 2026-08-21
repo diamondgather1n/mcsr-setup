@@ -1,0 +1,786 @@
+use {
+    crate::{
+        cmm::cmm_description::{ColorDescription, LinearColorDescription},
+        format::Format,
+        gfx_api::{
+            AcquireSync, AsyncShmGfxTexture, AsyncShmGfxTextureCallback,
+            AsyncShmGfxTextureTransferCancellable, FdSync, GfxApiOp, GfxBlendBuffer, GfxBuffer,
+            GfxError, GfxFramebuffer, GfxInternalFramebuffer, GfxStagingBuffer, GfxTexture,
+            PendingShmTransfer, ReleaseSync, ShmGfxTexture, ShmMemory,
+        },
+        gfx_apis::vulkan::{
+            VulkanError,
+            allocator::VulkanAllocation,
+            device::{DescriptorBufferDevice, DescriptorHeapDevice, VulkanDevice},
+            format::VulkanModifierLimits,
+            renderer::VulkanRenderer,
+            shm_image::VulkanShmImage,
+            transfer::TransferType,
+        },
+        rect::Region,
+        theme::Color,
+        utils::{clonecell::CloneCell, oserror::OsErrorExt2, page_alloc::PageAllocEntry},
+        video::dmabuf::{DmaBuf, PlaneVec},
+    },
+    ash::vk::{
+        BindImageMemoryInfo, BindImagePlaneMemoryInfo, ComponentMapping, ComponentSwizzle,
+        DescriptorDataEXT, DescriptorGetInfoEXT, DescriptorImageInfo, DescriptorType, DeviceMemory,
+        Extent3D, ExternalMemoryHandleTypeFlags, ExternalMemoryImageCreateInfo, FormatFeatureFlags,
+        HostAddressRangeEXT, Image, ImageAspectFlags, ImageCreateFlags, ImageCreateInfo,
+        ImageDescriptorInfoEXT, ImageDrmFormatModifierExplicitCreateInfoEXT, ImageLayout,
+        ImageMemoryRequirementsInfo2, ImagePlaneMemoryRequirementsInfo, ImageSubresourceRange,
+        ImageTiling, ImageType, ImageUsageFlags, ImageView, ImageViewCreateInfo, ImageViewType,
+        ImportMemoryFdInfoKHR, MemoryAllocateInfo, MemoryDedicatedAllocateInfo,
+        MemoryFdPropertiesKHR, MemoryPropertyFlags, MemoryRequirements2, ResourceDescriptorDataEXT,
+        ResourceDescriptorInfoEXT, SampleCountFlags, Sampler, SharingMode, SubresourceLayout,
+    },
+    core::slice,
+    gpu_alloc::UsageFlags,
+    run_on_drop::{OnDrop, on_drop},
+    std::{
+        cell::Cell,
+        fmt::{Debug, Formatter},
+        mem,
+        rc::Rc,
+    },
+};
+
+pub struct VulkanDmaBufImageTemplate {
+    pub(super) renderer: Rc<VulkanRenderer>,
+    pub(super) width: u32,
+    pub(super) height: u32,
+    pub(super) disjoint: bool,
+    pub(super) dmabuf: Rc<DmaBuf>,
+    pub(super) render_limits: Option<VulkanModifierLimits>,
+    pub(super) texture_limits: Option<VulkanModifierLimits>,
+    pub(super) render_needs_bridge: bool,
+}
+
+pub struct VulkanImage {
+    pub(super) renderer: Rc<VulkanRenderer>,
+    pub(super) format: &'static Format,
+    pub(super) width: u32,
+    pub(super) height: u32,
+    pub(super) stride: u32,
+    pub(super) texture_view: Option<ImageView>,
+    pub(super) render_view: Option<ImageView>,
+    pub(super) image: Image,
+    pub(super) is_undefined: Cell<bool>,
+    pub(super) contents_are_undefined: Cell<bool>,
+    pub(super) queue_state: Cell<QueueState>,
+    pub(super) ty: VulkanImageMemory,
+    pub(super) bridge: Option<VulkanFramebufferBridge>,
+    pub(super) execution_version: Cell<u64>,
+    pub(super) descriptor_buffer: Option<DescriptorBufferImage>,
+    pub(super) descriptor_heap: Option<DescriptorHeapImage>,
+}
+
+pub struct DescriptorBufferImage {
+    pub(super) sampled_image_descriptor: Option<Box<[u8]>>,
+}
+
+pub struct DescriptorHeapImage {
+    pub(super) sampled_image_descriptor: Option<Box<[u8]>>,
+    pub(super) sampled_image_descriptor_entry: CloneCell<Option<Rc<PageAllocEntry>>>,
+}
+
+impl VulkanRenderer {
+    pub(super) fn descriptor_buffer_image(
+        &self,
+        usage: ImageUsageFlags,
+        view: ImageView,
+    ) -> Option<DescriptorBufferImage> {
+        self.descriptor_buffer
+            .as_ref()
+            .map(|db| DescriptorBufferImage {
+                sampled_image_descriptor: db.device.sampled_image_descriptor(usage, view),
+            })
+    }
+
+    pub(super) fn descriptor_heap_image(
+        &self,
+        usage: ImageUsageFlags,
+        view: &ImageViewCreateInfo<'_>,
+    ) -> Result<Option<DescriptorHeapImage>, VulkanError> {
+        let Some(dh) = &self.descriptor_heap else {
+            return Ok(None);
+        };
+        Ok(Some(DescriptorHeapImage {
+            sampled_image_descriptor: dh.device.sampled_image_descriptor(usage, view)?,
+            sampled_image_descriptor_entry: Default::default(),
+        }))
+    }
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum QueueState {
+    Acquired { family: QueueFamily },
+    Releasing,
+    Released { to: QueueFamily },
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum QueueFamily {
+    Gfx,
+    Transfer,
+}
+
+impl QueueState {
+    pub fn acquire(self, new: QueueFamily) -> QueueTransfer {
+        match self {
+            QueueState::Acquired { family } if family == new => QueueTransfer::Unnecessary,
+            QueueState::Released { to } if to == new => QueueTransfer::Possible,
+            _ => QueueTransfer::Impossible,
+        }
+    }
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum QueueTransfer {
+    Unnecessary,
+    Possible,
+    Impossible,
+}
+
+pub enum VulkanImageMemory {
+    DmaBuf(VulkanDmaBufImage),
+    Internal(VulkanShmImage),
+    Rw(VulkanAllocation),
+    Blend(VulkanAllocation),
+}
+
+pub struct VulkanDmaBufImage {
+    pub(super) template: VulkanDmaBufImageTemplate,
+    pub(super) mems: PlaneVec<DeviceMemory>,
+}
+
+pub struct VulkanFramebufferBridge {
+    pub(super) dmabuf_image: Image,
+    pub(super) _allocation: VulkanAllocation,
+}
+
+impl Drop for VulkanDmaBufImage {
+    fn drop(&mut self) {
+        unsafe {
+            for &mem in &self.mems {
+                self.template.renderer.device.device.free_memory(mem, None);
+            }
+        }
+    }
+}
+
+impl Drop for VulkanImage {
+    fn drop(&mut self) {
+        let d = &self.renderer.device.device;
+        unsafe {
+            if let Some(texture_view) = self.texture_view {
+                d.destroy_image_view(texture_view, None);
+            }
+            if let Some(render_view) = self.render_view {
+                d.destroy_image_view(render_view, None);
+            }
+            d.destroy_image(self.image, None);
+            if let Some(bridge) = &self.bridge {
+                d.destroy_image(bridge.dmabuf_image, None);
+            }
+        }
+    }
+}
+
+impl VulkanRenderer {
+    pub fn import_dmabuf(
+        self: &Rc<Self>,
+        dmabuf: &Rc<DmaBuf>,
+    ) -> Result<VulkanDmaBufImageTemplate, VulkanError> {
+        let format = self
+            .device
+            .formats
+            .get(&dmabuf.format.drm)
+            .ok_or(VulkanError::FormatNotSupported)?;
+        let modifier = format
+            .modifiers
+            .get(&dmabuf.modifier)
+            .ok_or(VulkanError::ModifierNotSupported)?;
+        if dmabuf.width <= 0 || dmabuf.height <= 0 {
+            return Err(VulkanError::NonPositiveImageSize);
+        }
+        let width = dmabuf.width as u32;
+        let height = dmabuf.height as u32;
+        if modifier.planes != dmabuf.planes.len() {
+            return Err(VulkanError::BadPlaneCount);
+        }
+        let disjoint = dmabuf.is_disjoint();
+        if disjoint && !modifier.features.contains(FormatFeatureFlags::DISJOINT) {
+            return Err(VulkanError::DisjointNotSupported);
+        }
+        Ok(VulkanDmaBufImageTemplate {
+            renderer: self.clone(),
+            width,
+            height,
+            disjoint,
+            dmabuf: dmabuf.clone(),
+            render_limits: modifier.render_limits,
+            texture_limits: modifier.texture_limits,
+            render_needs_bridge: modifier.render_needs_bridge,
+        })
+    }
+}
+
+fn image_view_create_info(
+    image: Image,
+    format: &'static Format,
+    for_rendering: bool,
+) -> ImageViewCreateInfo<'static> {
+    ImageViewCreateInfo::default()
+        .image(image)
+        .view_type(ImageViewType::TYPE_2D)
+        .format(format.vk_format)
+        .components(ComponentMapping {
+            r: ComponentSwizzle::IDENTITY,
+            g: ComponentSwizzle::IDENTITY,
+            b: ComponentSwizzle::IDENTITY,
+            a: match format.has_alpha || for_rendering {
+                true => ComponentSwizzle::IDENTITY,
+                false => ComponentSwizzle::ONE,
+            },
+        })
+        .subresource_range(ImageSubresourceRange {
+            aspect_mask: ImageAspectFlags::COLOR,
+            base_mip_level: 0,
+            level_count: 1,
+            base_array_layer: 0,
+            layer_count: 1,
+        })
+}
+
+impl VulkanDevice {
+    pub fn create_image_view(
+        &self,
+        image: Image,
+        format: &'static Format,
+        for_rendering: bool,
+    ) -> Result<ImageView, VulkanError> {
+        let create_info = image_view_create_info(image, format, for_rendering);
+        let view = unsafe { self.device.create_image_view(&create_info, None) };
+        view.map_err(VulkanError::CreateImageView)
+    }
+}
+
+impl DescriptorBufferDevice {
+    pub(super) fn create_sampler_descriptor(&self, sampler: Sampler) -> Box<[u8]> {
+        let mut buf = vec![0; self.sampler_descriptor_size].into_boxed_slice();
+        let info = DescriptorGetInfoEXT::default()
+            .ty(DescriptorType::SAMPLER)
+            .data(DescriptorDataEXT {
+                p_sampler: &sampler,
+            });
+        unsafe {
+            self.device.get_descriptor(&info, &mut buf);
+        }
+        buf
+    }
+
+    pub(super) fn sampled_image_descriptor(
+        &self,
+        usage: ImageUsageFlags,
+        view: ImageView,
+    ) -> Option<Box<[u8]>> {
+        if !usage.contains(ImageUsageFlags::SAMPLED) {
+            return None;
+        }
+        let mut buf = vec![0; self.sampled_image_descriptor_size].into_boxed_slice();
+        let image_info = DescriptorImageInfo::default()
+            .image_view(view)
+            .image_layout(ImageLayout::SHADER_READ_ONLY_OPTIMAL);
+        let info = DescriptorGetInfoEXT::default()
+            .ty(DescriptorType::SAMPLED_IMAGE)
+            .data(DescriptorDataEXT {
+                p_sampled_image: &image_info,
+            });
+        unsafe {
+            self.device.get_descriptor(&info, &mut buf);
+        }
+        Some(buf)
+    }
+}
+
+impl DescriptorHeapDevice {
+    pub(super) fn sampled_image_descriptor(
+        &self,
+        usage: ImageUsageFlags,
+        view: &ImageViewCreateInfo<'_>,
+    ) -> Result<Option<Box<[u8]>>, VulkanError> {
+        if !usage.contains(ImageUsageFlags::SAMPLED) {
+            return Ok(None);
+        }
+        let mut buf = vec![0; self.image_descriptor_size].into_boxed_slice();
+        let image = ImageDescriptorInfoEXT::default()
+            .view(view)
+            .layout(ImageLayout::SHADER_READ_ONLY_OPTIMAL);
+        let resources = ResourceDescriptorInfoEXT::default()
+            .ty(DescriptorType::SAMPLED_IMAGE)
+            .data(ResourceDescriptorDataEXT { p_image: &image });
+        let descriptor = HostAddressRangeEXT::default().address(&mut buf);
+        unsafe {
+            self.device
+                .write_resource_descriptors(
+                    slice::from_ref(&resources),
+                    slice::from_ref(&descriptor),
+                )
+                .map_err(VulkanError::WriteDescriptor)?;
+        }
+        Ok(Some(buf))
+    }
+}
+
+impl VulkanDmaBufImageTemplate {
+    pub fn create_framebuffer(self) -> Result<Rc<VulkanImage>, VulkanError> {
+        self.create_image(true)
+    }
+
+    pub fn create_texture(self) -> Result<Rc<VulkanImage>, VulkanError> {
+        self.create_image(false)
+    }
+
+    fn create_image(self, for_rendering: bool) -> Result<Rc<VulkanImage>, VulkanError> {
+        let device = &self.renderer.device;
+        let limits = match for_rendering {
+            true => self.render_limits,
+            false => self.texture_limits,
+        };
+        let limits = limits.ok_or(VulkanError::ModifierUseNotSupported)?;
+        if self.width > limits.max_width || self.height > limits.max_height {
+            return Err(VulkanError::ImageTooLarge);
+        }
+        let usage;
+        let image = {
+            let plane_layouts: PlaneVec<_> = self
+                .dmabuf
+                .planes
+                .iter()
+                .map(|p| SubresourceLayout {
+                    offset: p.offset as _,
+                    row_pitch: p.stride as _,
+                    size: 0,
+                    array_pitch: 0,
+                    depth_pitch: 0,
+                })
+                .collect();
+            let mut mod_info = ImageDrmFormatModifierExplicitCreateInfoEXT::default()
+                .drm_format_modifier(self.dmabuf.modifier)
+                .plane_layouts(&plane_layouts);
+            let mut memory_image_create_info = ExternalMemoryImageCreateInfo::default()
+                .handle_types(ExternalMemoryHandleTypeFlags::DMA_BUF_EXT);
+            let flags = match self.disjoint {
+                true => ImageCreateFlags::DISJOINT,
+                false => ImageCreateFlags::empty(),
+            };
+            usage = match for_rendering {
+                true => match self.render_needs_bridge {
+                    true => ImageUsageFlags::TRANSFER_DST,
+                    false => ImageUsageFlags::TRANSFER_SRC | ImageUsageFlags::COLOR_ATTACHMENT,
+                },
+                false => ImageUsageFlags::TRANSFER_SRC | ImageUsageFlags::SAMPLED,
+            };
+            let create_info = ImageCreateInfo::default()
+                .image_type(ImageType::TYPE_2D)
+                .format(self.dmabuf.format.vk_format)
+                .mip_levels(1)
+                .array_layers(1)
+                .tiling(ImageTiling::DRM_FORMAT_MODIFIER_EXT)
+                .samples(SampleCountFlags::TYPE_1)
+                .sharing_mode(SharingMode::EXCLUSIVE)
+                .initial_layout(ImageLayout::UNDEFINED)
+                .extent(Extent3D {
+                    width: self.width,
+                    height: self.height,
+                    depth: 1,
+                })
+                .usage(usage)
+                .flags(flags)
+                .push_next(&mut memory_image_create_info)
+                .push_next(&mut mod_info);
+            let image = unsafe { device.device.create_image(&create_info, None) };
+            image.map_err(VulkanError::CreateImage)?
+        };
+        let destroy_image = on_drop(|| unsafe { device.device.destroy_image(image, None) });
+        let num_device_memories = match self.disjoint {
+            true => self.dmabuf.planes.len(),
+            false => 1,
+        };
+        let mut device_memories = PlaneVec::new();
+        let mut free_device_memories = PlaneVec::new();
+        let mut bind_image_plane_memory_infos = PlaneVec::new();
+        for plane_idx in 0..num_device_memories {
+            let dma_buf_plane = &self.dmabuf.planes[plane_idx];
+            let mut memory_fd_properties = MemoryFdPropertiesKHR::default();
+            unsafe {
+                device
+                    .external_memory_fd
+                    .get_memory_fd_properties(
+                        ExternalMemoryHandleTypeFlags::DMA_BUF_EXT,
+                        dma_buf_plane.fd.raw(),
+                        &mut memory_fd_properties,
+                    )
+                    .map_err(VulkanError::MemoryFdProperties)?;
+            }
+            let mut image_memory_requirements_info =
+                ImageMemoryRequirementsInfo2::default().image(image);
+            let mut image_plane_memory_requirements_info;
+            if self.disjoint {
+                let plane_aspect = match plane_idx {
+                    0 => ImageAspectFlags::MEMORY_PLANE_0_EXT,
+                    1 => ImageAspectFlags::MEMORY_PLANE_1_EXT,
+                    2 => ImageAspectFlags::MEMORY_PLANE_2_EXT,
+                    3 => ImageAspectFlags::MEMORY_PLANE_3_EXT,
+                    _ => unreachable!(),
+                };
+                image_plane_memory_requirements_info =
+                    ImagePlaneMemoryRequirementsInfo::default().plane_aspect(plane_aspect);
+                image_memory_requirements_info = image_memory_requirements_info
+                    .push_next(&mut image_plane_memory_requirements_info);
+                bind_image_plane_memory_infos
+                    .push(BindImagePlaneMemoryInfo::default().plane_aspect(plane_aspect));
+            }
+            let mut memory_requirements = MemoryRequirements2::default();
+            unsafe {
+                device.device.get_image_memory_requirements2(
+                    &image_memory_requirements_info,
+                    &mut memory_requirements,
+                );
+            }
+            let memory_type_bits = memory_requirements.memory_requirements.memory_type_bits
+                & memory_fd_properties.memory_type_bits;
+            let memory_type_index = self
+                .renderer
+                .device
+                .find_memory_type(MemoryPropertyFlags::empty(), memory_type_bits)
+                .ok_or(VulkanError::MemoryType)?;
+            let fd = uapi::fcntl_dupfd_cloexec(dma_buf_plane.fd.raw(), 0)
+                .map_os_err(VulkanError::Dupfd)?;
+            let mut memory_dedicated_allocate_info =
+                MemoryDedicatedAllocateInfo::default().image(image);
+            let mut import_memory_fd_info = ImportMemoryFdInfoKHR::default()
+                .fd(fd.raw())
+                .handle_type(ExternalMemoryHandleTypeFlags::DMA_BUF_EXT);
+            let memory_allocate_info = MemoryAllocateInfo::default()
+                .allocation_size(memory_requirements.memory_requirements.size)
+                .memory_type_index(memory_type_index)
+                .push_next(&mut import_memory_fd_info)
+                .push_next(&mut memory_dedicated_allocate_info);
+            let device_memory =
+                unsafe { device.device.allocate_memory(&memory_allocate_info, None) };
+            let device_memory = device_memory.map_err(VulkanError::AllocateMemory)?;
+            fd.unwrap();
+            device_memories.push(device_memory);
+            free_device_memories.push(on_drop(move || unsafe {
+                device.device.free_memory(device_memory, None)
+            }));
+        }
+        let mut bind_image_memory_infos = Vec::with_capacity(num_device_memories);
+        let mut bind_image_plane_memory_infos = bind_image_plane_memory_infos.iter_mut();
+        for mem in device_memories.iter().copied() {
+            let mut info = BindImageMemoryInfo::default().image(image).memory(mem);
+            if self.disjoint {
+                info = info.push_next(bind_image_plane_memory_infos.next().unwrap());
+            }
+            bind_image_memory_infos.push(info);
+        }
+        let res = unsafe { device.device.bind_image_memory2(&bind_image_memory_infos) };
+        res.map_err(VulkanError::BindImageMemory)?;
+        let mut primary_image = image;
+        let mut destroy_bridge_image = None;
+        let mut bridge = None;
+        if for_rendering && self.render_needs_bridge {
+            let (bridge_image, allocation) = self.create_bridge()?;
+            primary_image = bridge_image;
+            destroy_bridge_image = Some(on_drop(|| unsafe {
+                device.device.destroy_image(primary_image, None)
+            }));
+            bridge = Some(VulkanFramebufferBridge {
+                dmabuf_image: image,
+                _allocation: allocation,
+            });
+        }
+        let texture_view = (!for_rendering && self.renderer.descriptor_heap.is_none())
+            .then(|| device.create_image_view(primary_image, self.dmabuf.format, false))
+            .transpose()?;
+        let destroy_texture_view = texture_view
+            .map(|v| on_drop(move || unsafe { device.device.destroy_image_view(v, None) }));
+        let render_view = for_rendering
+            .then(|| device.create_image_view(primary_image, self.dmabuf.format, true))
+            .transpose()?;
+        let destroy_render_view = render_view
+            .map(|v| on_drop(move || unsafe { device.device.destroy_image_view(v, None) }));
+        let descriptor_heap = self.renderer.descriptor_heap_image(
+            usage,
+            &image_view_create_info(image, self.dmabuf.format, false),
+        )?;
+        destroy_render_view.map(OnDrop::forget);
+        destroy_texture_view.map(OnDrop::forget);
+        free_device_memories.drain(..).for_each(OnDrop::forget);
+        drop(free_device_memories);
+        mem::forget(destroy_image);
+        mem::forget(destroy_bridge_image);
+        Ok(Rc::new(VulkanImage {
+            renderer: self.renderer.clone(),
+            texture_view,
+            render_view,
+            image: primary_image,
+            width: self.width,
+            height: self.height,
+            stride: 0,
+            format: self.dmabuf.format,
+            is_undefined: Cell::new(true),
+            contents_are_undefined: Cell::new(false),
+            queue_state: Cell::new(QueueState::Acquired {
+                family: QueueFamily::Gfx,
+            }),
+            bridge,
+            execution_version: Cell::new(0),
+            descriptor_buffer: texture_view
+                .and_then(|v| self.renderer.descriptor_buffer_image(usage, v)),
+            descriptor_heap,
+            ty: VulkanImageMemory::DmaBuf(VulkanDmaBufImage {
+                template: self,
+                mems: device_memories,
+            }),
+        }))
+    }
+
+    fn create_bridge(&self) -> Result<(Image, VulkanAllocation), VulkanError> {
+        let create_info = ImageCreateInfo::default()
+            .image_type(ImageType::TYPE_2D)
+            .format(self.dmabuf.format.vk_format)
+            .mip_levels(1)
+            .array_layers(1)
+            .tiling(ImageTiling::OPTIMAL)
+            .samples(SampleCountFlags::TYPE_1)
+            .sharing_mode(SharingMode::EXCLUSIVE)
+            .initial_layout(ImageLayout::UNDEFINED)
+            .extent(Extent3D {
+                width: self.width,
+                height: self.height,
+                depth: 1,
+            })
+            .usage(ImageUsageFlags::COLOR_ATTACHMENT | ImageUsageFlags::TRANSFER_SRC);
+        let image = unsafe { self.renderer.device.device.create_image(&create_info, None) };
+        let image = image.map_err(VulkanError::CreateImage)?;
+        let destroy_image =
+            on_drop(|| unsafe { self.renderer.device.device.destroy_image(image, None) });
+        let memory_requirements = unsafe {
+            self.renderer
+                .device
+                .device
+                .get_image_memory_requirements(image)
+        };
+        let allocation = self.renderer.allocator.alloc(
+            &memory_requirements,
+            UsageFlags::FAST_DEVICE_ACCESS,
+            false,
+        )?;
+        let res = unsafe {
+            self.renderer.device.device.bind_image_memory(
+                image,
+                allocation.memory,
+                allocation.offset,
+            )
+        };
+        res.map_err(VulkanError::BindImageMemory)?;
+        destroy_image.forget();
+        Ok((image, allocation))
+    }
+}
+
+impl Debug for VulkanImage {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("VulkanDmaBufImage").finish_non_exhaustive()
+    }
+}
+
+impl GfxFramebuffer for VulkanImage {
+    fn physical_size(&self) -> (i32, i32) {
+        (self.width as _, self.height as _)
+    }
+
+    fn render_with_region_impl(
+        self: Rc<Self>,
+        acquire_sync: AcquireSync,
+        release_sync: ReleaseSync,
+        cd: &Rc<ColorDescription>,
+        ops: &[GfxApiOp],
+        clear: Option<&Color>,
+        clear_cd: &Rc<LinearColorDescription>,
+        region: &Region,
+        blend_buffer: Option<&Rc<dyn GfxBlendBuffer>>,
+        blend_cd: &Rc<ColorDescription>,
+        sync: &[FdSync],
+    ) -> Result<Option<FdSync>, GfxError> {
+        let mut blend_buffer = blend_buffer
+            .map(|b| b.clone().into_vk(&self.renderer.device.device))
+            .transpose()?;
+        if let Some(bb) = &blend_buffer
+            && bb.size() != self.size()
+        {
+            log::error!(
+                "Blend buffer has invalid size: {:?} != {:?}",
+                bb.size(),
+                self.size()
+            );
+            blend_buffer = None;
+        }
+        self.renderer
+            .execute(
+                &self,
+                acquire_sync,
+                release_sync,
+                cd,
+                ops,
+                clear,
+                clear_cd,
+                region,
+                blend_buffer,
+                blend_cd,
+                sync,
+            )
+            .map_err(|e| e.into())
+    }
+
+    fn format(&self) -> &'static Format {
+        self.format
+    }
+}
+
+impl GfxInternalFramebuffer for VulkanImage {
+    fn stride(&self) -> i32 {
+        let VulkanImageMemory::Internal(shm) = &self.ty else {
+            unreachable!();
+        };
+        shm.stride as _
+    }
+
+    fn staging_size(&self) -> usize {
+        let VulkanImageMemory::Internal(shm) = &self.ty else {
+            unreachable!();
+        };
+        shm.size as _
+    }
+
+    fn download(
+        self: Rc<Self>,
+        staging: &Rc<dyn GfxStagingBuffer>,
+        callback: Rc<dyn AsyncShmGfxTextureCallback>,
+        mem: Rc<dyn ShmMemory>,
+        damage: Region,
+    ) -> Result<Option<PendingShmTransfer>, GfxError> {
+        let VulkanImageMemory::Internal(shm) = &self.ty else {
+            unreachable!();
+        };
+        let staging = staging.clone().into_vk(&self.renderer.device.device);
+        let pending = shm.async_transfer(
+            &self,
+            staging,
+            &mem,
+            damage,
+            callback,
+            TransferType::Download,
+        )?;
+        Ok(pending)
+    }
+}
+
+impl GfxTexture for VulkanImage {
+    fn size(&self) -> (i32, i32) {
+        (self.width as _, self.height as _)
+    }
+
+    fn dmabuf(&self) -> Option<&Rc<DmaBuf>> {
+        match &self.ty {
+            VulkanImageMemory::DmaBuf(b) => Some(&b.template.dmabuf),
+            VulkanImageMemory::Internal(_) => None,
+            VulkanImageMemory::Blend(_) => None,
+            VulkanImageMemory::Rw(_) => None,
+        }
+    }
+
+    fn format(&self) -> &'static Format {
+        self.format
+    }
+}
+
+impl ShmGfxTexture for VulkanImage {}
+
+impl AsyncShmGfxTexture for VulkanImage {
+    fn staging_size(&self) -> usize {
+        let VulkanImageMemory::Internal(shm) = &self.ty else {
+            unreachable!();
+        };
+        shm.size as _
+    }
+
+    fn async_upload(
+        self: Rc<Self>,
+        staging: &Rc<dyn GfxStagingBuffer>,
+        callback: Rc<dyn AsyncShmGfxTextureCallback>,
+        mem: Rc<dyn ShmMemory>,
+        damage: Region,
+    ) -> Result<Option<PendingShmTransfer>, GfxError> {
+        let VulkanImageMemory::Internal(shm) = &self.ty else {
+            unreachable!();
+        };
+        let staging = staging.clone().into_vk(&self.renderer.device.device);
+        let pending =
+            shm.async_transfer(&self, staging, &mem, damage, callback, TransferType::Upload)?;
+        Ok(pending)
+    }
+
+    fn async_upload_from_buffer(
+        self: Rc<Self>,
+        buf: &Rc<dyn GfxBuffer>,
+        callback: Rc<dyn AsyncShmGfxTextureCallback>,
+        damage: Region,
+    ) -> Result<Option<PendingShmTransfer>, GfxError> {
+        let VulkanImageMemory::Internal(shm) = &self.ty else {
+            unreachable!();
+        };
+        let buf = buf.clone().into_vk(&self.renderer.device.device);
+        let pending = shm.async_transfer2(&self, buf, damage, callback)?;
+        Ok(pending)
+    }
+
+    fn sync_upload(self: Rc<Self>, mem: &[Cell<u8>], damage: Region) -> Result<(), GfxError> {
+        let VulkanImageMemory::Internal(shm) = &self.ty else {
+            unreachable!();
+        };
+        if shm.async_data.as_ref().unwrap().busy.get() {
+            return Err(VulkanError::AsyncCopyBusy.into());
+        }
+        shm.upload(&self, mem, Some(damage.rects()))?;
+        Ok(())
+    }
+
+    fn compatible_with(
+        &self,
+        format: &'static Format,
+        width: i32,
+        height: i32,
+        stride: i32,
+    ) -> bool {
+        self.format == format
+            && self.width == width as u32
+            && self.height == height as u32
+            && self.stride == stride as u32
+    }
+}
+
+impl AsyncShmGfxTextureTransferCancellable for VulkanImage {
+    fn cancel(&self, id: u64) {
+        let VulkanImageMemory::Internal(shm) = &self.ty else {
+            unreachable!();
+        };
+        let data = shm.async_data.as_ref().unwrap();
+        if data.callback_id.get() == id {
+            data.callback.take();
+        }
+    }
+}

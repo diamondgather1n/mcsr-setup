@@ -1,0 +1,15 @@
+request create_buffer {
+    id: id(wl_buffer) (new),
+    offset: i32,
+    width: i32,
+    height: i32,
+    stride: i32,
+    format: u32,
+}
+
+request destroy (destructor) {
+}
+
+request resize {
+    size: i32,
+}

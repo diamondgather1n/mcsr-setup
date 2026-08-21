@@ -1,0 +1,20 @@
+# requests
+
+request capture_output {
+    frame: id(zwlr_screencopy_frame_v1),
+    overlay_cursor: i32,
+    output: id(wl_output),
+}
+
+request capture_output_region {
+    frame: id(zwlr_screencopy_frame_v1),
+    overlay_cursor: i32,
+    output: id(wl_output),
+    x: i32,
+    y: i32,
+    width: i32,
+    height: i32,
+}
+
+request destroy {
+}

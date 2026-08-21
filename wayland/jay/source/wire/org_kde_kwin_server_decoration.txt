@@ -1,0 +1,15 @@
+# requests
+
+request release {
+
+}
+
+request request_mode {
+    mode: u32,
+}
+
+# events
+
+event mode {
+    mode: u32,
+}

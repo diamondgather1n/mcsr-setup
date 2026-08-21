@@ -1,0 +1,136 @@
+use {
+    crate::gfx_apis::vulkan::{
+        VulkanError,
+        device::{DescriptorBufferDevice, VulkanDevice},
+    },
+    arrayvec::ArrayVec,
+    ash::vk::{
+        DescriptorSetLayout, DescriptorSetLayoutBinding, DescriptorSetLayoutCreateFlags,
+        DescriptorSetLayoutCreateInfo, DescriptorType, DeviceSize, ShaderStageFlags,
+    },
+    std::{rc::Rc, slice},
+};
+
+pub(super) struct VulkanDescriptorSetLayout {
+    pub(super) device: Rc<VulkanDevice>,
+    pub(super) layout: DescriptorSetLayout,
+    pub(super) size: DeviceSize,
+    pub(super) offsets: ArrayVec<DeviceSize, 4>,
+}
+
+impl Drop for VulkanDescriptorSetLayout {
+    fn drop(&mut self) {
+        unsafe {
+            self.device
+                .device
+                .destroy_descriptor_set_layout(self.layout, None);
+        }
+    }
+}
+
+impl VulkanDevice {
+    pub(super) fn create_tex_legacy_descriptor_set_layout(
+        self: &Rc<Self>,
+    ) -> Result<Rc<VulkanDescriptorSetLayout>, VulkanError> {
+        let binding = DescriptorSetLayoutBinding::default()
+            .stage_flags(ShaderStageFlags::FRAGMENT)
+            .descriptor_count(1)
+            .descriptor_type(DescriptorType::COMBINED_IMAGE_SAMPLER);
+        let create_info = DescriptorSetLayoutCreateInfo::default()
+            .bindings(slice::from_ref(&binding))
+            .flags(DescriptorSetLayoutCreateFlags::PUSH_DESCRIPTOR_KHR);
+        let layout = unsafe { self.device.create_descriptor_set_layout(&create_info, None) };
+        let layout = layout.map_err(VulkanError::CreateDescriptorSetLayout)?;
+        Ok(Rc::new(VulkanDescriptorSetLayout {
+            device: self.clone(),
+            layout,
+            size: 0,
+            offsets: Default::default(),
+        }))
+    }
+
+    pub(super) fn create_tex_sampler_descriptor_set_layout(
+        self: &Rc<Self>,
+    ) -> Result<Rc<VulkanDescriptorSetLayout>, VulkanError> {
+        let binding = DescriptorSetLayoutBinding::default()
+            .stage_flags(ShaderStageFlags::FRAGMENT)
+            .descriptor_count(1)
+            .descriptor_type(DescriptorType::SAMPLER);
+        let create_info = DescriptorSetLayoutCreateInfo::default()
+            .bindings(slice::from_ref(&binding))
+            .flags(DescriptorSetLayoutCreateFlags::DESCRIPTOR_BUFFER_EXT);
+        let layout = unsafe { self.device.create_descriptor_set_layout(&create_info, None) };
+        let layout = layout.map_err(VulkanError::CreateDescriptorSetLayout)?;
+        let db = self.descriptor_buffer.as_ref().unwrap();
+        let size = db.get_descriptor_set_size(layout);
+        let mut offsets = ArrayVec::new();
+        unsafe {
+            offsets.push(
+                db.device
+                    .get_descriptor_set_layout_binding_offset(layout, 0),
+            );
+        }
+        Ok(Rc::new(VulkanDescriptorSetLayout {
+            device: self.clone(),
+            layout,
+            size,
+            offsets,
+        }))
+    }
+
+    pub(super) fn create_tex_resource_descriptor_set_layout(
+        self: &Rc<Self>,
+    ) -> Result<Rc<VulkanDescriptorSetLayout>, VulkanError> {
+        let bindings = [
+            DescriptorSetLayoutBinding::default()
+                .binding(0)
+                .stage_flags(ShaderStageFlags::FRAGMENT)
+                .descriptor_count(1)
+                .descriptor_type(DescriptorType::SAMPLED_IMAGE),
+            DescriptorSetLayoutBinding::default()
+                .binding(1)
+                .stage_flags(ShaderStageFlags::FRAGMENT)
+                .descriptor_count(1)
+                .descriptor_type(DescriptorType::UNIFORM_BUFFER),
+            DescriptorSetLayoutBinding::default()
+                .binding(2)
+                .stage_flags(ShaderStageFlags::FRAGMENT)
+                .descriptor_count(1)
+                .descriptor_type(DescriptorType::UNIFORM_BUFFER),
+            DescriptorSetLayoutBinding::default()
+                .binding(3)
+                .stage_flags(ShaderStageFlags::FRAGMENT)
+                .descriptor_count(1)
+                .descriptor_type(DescriptorType::UNIFORM_BUFFER),
+        ];
+        let create_info = DescriptorSetLayoutCreateInfo::default()
+            .bindings(&bindings)
+            .flags(DescriptorSetLayoutCreateFlags::DESCRIPTOR_BUFFER_EXT);
+        let layout = unsafe { self.device.create_descriptor_set_layout(&create_info, None) };
+        let layout = layout.map_err(VulkanError::CreateDescriptorSetLayout)?;
+        let db = self.descriptor_buffer.as_ref().unwrap();
+        let size = db.get_descriptor_set_size(layout);
+        let mut offsets = ArrayVec::new();
+        unsafe {
+            let db = &db.device;
+            offsets.push(db.get_descriptor_set_layout_binding_offset(layout, 0));
+            offsets.push(db.get_descriptor_set_layout_binding_offset(layout, 1));
+            offsets.push(db.get_descriptor_set_layout_binding_offset(layout, 2));
+            offsets.push(db.get_descriptor_set_layout_binding_offset(layout, 3));
+        }
+        Ok(Rc::new(VulkanDescriptorSetLayout {
+            device: self.clone(),
+            layout,
+            size,
+            offsets,
+        }))
+    }
+}
+
+impl DescriptorBufferDevice {
+    fn get_descriptor_set_size(&self, layout: DescriptorSetLayout) -> DeviceSize {
+        let mut size = unsafe { self.device.get_descriptor_set_layout_size(layout) };
+        size = (size + self.descriptor_buffer_offset_mask) & !self.descriptor_buffer_offset_mask;
+        size
+    }
+}

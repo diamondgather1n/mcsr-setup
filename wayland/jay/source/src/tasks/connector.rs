@@ -1,0 +1,420 @@
+use {
+    crate::{
+        backend::{Connector, ConnectorEvent, ConnectorId, MonitorInfo},
+        control_center::CCI_OUTPUTS,
+        globals::GlobalName,
+        ifs::{
+            head_management::{HeadManager, HeadState},
+            jay_tray_v1::JayTrayV1Global,
+            wl_output::{BlendSpace, WlOutputGlobal},
+        },
+        output_schedule::OutputSchedule,
+        state::{ConnectorData, OutputData, State},
+        tree::{OutputNode, Transform, TreeTimeline::LiveTL, WsMoveConfig, move_ws_to_output},
+        utils::{asyncevent::AsyncEvent, hash_map_ext::HashMapExt, rc_eq::RcEq},
+    },
+    std::{
+        cell::{Cell, RefCell},
+        collections::VecDeque,
+        fmt,
+        rc::Rc,
+    },
+};
+
+pub fn handle(state: &Rc<State>, connector: &Rc<dyn Connector>) {
+    let mut drm_dev = None;
+    if let Some(dev_id) = connector.drm_dev() {
+        drm_dev = match state.drm_devs.get(&dev_id) {
+            Some(dev) => Some(dev),
+            _ => panic!("connector's drm device does not exist"),
+        };
+    }
+    let backend_state = connector.state();
+    let id = connector.id();
+    let name = Rc::new(connector.name());
+    let head_state = HeadState {
+        connector_id: id,
+        name: RcEq(name.clone()),
+        position: (0, 0),
+        size: (0, 0),
+        active: backend_state.active,
+        connected: false,
+        transform: Transform::None,
+        scale: Default::default(),
+        scaling_filter: Default::default(),
+        wl_output: None,
+        connector_enabled: backend_state.enabled,
+        in_compositor_space: false,
+        mode: backend_state.mode,
+        monitor_info: None,
+        inherent_non_desktop: false,
+        override_non_desktop: backend_state.non_desktop_override,
+        vrr: backend_state.vrr,
+        vrr_mode: Default::default(),
+        tearing_enabled: backend_state.tearing,
+        tearing_active: false,
+        tearing_mode: Default::default(),
+        format: backend_state.format,
+        color_space: backend_state.color_space,
+        eotf: backend_state.eotf,
+        supported_formats: Default::default(),
+        brightness: None,
+        blend_space: BlendSpace::Srgb,
+        use_native_gamut: false,
+        vrr_cursor_hz: None,
+        persistent_state: None,
+    };
+    let data = Rc::new(ConnectorData {
+        id,
+        connector: connector.clone(),
+        handler: Default::default(),
+        connected: Cell::new(false),
+        name,
+        description: Default::default(),
+        drm_dev: drm_dev.clone(),
+        async_event: Rc::new(AsyncEvent::default()),
+        damaged: Cell::new(false),
+        damage: Default::default(),
+        needs_vblank_emulation: Cell::new(false),
+        damage_intersect: Default::default(),
+        state: RefCell::new(backend_state),
+        head_manager: HeadManager::new(state.head_names.next(), head_state),
+        wlr_output_heads: Default::default(),
+    });
+    if let Some(dev) = drm_dev {
+        dev.connectors.set(id, data.clone());
+    }
+    let oh = ConnectorHandler {
+        id,
+        state: state.clone(),
+        data: data.clone(),
+    };
+    let future = state.eng.spawn("connector handler", oh.handle());
+    data.handler.set(Some(future));
+    state.trigger_cci(CCI_OUTPUTS);
+    if state.connectors.set(id, data.clone()).is_some() {
+        panic!("Connector id has been reused");
+    }
+    state.dmabuf_feedback.update();
+    state.update_prime_scanout_modifiers(&data);
+}
+
+struct ConnectorHandler {
+    id: ConnectorId,
+    state: Rc<State>,
+    data: Rc<ConnectorData>,
+}
+
+impl ConnectorHandler {
+    async fn handle(self) {
+        {
+            let ae = self.data.async_event.clone();
+            self.data.connector.on_change(Rc::new(move || ae.trigger()));
+        }
+        if let Some(config) = self.state.config.get() {
+            config.new_connector(self.id);
+        }
+        'outer: loop {
+            while let Some(event) = self.data.connector.event() {
+                match event {
+                    ConnectorEvent::Removed => break 'outer,
+                    ConnectorEvent::Connected(mi) => self.handle_connected(mi).await,
+                    _ => unreachable!(),
+                }
+            }
+            self.data.async_event.triggered().await;
+        }
+        if let Some(dev) = &self.data.drm_dev {
+            dev.connectors.remove(&self.id);
+        }
+        if let Some(config) = self.state.config.get() {
+            config.del_connector(self.id);
+        }
+        self.data.handler.set(None);
+        self.state.connectors.remove(&self.id);
+        self.state.dmabuf_feedback.update();
+        self.state.render_ctx_prime_modifiers.remove(&Some(self.id));
+        self.state.trigger_cci(CCI_OUTPUTS);
+    }
+
+    async fn handle_connected(&self, info: MonitorInfo) {
+        log::info!(
+            "Connector {} connected ({})",
+            self.data.name,
+            self.data.connector.kernel_id(),
+        );
+        self.data.connected.set(true);
+        self.data.set_state(&self.state, info.state.clone());
+        *self.data.description.borrow_mut() = create_description(&info);
+        let name = self.state.globals.name();
+        if info.non_desktop_effective {
+            self.handle_non_desktop_connected(info).await;
+        } else {
+            self.handle_desktop_connected(info, name).await;
+        }
+        self.data.connected.set(false);
+        self.data
+            .head_manager
+            .handle_output_disconnected(&self.state);
+        self.state.trigger_cci(CCI_OUTPUTS);
+        for head in self.data.wlr_output_heads.lock().drain_values() {
+            head.handle_disconnected();
+        }
+        log::info!("Connector {} disconnected", self.data.name);
+    }
+
+    async fn handle_desktop_connected(&self, info: MonitorInfo, name: GlobalName) {
+        let output_id = info.output_id.clone();
+        let desired_state = self.state.ensure_persistent_output_state(&output_id);
+        let global = Rc::new(WlOutputGlobal::new(
+            name,
+            &self.state,
+            &self.data,
+            info.modes.clone(),
+            info.width_mm,
+            info.height_mm,
+            &output_id,
+            &desired_state,
+            info.eotfs.clone(),
+            info.color_spaces.clone(),
+            info.primaries,
+            info.luminance,
+        ));
+        let schedule = Rc::new(OutputSchedule::new(&self.state, &self.data, &desired_state));
+        let _schedule = self
+            .state
+            .eng
+            .spawn("output schedule", schedule.clone().drive());
+        let tray = Rc::new(JayTrayV1Global {
+            name: self.state.globals.name(),
+            output: global.opt.clone(),
+        });
+        let on = OutputNode::new(self.state.node_ids.next(), &global, &schedule);
+        self.state
+            .add_output_scale(on.node_state[LiveTL].scale.get());
+        let output_data = Rc::new(OutputData {
+            connector: self.data.clone(),
+            monitor_info: Rc::new(info),
+            node: Some(on.clone()),
+            lease_connectors: Default::default(),
+        });
+        self.state.outputs.set(self.id, output_data.clone());
+        on.schedule_update_render_data();
+        self.state.root.outputs.set(self.id, on.clone());
+        self.state.outputs_without_hc.fetch_add(1);
+        self.state.output_extents_changed();
+        global.opt.node.set(Some(on.clone()));
+        global.opt.global.set(Some(global.clone()));
+        let mut ws_to_move = VecDeque::new();
+        if self.state.root.outputs.len() == 1 {
+            for seat in self.state.globals.seats.lock().values() {
+                seat.cursor_group().first_output_connected(&on);
+            }
+            let dummy = self.state.dummy_output.get().unwrap();
+            for ws in dummy.workspaces.iter_valid(LiveTL) {
+                ws_to_move.push_back(ws.item.clone());
+            }
+        }
+        for source in self.state.root.outputs.lock().values() {
+            if source.id == on.id {
+                continue;
+            }
+            for ws in source.workspaces.iter_valid(LiveTL) {
+                if ws.desired_output.get() == global.output_id {
+                    ws_to_move.push_back(ws.item.clone());
+                }
+            }
+        }
+        while let Some(ws) = ws_to_move.pop_front() {
+            let make_visible = (ws.visible_on_desired_output.get()
+                && ws.desired_output.get() == output_id)
+                || ws_to_move.is_empty();
+            let config = WsMoveConfig {
+                make_visible_always: false,
+                make_visible_if_empty: make_visible,
+                source_is_destroyed: false,
+                before: None,
+            };
+            move_ws_to_output(&ws, &on, config);
+        }
+        if let Some(config) = self.state.config.get() {
+            config.connector_connected(self.id);
+        }
+        self.state.add_global(&global);
+        self.state.add_global(&tray);
+        self.state.tree_changed();
+        on.update_presentation_type();
+        self.state.workspace_managers.announce_output(&on);
+        self.data
+            .head_manager
+            .handle_output_connected(&self.state, &output_data);
+        self.state.trigger_cci(CCI_OUTPUTS);
+        self.state.wlr_output_managers.announce_head(&output_data);
+        let ons = &on.node_state[LiveTL];
+        on.add_damage_area(&ons.pos.get());
+        self.data.damage();
+        'outer: loop {
+            while let Some(event) = self.data.connector.event() {
+                match event {
+                    ConnectorEvent::Disconnected => break 'outer,
+                    ConnectorEvent::HardwareCursor(hc) => {
+                        on.schedule.set_hardware_cursor(&hc);
+                        on.set_hardware_cursor(hc);
+                        self.state.refresh_hardware_cursors();
+                    }
+                    ConnectorEvent::FormatsChanged(formats) => {
+                        self.data.head_manager.handle_formats_change(&formats);
+                        self.state.trigger_cci(CCI_OUTPUTS);
+                        on.global.formats.set(formats);
+                    }
+                    ConnectorEvent::State(state) => {
+                        self.data.set_state(&self.state, state);
+                    }
+                    ev => unreachable!("received unexpected event {:?}", ev),
+                }
+            }
+            self.data.async_event.triggered().await;
+        }
+        if let Some(config) = self.state.config.get() {
+            config.connector_disconnected(self.id);
+        }
+        for jo in on.jay_outputs.lock().drain_values() {
+            jo.send_destroyed();
+        }
+        let screencasts: Vec<_> = on.screencasts.lock().values().cloned().collect();
+        for sc in screencasts {
+            sc.do_destroy();
+        }
+        for sc in on.screencopies.lock().drain_values() {
+            sc.send_failed();
+        }
+        for sc in on.ext_copy_sessions.lock().drain_values() {
+            sc.stop();
+        }
+        global.destroyed.set(true);
+        if on.hardware_cursor.is_none() {
+            self.state.outputs_without_hc.fetch_sub(1);
+        }
+        self.state.root.outputs.remove(&self.id);
+        self.state.output_extents_changed();
+        self.state.outputs.remove(&self.id);
+        ons.lock_surface.take();
+        {
+            let mut surfaces = vec![];
+            for layer in &on.layers {
+                surfaces.extend(layer.iter_valid(LiveTL));
+            }
+            for surface in surfaces {
+                surface.destroy_node();
+                surface.send_closed();
+            }
+        }
+        on.hide_overlay();
+        let target = match self.state.root.outputs.lock().values().next() {
+            Some(o) => o.clone(),
+            _ => self.state.dummy_output.get().unwrap(),
+        };
+        for ws in on.workspaces.iter_valid(LiveTL) {
+            let wns = &ws.node_state[LiveTL];
+            if ws.desired_output.get() == output_id {
+                ws.visible_on_desired_output.set(wns.visible.get());
+            }
+            let config = WsMoveConfig {
+                make_visible_always: false,
+                make_visible_if_empty: wns.visible.get(),
+                source_is_destroyed: true,
+                before: None,
+            };
+            move_ws_to_output(&ws, &target, config);
+        }
+        for group in on.ext_workspace_groups.lock().drain_values() {
+            group.handle_destroyed();
+        }
+        for seat in self.state.globals.seats.lock().values() {
+            seat.cursor_group().output_disconnected(&on, &target);
+        }
+        for item in on.tray_items.iter_valid(LiveTL) {
+            item.item.clone().destroy_node();
+        }
+        self.state
+            .remove_output_scale(on.node_state[LiveTL].scale.get());
+        if let Some(zwlr_gamma_control) = on.active_zwlr_gamma_control.take() {
+            zwlr_gamma_control.send_failed();
+        }
+        on.clear();
+        let _ = self.state.remove_global(&global);
+        let _ = self.state.remove_global(&tray);
+        self.state.tree_changed();
+        self.state.damage_full(LiveTL);
+    }
+
+    async fn handle_non_desktop_connected(&self, monitor_info: MonitorInfo) {
+        let output_data = Rc::new(OutputData {
+            connector: self.data.clone(),
+            monitor_info: Rc::new(monitor_info),
+            node: None,
+            lease_connectors: Default::default(),
+        });
+        self.state.outputs.set(self.id, output_data.clone());
+        let advertise = || {
+            if let Some(dev) = &self.data.drm_dev {
+                for binding in dev.lease_global.bindings.lock().values() {
+                    binding.create_connector(&output_data);
+                    binding.send_done();
+                }
+            }
+        };
+        let withdraw = || {
+            for con in output_data.lease_connectors.lock().drain_values() {
+                con.send_withdrawn();
+                if !con.device.destroyed.get() {
+                    con.device.send_done();
+                }
+            }
+        };
+        advertise();
+        if let Some(config) = self.state.config.get() {
+            config.connector_connected(self.id);
+        }
+        self.data
+            .head_manager
+            .handle_output_connected(&self.state, &output_data);
+        self.state.trigger_cci(CCI_OUTPUTS);
+        self.state.wlr_output_managers.announce_head(&output_data);
+        'outer: loop {
+            while let Some(event) = self.data.connector.event() {
+                match event {
+                    ConnectorEvent::Disconnected => break 'outer,
+                    ConnectorEvent::Available => advertise(),
+                    ConnectorEvent::Unavailable => withdraw(),
+                    ev => unreachable!("received unexpected event {:?}", ev),
+                }
+            }
+            self.data.async_event.triggered().await;
+        }
+        withdraw();
+        self.state.outputs.remove(&self.id);
+        if let Some(config) = self.state.config.get() {
+            config.connector_disconnected(self.id);
+        }
+    }
+}
+
+fn create_description(info: &MonitorInfo) -> String {
+    fmt::from_fn(|f| {
+        let mut needs_space = false;
+        let id = &info.output_id;
+        for s in [&id.manufacturer, &id.model, &id.serial_number] {
+            if s.is_empty() {
+                continue;
+            }
+            if needs_space {
+                f.write_str(" ")?;
+            }
+            needs_space = true;
+            f.write_str(s)?;
+        }
+        Ok(())
+    })
+    .to_string()
+}

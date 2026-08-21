@@ -3,4 +3,4 @@
 xmodmap "$HOME/MCSR/x11/xmodmap/norwegian"
 "$HOME/MCSR/x11/shell-scripts/i3 config.sh"
 killall gocrosshair
-"$HOME/gocrosshair/gocrosshair" &
+gocrosshair &

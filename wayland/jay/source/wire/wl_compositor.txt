@@ -1,0 +1,10 @@
+request create_surface {
+    id: id(wl_surface) (new),
+}
+
+request create_region {
+    id: id(wl_region) (new),
+}
+
+request release (destructor, since = 7) {
+}

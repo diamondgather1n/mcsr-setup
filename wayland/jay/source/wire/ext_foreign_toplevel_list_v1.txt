@@ -1,0 +1,12 @@
+event toplevel {
+    toplevel: id(ext_foreign_toplevel_handle_v1) (new),
+}
+
+event finished {
+}
+
+request stop {
+}
+
+request destroy (destructor) {
+}

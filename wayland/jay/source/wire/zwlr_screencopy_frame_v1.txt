@@ -1,0 +1,50 @@
+# requests
+
+request copy {
+    buffer: id(wl_buffer),
+}
+
+request destroy {
+}
+
+request copy_with_damage (since = 2) {
+    buffer: id(wl_buffer),
+}
+
+# events
+
+event buffer {
+    format: u32,
+    width: u32,
+    height: u32,
+    stride: u32,
+}
+
+event flags {
+    flags: u32,
+}
+
+event ready {
+    tv_sec: u64,
+    tv_nsec: u32,
+}
+
+event failed {
+
+}
+
+event damage {
+    x: u32,
+    y: u32,
+    width: u32,
+    height: u32,
+}
+
+event linux_dmabuf {
+    format: u32,
+    width: u32,
+    height: u32,
+}
+
+event buffer_done {
+}

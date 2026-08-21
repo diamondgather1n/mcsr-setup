@@ -1,0 +1,29 @@
+request destroy (destructor) {
+}
+
+event done {
+}
+
+event format_table {
+    fd: fd,
+    size: u32,
+}
+
+event main_device {
+    device: pod(uapi::c::dev_t),
+}
+
+event tranche_done {
+}
+
+event tranche_target_device {
+    device: pod(uapi::c::dev_t),
+}
+
+event tranche_formats {
+    indices: array(pod(u16)),
+}
+
+event tranche_flags {
+    flags: u32,
+}

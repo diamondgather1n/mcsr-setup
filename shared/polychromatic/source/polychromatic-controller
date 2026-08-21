@@ -1,0 +1,521 @@
+#!/usr/bin/python3
+#
+# Polychromatic is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Polychromatic is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Polychromatic. If not, see <http://www.gnu.org/licenses/>.
+#
+# Copyright (C) 2015-2024 Luke Horwell <code@horwell.me>
+#               2015-2016 Terry Cain <terry@terrys-home.co.uk>
+
+"""
+The primary "Controller" GUI for Polychromatic based on PyQt6.
+"""
+import argparse
+import os
+import signal
+import sys
+import time
+import webbrowser
+
+import setproctitle
+from PyQt6 import QtCore, uic
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QAction, QFont, QFontDatabase, QIcon
+from PyQt6.QtWidgets import (QApplication, QLabel, QMainWindow, QMessageBox,
+                             QPushButton, QTabWidget, QToolButton, QWidget)
+
+import polychromatic.common as common
+import polychromatic.controller as controller
+import polychromatic.controller.shared as shared
+import polychromatic.preferences as pref
+import polychromatic.procpid as procpid
+from polychromatic.base import PolychromaticBase
+
+VERSION = "0.9.6"
+
+
+class ApplicationData(PolychromaticBase):
+    """
+    Shared data that is globally accessible throughout the application.
+    This includes save data variables and objects for each tab.
+    """
+    def __init__(self, qapp):
+        self.dbg.stdout("Initialising application...", self.dbg.action, 1)
+        self.locales = self.i18n
+        self.main_window = None
+        self.main_app = qapp
+        self.exec_path = __file__
+        self.exec_args = sys.argv
+        self.version = VERSION
+        self.versions = VERSIONS
+
+        # UI Colours (based on QSS variables)
+        self.normal_colour = "#DED9CB"      # Button text
+        self.disabled_colour = "#575757"    # Disabled text
+        self.active_colour = "#00FF00"      # Primary
+        self.selected_colour = "#00FF00"    # Primary
+        self.secondary_colour_active = "#008000"    # Secondary
+        self.secondary_colour_inactive = "#808080"  # Secondary (desaturated)
+
+        # Assigned in load() later
+        self.menubar = None
+        self.tab_devices = None
+        self.tab_effects = None
+        # self.tab_presets = None
+        # self.tab_triggers = None
+        self.ui_preferences = None
+
+        # Set the Wayland appId to the name of the .desktop file (without the .desktop suffix)
+        self.main_app.setDesktopFileName("polychromatic")
+
+        # Running in a universal package format?
+        self.flatpak_mode = os.path.exists("/app/bin/polychromatic-controller")
+
+        # Settings
+        self.preferences = pref.load_file(self.paths.preferences)
+        self.system_qt_theme = self.preferences["controller"]["system_qt_theme"]
+        self.show_menu_bar = self.preferences["controller"]["show_menu_bar"]
+
+    def load(self):
+        """
+        Show the main window and spawn a thread to load the rest of the application.
+        """
+        self.init_base(__file__, sys.argv)
+        self.main_window = MainWindow()
+
+        # Menu bar & tabs
+        self.tab_devices = controller.devices.DevicesTab(self)
+        self.tab_effects = controller.effects.EffectsTab(self)
+        # self.tab_presets = controller.presets.PresetsTab(self)
+        # self.tab_triggers = controller.triggers.TriggersTab(self)
+        self.menubar = controller.menubar.MenuBar(self)
+
+        # Subwindows
+        self.ui_preferences = controller.preferences.PreferencesWindow(self)
+
+        self.main_window.findChild(QLabel, "GlobalStatus").setHidden(True)
+
+        t_start = time.time()
+
+        def _enable_action(action, enabled=True):
+            self.main_window.findChild(QAction, action).setEnabled(enabled)
+
+        # Misbehaving backends may take ages inside init()
+        self.dbg.stdout("Initialising backends...", self.dbg.action, 1)
+        self.middleman.init()
+
+        # Enable OpenRazer functions if available
+        if not "openrazer" in self.middleman.not_installed:
+            _enable_action("actionOpenRazerConfigure")
+            _enable_action("actionOpenRazerOpenLog")
+            _enable_action("actionOpenRazerRestartDaemon")
+            _enable_action("actionOpenRazerAbout")
+
+        if "openrazer" in self.middleman.troubleshooters:
+            _enable_action("actionTroubleshootOpenRazer")
+
+        if "openrazer" in self.middleman.import_errors.keys():
+            _enable_action("actionOpenRazerAbout", False)
+
+        t_end = time.time()
+        self.dbg.stdout("Backends loaded in {0}s.".format(str(round(t_end - t_start, 3))), self.dbg.action, 1)
+
+        # Disable functionality unavailable under Flatpak
+        if self.flatpak_mode:
+            for object_name in ["actionRestartTrayApplet", "actionProcessViewer", "actionOpenRazerConfigure", "actionOpenRazerOpenLog", "actionOpenRazerRestartDaemon", "actionOpenRazerAbout"]:
+                self.main_window.findChild(QAction, object_name).setEnabled(False)
+                self.main_window.findChild(QAction, object_name).setToolTip(_("Not available under Flatpak"))
+
+            self.main_window.findChild(QAction, "actionTroubleshootOpenRazer").setIcon(QIcon())
+
+        self.main_window.load()
+
+
+class MainWindow(QMainWindow):
+    """
+    This is the primary window the user will use and interact with.
+    """
+    def __init__(self):
+        dbg.stdout("Initialising window...", dbg.action, 1)
+        super(MainWindow, self).__init__()
+
+        # Check styles exist
+        qt_style = os.path.join(app.paths.data_dir, "qt", "style.qss")
+        if os.path.exists(qt_style) and os.path.getsize(qt_style) < 100:
+            dbg.stdout("style.qss malformed! Maybe the application wasn't compiled properly?", dbg.error)
+            dbg.stdout("Forcing native theme.", dbg.warning)
+            app.system_qt_theme = True
+
+        # Load UI and locales
+        widget = uic.loadUi(os.path.join(app.paths.data_dir, "qt", "main.ui"), self)
+        shared.translate_ui(app, widget)
+
+        # Show the correct tab widgets
+        if app.system_qt_theme:
+            # User prefers own Qt theme, use native tabs.
+            self.findChild(QWidget, "Header").hide()
+            self.findChild(QWidget, "MainTabCustom").hide()
+        else:
+            # Custom Qt theme uses a different tab design. Hide native tabs.
+            self.findChild(QWidget, "MainTabWidget").tabBar().hide()
+
+        # Set window attributes
+        self.setWindowTitle("Polychromatic")
+        if app.paths.dev:
+            self.setWindowTitle("Polychromatic {0} [dev]".format(get_versions()[0][1]))
+
+        if self.windowIcon().isNull():
+            self.setWindowIcon(QIcon(common.get_icon("general", "controller")))
+
+        # Prepare Menu Bar
+        self.findChild(QAction, "actionReinstateMenuBar").setVisible(False)
+        if not app.preferences["controller"]["show_menu_bar"]:
+            self.menuBar().hide()
+            self.findChild(QAction, "actionReinstateMenuBar").setVisible(True)
+
+        # CTRL+C'd
+        signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+        self.CloseButton = self.findChild(QPushButton, "CloseApp")
+        self.CloseButton.clicked.connect(self.quit_app)
+        self.closeEvent = self.quit_app
+
+    @staticmethod
+    def _set_initial_window_position(qmainwindow: QMainWindow, key_prefix):
+        """
+        Sets the initial placement of the window, according to user's preferences.
+
+        Params:
+            qmainwindow         QMainWindow() instance
+            key_prefix          Name of prefix for save data. Should be initialised in preferences.
+        """
+        win_behaviour = app.preferences["controller"]["window_behaviour"]
+
+        if win_behaviour == pref.WINDOW_BEHAVIOUR_IGNORE:
+            return
+
+        if win_behaviour in [pref.WINDOW_BEHAVIOUR_CENTER, pref.WINDOW_BEHAVIOUR_MAXIMIZED]:
+            frame = qmainwindow.frameGeometry()
+            center = qmainwindow.screen().availableGeometry().center()
+
+            frame.moveCenter(center)
+            qmainwindow.move(frame.topLeft())
+
+        if win_behaviour == pref.WINDOW_BEHAVIOUR_MAXIMIZED:
+            qmainwindow.setWindowState(Qt.WindowState.WindowMaximized)
+
+        if win_behaviour == pref.WINDOW_BEHAVIOUR_REMEMBER:
+            dbg.stdout("Loading window geometry...", dbg.action, 1)
+            pos_x = app.preferences["geometry"][key_prefix + "_window_pos_x"]
+            pos_y = app.preferences["geometry"][key_prefix + "_window_pos_y"]
+            size_x = app.preferences["geometry"][key_prefix + "_window_size_x"]
+            size_y = app.preferences["geometry"][key_prefix + "_window_size_y"]
+            qmainwindow.setGeometry(pos_x, pos_y, size_x, size_y)
+
+    @staticmethod
+    def _save_window_position(qmainwindow, key_prefix):
+        """
+        Saves the dimensions and position of the window, according to the user's
+        preferences.
+        """
+        win_behaviour = app.preferences["controller"]["window_behaviour"]
+
+        if win_behaviour == pref.WINDOW_BEHAVIOUR_REMEMBER:
+            dbg.stdout("Saving window geometry...", dbg.action, 1)
+            rect = qmainwindow.frameGeometry()
+            app.preferences["geometry"][key_prefix + "_window_pos_x"] = rect.left()
+            app.preferences["geometry"][key_prefix + "_window_pos_y"] = rect.top()
+            app.preferences["geometry"][key_prefix + "_window_size_x"] = rect.width()
+            app.preferences["geometry"][key_prefix + "_window_size_y"] = rect.height()
+            pref.save_file(app.paths.preferences, app.preferences)
+
+    def load(self):
+        """
+        Objects initialised. Proceed to load the main application window.
+        """
+        widgets = shared.PolychromaticWidgets(app)
+
+        # Polychromatic's Qt theme is based on Fusion, uses the "Play" font.
+        if not app.system_qt_theme:
+            qapp.setStyle("Fusion")
+            QFontDatabase.addApplicationFont(os.path.join(app.paths.data_dir, "qt", "fonts", "Play_regular.ttf"))
+            qapp.setFont(QFont("Play", 10))
+            controller.shared.load_qt_theme(app, self)
+
+        # Minimal modes
+        if args.open:
+            if args.open == "troubleshoot":
+                # TODO: Should support multiple backends!
+                return app.menubar.openrazer.troubleshoot()
+            elif args.open == "colours":
+                app.ui_preferences.modify_colours()
+                sys.exit()
+            elif args.open == "preferences":
+                app.ui_preferences.open_window()
+                return
+
+        # Prepare "native" tab widget and custom buttons acting as tabs for the design.
+        tabs = self.findChild(QTabWidget, "MainTabWidget")
+        tab_buttons = [
+            self.findChild(QToolButton, "DevicesTabButton"),
+            self.findChild(QToolButton, "EffectsTabButton"),
+            self.findChild(QToolButton, "PresetsTabButton"),
+            self.findChild(QToolButton, "TriggersTabButton")
+        ]
+
+        # Also in the menu bar's view menu
+        tab_menu_items = [
+            self.findChild(QAction, "actionDevices"),
+            self.findChild(QAction, "actionEffects"),
+            self.findChild(QAction, "actionPresets"),
+            self.findChild(QAction, "actionTriggers")
+        ]
+
+        # Tab icons
+        tab_buttons[0].setIcon(widgets.get_icon_qt("general", "devices"))
+        tab_buttons[1].setIcon(widgets.get_icon_qt("general", "effects"))
+        tab_buttons[2].setIcon(widgets.get_icon_qt("general", "presets"))
+        tab_buttons[3].setIcon(widgets.get_icon_qt("general", "triggers"))
+
+        # Each tab stores its logic in a separate module
+        tab_objects = [
+            app.tab_devices,
+            app.tab_effects,
+            # app.tab_presets,
+            # app.tab_triggers
+        ]
+
+        def _change_tab():
+            index = tabs.currentIndex()
+            dbg.stdout("Opening tab: " + str(index), dbg.debug, 1)
+            self.setCursor(Qt.CursorShape.WaitCursor)
+
+            for button in tab_buttons:
+                button.setChecked(False)
+            for item in tab_menu_items:
+                item.setChecked(False)
+
+            tab_buttons[index].setChecked(True)
+            tab_menu_items[index].setChecked(True)
+            try:
+                tab_objects[index].set_tab()
+            except Exception as e:
+                traceback = common.get_exception_as_string(e)
+                print(traceback)
+                widgets.open_dialog(widgets.dialog_error,
+                                    app._("Polychromatic Error"),
+                                    app._("Unable to load the tab properly due to an error.") + "\n\n" + \
+                                    app._("See below for technical details. Consider reporting this as a bug on this project's issue tracker."),
+                                    details=traceback)
+            self.unsetCursor()
+
+        def _refresh_tab():
+            index = tabs.currentIndex()
+            # For device tab, force a reload
+            if index == 0:
+                app.middleman.invalidate_cache()
+            return _change_tab()
+
+        def _change_tab_proxy(button, index):
+            tabs.setCurrentIndex(index)
+
+            # Clicking onto the 'button tab' should reload
+            if button == False:
+                _change_tab()
+
+        tabs.currentChanged.connect(_change_tab)
+
+        # Press F5 to refresh tab
+        self.findChild(QAction, "actionRefreshTab").triggered.connect(_refresh_tab)
+
+        # Connect custom tab buttons/view menu for tab switching
+        tab_buttons[0].clicked.connect(lambda a: _change_tab_proxy(a, 0))
+        tab_buttons[1].clicked.connect(lambda a: _change_tab_proxy(a, 1))
+        tab_buttons[2].clicked.connect(lambda a: _change_tab_proxy(a, 2))
+        tab_buttons[3].clicked.connect(lambda a: _change_tab_proxy(a, 3))
+        tab_menu_items[0].triggered.connect(lambda a: _change_tab_proxy(a, 0))
+        tab_menu_items[1].triggered.connect(lambda a: _change_tab_proxy(a, 1))
+        tab_menu_items[2].triggered.connect(lambda a: _change_tab_proxy(a, 2))
+        tab_menu_items[3].triggered.connect(lambda a: _change_tab_proxy(a, 3))
+
+        # Reimplement ability to scroll over 'custom' tabs
+        real_tabs = self.findChild(QWidget, "MainTabWidget").tabBar()
+        custom_tabs = self.findChild(QWidget, "MainTabCustom")
+        def _scroll_over_custom_tabs(evt):
+            direction = 1 if evt.angleDelta().y() < 0 else -1
+            real_tabs.setCurrentIndex(real_tabs.currentIndex() + direction)
+        custom_tabs.wheelEvent = _scroll_over_custom_tabs
+
+        # FIXME: Hide incomplete features
+        tabs.removeTab(3)
+        tabs.removeTab(2)
+        for widget in [
+            tab_buttons[2], tab_buttons[3],
+            tab_menu_items[2], tab_menu_items[3],
+            self.findChild(QAction, "actionImportEffect"),
+            self.findChild(QAction, "actionNewPreset"),
+            self.findChild(QAction, "actionNewPresetNow"),
+            self.findChild(QAction, "actionDuplicate"),
+            self.findChild(QAction, "actionDelete"),
+        ]:
+            widget.setDisabled(True)
+            widget.setVisible(False)
+
+        # Determine 'landing' tab to first open
+        landing_tab = app.preferences["controller"]["landing_tab"]
+
+        if args.open:
+            try:
+                param_to_index = {
+                    "devices": 0,
+                    "effects": 1,
+                    # "presets": 2,
+                    # "triggers": 3,
+                }
+                landing_tab = param_to_index[args.open]
+            except KeyError:
+                # Not applicable
+                pass
+
+        if landing_tab in [0, 1]:
+            # Signal triggered upon switching tab in the widget.
+            _change_tab_proxy(None, landing_tab)
+
+            # Signal may not trigger if the starting page is already 0.
+            if landing_tab == 0:
+                _change_tab()
+        else:
+            _change_tab()
+
+        # Bind actions to menu bar
+        self.findChild(QAction, "actionQuitApp").triggered.connect(self.quit_app)
+
+        # Disable tray applet actions if not installed
+        if not procpid.ProcessManager().is_component_installed("tray-applet"):
+            self.findChild(QAction, "actionRestartTrayApplet").setDisabled(True)
+
+        # Warn if configuration is newer then this version.
+        pref_ver = pref.VERSION
+        save_ver = app.preferences["config_version"]
+        if save_ver > pref_ver:
+            details = "Yours: {1}\nExpected: <={2}\nApplication Version: v{0}".format(VERSION, save_ver, pref_ver)
+            widgets.open_dialog(widgets.dialog_warning,
+                                app._("Save Data Version Mismatch"),
+                                app._("Polychromatic's configuration (including your effects and presets) have been previously saved in a newer version of this software.") + \
+                                app._("While this older software version may run as expected, there is no guarantee everything will work as a result of this newer save data. This installation is unsupported.") + \
+                                app._("Consider updating the application, ignore this message or delete: ~/.config/polychromatic"),
+                                details=details)
+
+        self._set_initial_window_position(self, "main")
+
+        # Showtime!
+        self.show()
+
+    def quit_app(self, event=None, b=None):
+        """
+        Closes the main application window. This won't stop the execution
+        entirely until the last editor window is closed.
+        """
+        # Save window position if preference set.
+        if app.preferences["controller"]["window_behaviour"] == pref.WINDOW_BEHAVIOUR_REMEMBER:
+            self._save_window_position(self, "main")
+
+        dbg.stdout("Main window closed, goodbye!", dbg.success, 1)
+        self.close()
+
+    def keyPressEvent(self, e):
+        """
+        Pressing 'Alt' will reveal the menu bar.
+        """
+        if e.key() == Qt.Key.Key_Alt:
+            self.menuBar().show()
+
+
+def get_versions():
+    """
+    Returns a list of the application version and its components.
+    """
+    app_version, git_commit, py_version = common.get_versions(VERSION)
+
+    versions = [
+        [_("Application"), app_version],
+        ["Python", py_version],
+        ["Qt", QtCore.QT_VERSION_STR], # pylint: disable=c-extension-no-member
+        ["PyQt6", QtCore.PYQT_VERSION_STR], # pylint: disable=c-extension-no-member
+    ]
+
+    if git_commit:
+        versions.insert(1, ["Commit", git_commit])
+
+    return versions
+
+
+def parse_parameters():
+    """
+    Process the parameters passed to the application.
+    """
+    global _
+
+    open_choices = [
+        "devices",
+        "effects",
+        # TODO: Hide unavailable features
+        #"presets",
+        #"triggers",
+        "preferences",
+        "troubleshoot",
+        "colours"
+    ]
+
+    parser = argparse.ArgumentParser(add_help=False)
+    parser._optionals.title = _("Optional arguments")
+    parser.add_argument("-h", "--help", help=_("Show this help message and exit"), action="help")
+    parser.add_argument("--version", help=_("Print program version and exit"), action="store_true")
+    parser.add_argument("-v", "--verbose", help=_("Be verbose to stdout"), action="store_true")
+    parser.add_argument("--locale", help=_("Force a specific language, e.g. de_DE"), action="store")
+    parser.add_argument("--open", help=_("Open a specific tab or feature"), action="store", choices=open_choices)
+
+    args = parser.parse_args()
+
+    if args.version:
+        versions = get_versions()
+        print("Polychromatic " + versions[0][1])
+        del(versions[0])
+        for version in versions:
+            print("{0}: {1}".format(version[0], version[1]))
+        sys.exit(0)
+
+    if args.verbose:
+        dbg.verbose_level = 1
+
+    if args.locale:
+        base.reinit_locales(args.locale)
+
+    return args
+
+
+if __name__ == "__main__":
+    setproctitle.setproctitle("polychromatic-controller")
+
+    # TODO: Refactor later
+    base = PolychromaticBase()
+    dbg = base.dbg
+    _ = base._
+
+    VERSIONS = get_versions()
+    args = parse_parameters()
+
+    qapp = QApplication(sys.argv)
+    app = ApplicationData(qapp)
+
+    app.load()
+    qapp.exec()

@@ -1,0 +1,16 @@
+request bind {
+    name: u32,
+    interface: str,
+    version: u32,
+    id: id(object) (new),
+}
+
+event global {
+    name: u32,
+    interface: str,
+    version: u32,
+}
+
+event global_remove {
+    name: u32,
+}

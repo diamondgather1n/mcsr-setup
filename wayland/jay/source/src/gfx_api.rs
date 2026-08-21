@@ -1,0 +1,1562 @@
+use {
+    crate::{
+        allocator::Allocator,
+        backend::DrmDeviceId,
+        cmm::{
+            cmm_description::{ColorDescription, LinearColorDescription},
+            cmm_render_intent::RenderIntent,
+        },
+        cpu_worker::CpuWorker,
+        cursor::Cursor,
+        damage::DamageVisualizer,
+        eventfd_cache::Eventfd,
+        fixed::Fixed,
+        format::Format,
+        ifs::wl_surface::SurfaceBuffer,
+        io_uring::{IoUring, IoUringError, PendingPoll, PollCallback},
+        rect::{Rect, Region},
+        renderer::{
+            Renderer,
+            renderer_base::{RenderTexture, RendererBase},
+        },
+        scale::Scale,
+        state::State,
+        syncobj::SyncobjCtx,
+        theme::Color,
+        tree::{
+            Node, NodeBase, OutputNode, Transform,
+            TreeTimeline::{LiveTL, RenderTL},
+        },
+        utils::{
+            clonecell::UnsafeCellCloneSafe, errorfmt::ErrorFmt, oserror::OsErrorExt,
+            static_text::StaticText,
+        },
+        video::{
+            Modifier,
+            dmabuf::{DmaBuf, DmaBufIds},
+            drm::syncobj::{Syncobj, SyncobjPoint},
+        },
+    },
+    ahash::AHashMap,
+    indexmap::{IndexMap, IndexSet},
+    jay_config::video::{GfxApi as ConfigGfxApi, ScalingFilter as ConfigScalingFilter},
+    linearize::Linearize,
+    std::{
+        any::Any,
+        cell::{Cell, OnceCell},
+        error::Error,
+        ffi::CString,
+        fmt::{Debug, Formatter},
+        ops::Deref,
+        rc::Rc,
+        slice,
+        sync::atomic::{AtomicU64, Ordering::Relaxed},
+    },
+    thiserror::Error,
+    uapi::{OwnedFd, c},
+};
+
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Linearize)]
+pub enum GfxApi {
+    OpenGl,
+    Vulkan,
+}
+
+impl StaticText for GfxApi {
+    fn text(&self) -> &'static str {
+        self.to_str()
+    }
+}
+
+impl TryFrom<ConfigGfxApi> for GfxApi {
+    type Error = ();
+
+    fn try_from(value: ConfigGfxApi) -> Result<Self, Self::Error> {
+        let v = match value {
+            ConfigGfxApi::OpenGl => GfxApi::OpenGl,
+            ConfigGfxApi::Vulkan => GfxApi::Vulkan,
+            _ => return Err(()),
+        };
+        Ok(v)
+    }
+}
+
+impl Into<ConfigGfxApi> for GfxApi {
+    fn into(self) -> ConfigGfxApi {
+        match self {
+            GfxApi::OpenGl => ConfigGfxApi::OpenGl,
+            GfxApi::Vulkan => ConfigGfxApi::Vulkan,
+        }
+    }
+}
+
+impl GfxApi {
+    pub fn to_str(&self) -> &'static str {
+        match self {
+            GfxApi::OpenGl => "OpenGl",
+            GfxApi::Vulkan => "Vulkan",
+        }
+    }
+
+    pub fn from_str_lossy(s: &str) -> Option<Self> {
+        match &*s.to_ascii_lowercase() {
+            "opengl" => Some(Self::OpenGl),
+            "vulkan" => Some(Self::Vulkan),
+            _ => None,
+        }
+    }
+}
+
+pub enum GfxApiOp {
+    Sync,
+    FillRect(FillRect),
+    CopyTexture(CopyTexture),
+}
+
+pub struct GfxRenderPass {
+    pub ops: Vec<GfxApiOp>,
+    pub clear: Option<Color>,
+    pub clear_cd: Rc<LinearColorDescription>,
+    pub flags: GfxFlags,
+}
+
+#[derive(Default, Debug, Copy, Clone, PartialEq)]
+pub struct SampleRect {
+    pub x1: f32,
+    pub y1: f32,
+    pub x2: f32,
+    pub y2: f32,
+    pub buffer_transform: Transform,
+}
+
+impl SampleRect {
+    pub fn identity() -> Self {
+        Self {
+            x1: 0.0,
+            y1: 0.0,
+            x2: 1.0,
+            y2: 1.0,
+            buffer_transform: Transform::None,
+        }
+    }
+
+    pub fn is_covering(&self) -> bool {
+        self.x1 == 0.0 && self.y1 == 0.0 && self.x2 == 1.0 && self.y2 == 1.0
+    }
+
+    pub fn to_points(&self) -> [[f32; 2]; 4] {
+        use Transform::*;
+        let x1 = self.x1;
+        let x2 = self.x2;
+        let y1 = self.y1;
+        let y2 = self.y2;
+        match self.buffer_transform {
+            None => [[x2, y1], [x1, y1], [x2, y2], [x1, y2]],
+            Rotate90 => [
+                [y1, 1.0 - x2],
+                [y1, 1.0 - x1],
+                [y2, 1.0 - x2],
+                [y2, 1.0 - x1],
+            ],
+            Rotate180 => [
+                [1.0 - x2, 1.0 - y1],
+                [1.0 - x1, 1.0 - y1],
+                [1.0 - x2, 1.0 - y2],
+                [1.0 - x1, 1.0 - y2],
+            ],
+            Rotate270 => [
+                [1.0 - y1, x2],
+                [1.0 - y1, x1],
+                [1.0 - y2, x2],
+                [1.0 - y2, x1],
+            ],
+            Flip => [
+                [1.0 - x2, y1],
+                [1.0 - x1, y1],
+                [1.0 - x2, y2],
+                [1.0 - x1, y2],
+            ],
+            FlipRotate90 => [[y1, x2], [y1, x1], [y2, x2], [y2, x1]],
+            FlipRotate180 => [
+                [x2, 1.0 - y1],
+                [x1, 1.0 - y1],
+                [x2, 1.0 - y2],
+                [x1, 1.0 - y2],
+            ],
+            FlipRotate270 => [
+                [1.0 - y1, 1.0 - x2],
+                [1.0 - y1, 1.0 - x1],
+                [1.0 - y2, 1.0 - x2],
+                [1.0 - y2, 1.0 - x1],
+            ],
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct FramebufferRect {
+    pub x1: f32,
+    pub x2: f32,
+    pub y1: f32,
+    pub y2: f32,
+    pub output_transform: Transform,
+}
+
+impl FramebufferRect {
+    pub fn new(
+        x1: f32,
+        y1: f32,
+        x2: f32,
+        y2: f32,
+        transform: Transform,
+        width: f32,
+        height: f32,
+    ) -> Self {
+        Self {
+            x1: 2.0 * x1 / width - 1.0,
+            x2: 2.0 * x2 / width - 1.0,
+            y1: 2.0 * y1 / height - 1.0,
+            y2: 2.0 * y2 / height - 1.0,
+            output_transform: transform,
+        }
+    }
+
+    pub fn to_points(&self) -> [[f32; 2]; 4] {
+        use Transform::*;
+        let x1 = self.x1;
+        let x2 = self.x2;
+        let y1 = self.y1;
+        let y2 = self.y2;
+        match self.output_transform {
+            None => [[x2, y1], [x1, y1], [x2, y2], [x1, y2]],
+            Rotate90 => [[y1, -x2], [y1, -x1], [y2, -x2], [y2, -x1]],
+            Rotate180 => [[-x2, -y1], [-x1, -y1], [-x2, -y2], [-x1, -y2]],
+            Rotate270 => [[-y1, x2], [-y1, x1], [-y2, x2], [-y2, x1]],
+            Flip => [[-x2, y1], [-x1, y1], [-x2, y2], [-x1, y2]],
+            FlipRotate90 => [[y1, x2], [y1, x1], [y2, x2], [y2, x1]],
+            FlipRotate180 => [[x2, -y1], [x1, -y1], [x2, -y2], [x1, -y2]],
+            FlipRotate270 => [[-y1, -x2], [-y1, -x1], [-y2, -x2], [-y2, -x1]],
+        }
+    }
+
+    pub fn is_covering(&self) -> bool {
+        self.x1 == -1.0 && self.y1 == -1.0 && self.x2 == 1.0 && self.y2 == 1.0
+    }
+
+    pub fn to_rect(&self, width: f32, height: f32) -> Rect {
+        let mut x1 = self.x1;
+        let mut x2 = self.x2;
+        let mut y1 = self.y1;
+        let mut y2 = self.y2;
+        (x1, y1, x2, y2) = match self.output_transform {
+            Transform::None => (x1, y1, x2, y2),
+            Transform::Rotate90 => (y1, -x2, y2, -x1),
+            Transform::Rotate180 => (-x2, -y2, -x1, -y1),
+            Transform::Rotate270 => (-y2, x1, -y1, x2),
+            Transform::Flip => (-x2, y1, -x1, y2),
+            Transform::FlipRotate90 => (y1, x1, y2, x2),
+            Transform::FlipRotate180 => (x1, -y2, x2, -y1),
+            Transform::FlipRotate270 => (-y2, -x2, -y1, -x1),
+        };
+        let x1 = ((x1 + 1.0) / 2.0 * width).round() as i32;
+        let x2 = ((x2 + 1.0) / 2.0 * width).round() as i32;
+        let y1 = ((y1 + 1.0) / 2.0 * height).round() as i32;
+        let y2 = ((y2 + 1.0) / 2.0 * height).round() as i32;
+        Rect::new_saturating(x1, y1, x2, y2)
+    }
+}
+
+#[derive(Debug)]
+pub struct FillRect {
+    pub rect: FramebufferRect,
+    pub color: Color,
+    pub alpha: Option<f32>,
+    pub render_intent: RenderIntent,
+    pub cd: Rc<LinearColorDescription>,
+}
+
+impl FillRect {
+    pub fn effective_color(&self) -> Color {
+        let mut color = self.color;
+        if let Some(alpha) = self.alpha {
+            color = color * alpha;
+        }
+        color
+    }
+}
+
+pub struct CopyTexture {
+    pub tex: Rc<dyn GfxTexture>,
+    pub source: SampleRect,
+    pub target: FramebufferRect,
+    pub buffer_resv: Option<Rc<dyn BufferResv>>,
+    pub acquire_sync: AcquireSync,
+    pub release_sync: ReleaseSync,
+    pub alpha: Option<f32>,
+    pub opaque: bool,
+    pub render_intent: RenderIntent,
+    pub cd: Rc<ColorDescription>,
+    pub alpha_mode: AlphaMode,
+    pub grayscale: bool,
+    pub client_buf: Option<Rc<SurfaceBuffer>>,
+    pub lazy: Option<Rc<dyn LazyTexture>>,
+    pub skip_for_scanout: bool,
+    pub scaling_filter: ScalingFilter,
+}
+
+bitflags! {
+    GfxFlags: u32;
+       GFX_HAS_LAZY,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Linearize)]
+pub enum TextureUse {
+    Render,
+    Scanout,
+}
+
+pub trait LazyTexture: Debug {
+    fn record_use(&self, ty: TextureUse);
+    fn perform_lazy_work(&self, sync: &mut Vec<FdSync>) -> Result<(), Box<dyn Error + Send>>;
+    fn has_lazy_work(&self) -> bool;
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Linearize, Default)]
+pub enum ScalingFilter {
+    #[default]
+    Linear,
+    Nearest,
+}
+
+impl StaticText for ScalingFilter {
+    fn text(&self) -> &'static str {
+        match self {
+            ScalingFilter::Linear => "linear",
+            ScalingFilter::Nearest => "nearest",
+        }
+    }
+}
+
+impl ScalingFilter {
+    pub fn to_config(self) -> ConfigScalingFilter {
+        match self {
+            ScalingFilter::Linear => ConfigScalingFilter::LINEAR,
+            ScalingFilter::Nearest => ConfigScalingFilter::NEAREST,
+        }
+    }
+
+    pub fn from_config(v: ConfigScalingFilter) -> Option<Self> {
+        let v = match v {
+            ConfigScalingFilter::LINEAR => ScalingFilter::Linear,
+            ConfigScalingFilter::NEAREST => ScalingFilter::Nearest,
+            _ => return None,
+        };
+        Some(v)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct SyncFile(pub Rc<OwnedFd>);
+
+impl Deref for SyncFile {
+    type Target = Rc<OwnedFd>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+unsafe impl UnsafeCellCloneSafe for SyncFile {}
+
+#[derive(Clone)]
+pub enum AcquireSync {
+    None,
+    Implicit,
+    FdSync(FdSync),
+    Unnecessary,
+}
+
+impl AcquireSync {
+    pub fn from_fd_sync(sync: Option<FdSync>) -> Self {
+        match sync {
+            None => Self::Unnecessary,
+            Some(sync) => Self::FdSync(sync),
+        }
+    }
+
+    pub fn get_sync_file(&self) -> Option<&SyncFile> {
+        match self {
+            Self::None => None,
+            Self::Implicit => None,
+            Self::FdSync(sync) => sync.get_sync_file(),
+            Self::Unnecessary => None,
+        }
+    }
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum ReleaseSync {
+    None,
+    Implicit,
+    Explicit,
+}
+
+impl Debug for AcquireSync {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let name = match self {
+            AcquireSync::None => "None",
+            AcquireSync::Implicit => "Implicit",
+            AcquireSync::FdSync(d) => return Debug::fmt(d, f),
+            AcquireSync::Unnecessary => "Unnecessary",
+        };
+        f.debug_struct(name).finish_non_exhaustive()
+    }
+}
+
+pub trait BufferResv: Debug {
+    fn set_sync(&self, user: BufferResvUser, sync: &FdSync);
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+pub struct BufferResvUser(u64);
+
+impl Default for BufferResvUser {
+    fn default() -> Self {
+        static NEXT_ID: AtomicU64 = AtomicU64::new(1);
+        Self(NEXT_ID.fetch_add(1, Relaxed))
+    }
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum ResetStatus {
+    Guilty,
+    Innocent,
+    Unknown,
+    Other(u32),
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Default)]
+pub enum AlphaMode {
+    #[default]
+    PremultipliedElectrical,
+    PremultipliedOptical,
+    Straight,
+}
+
+pub trait GfxBlendBuffer: Any + Debug {}
+
+pub trait GfxFramebuffer: Debug {
+    fn physical_size(&self) -> (i32, i32);
+
+    fn render_with_region_impl(
+        self: Rc<Self>,
+        acquire_sync: AcquireSync,
+        release_sync: ReleaseSync,
+        cd: &Rc<ColorDescription>,
+        ops: &[GfxApiOp],
+        clear: Option<&Color>,
+        clear_cd: &Rc<LinearColorDescription>,
+        region: &Region,
+        blend_buffer: Option<&Rc<dyn GfxBlendBuffer>>,
+        blend_cd: &Rc<ColorDescription>,
+        sync: &[FdSync],
+    ) -> Result<Option<FdSync>, GfxError>;
+
+    fn format(&self) -> &'static Format;
+
+    fn full_region(&self) -> Region {
+        let (width, height) = self.physical_size();
+        Region::new(Rect::new_sized_saturating(0, 0, width, height))
+    }
+}
+
+pub trait GfxInternalFramebuffer: GfxFramebuffer {
+    fn stride(&self) -> i32;
+
+    fn staging_size(&self) -> usize;
+
+    fn download(
+        self: Rc<Self>,
+        staging: &Rc<dyn GfxStagingBuffer>,
+        callback: Rc<dyn AsyncShmGfxTextureCallback>,
+        mem: Rc<dyn ShmMemory>,
+        damage: Region,
+    ) -> Result<Option<PendingShmTransfer>, GfxError>;
+}
+
+impl dyn GfxFramebuffer {
+    pub fn render(
+        self: &Rc<Self>,
+        acquire_sync: AcquireSync,
+        release_sync: ReleaseSync,
+        cd: &Rc<ColorDescription>,
+        ops: &[GfxApiOp],
+        flags: GfxFlags,
+        clear: Option<&Color>,
+        clear_cd: &Rc<LinearColorDescription>,
+        blend_buffer: Option<&Rc<dyn GfxBlendBuffer>>,
+        blend_cd: &Rc<ColorDescription>,
+    ) -> Result<Option<FdSync>, GfxError> {
+        self.render_with_region(
+            acquire_sync,
+            release_sync,
+            cd,
+            ops,
+            flags,
+            clear,
+            clear_cd,
+            &self.full_region(),
+            blend_buffer,
+            blend_cd,
+        )
+    }
+
+    pub fn clear(
+        self: &Rc<Self>,
+        acquire_sync: AcquireSync,
+        release_sync: ReleaseSync,
+        cd: &Rc<ColorDescription>,
+    ) -> Result<Option<FdSync>, GfxError> {
+        self.clear_with(
+            acquire_sync,
+            release_sync,
+            cd,
+            &Color::TRANSPARENT,
+            &cd.linear,
+        )
+    }
+
+    pub fn clear_with(
+        self: &Rc<Self>,
+        acquire_sync: AcquireSync,
+        release_sync: ReleaseSync,
+        cd: &Rc<ColorDescription>,
+        color: &Color,
+        color_cd: &Rc<LinearColorDescription>,
+    ) -> Result<Option<FdSync>, GfxError> {
+        self.render(
+            acquire_sync,
+            release_sync,
+            cd,
+            &[],
+            GfxFlags::none(),
+            Some(color),
+            color_cd,
+            None,
+            cd,
+        )
+    }
+
+    pub fn logical_size(&self, transform: Transform) -> (i32, i32) {
+        logical_size(self.physical_size(), transform)
+    }
+
+    pub fn renderer_base<'a>(
+        &self,
+        ops: &'a mut Vec<GfxApiOp>,
+        scale: Scale,
+        scaling_filter: ScalingFilter,
+        transform: Transform,
+        default_cd: &'a Rc<ColorDescription>,
+    ) -> RendererBase<'a> {
+        renderer_base(
+            self.physical_size(),
+            ops,
+            scale,
+            scaling_filter,
+            transform,
+            default_cd,
+        )
+    }
+
+    pub fn copy_texture(
+        self: &Rc<Self>,
+        fb_acquire_sync: AcquireSync,
+        fb_release_sync: ReleaseSync,
+        fb_cd: &Rc<ColorDescription>,
+        texture: &Rc<dyn GfxTexture>,
+        texture_cd: &Rc<ColorDescription>,
+        resv: Option<&Rc<dyn BufferResv>>,
+        acquire_sync: AcquireSync,
+        release_sync: ReleaseSync,
+        x: i32,
+        y: i32,
+    ) -> Result<Option<FdSync>, GfxError> {
+        let mut ops = vec![];
+        let scale = Scale::from_int(1);
+        let mut renderer = self.renderer_base(
+            &mut ops,
+            scale,
+            ScalingFilter::Linear,
+            Transform::None,
+            texture_cd,
+        );
+        renderer.render_texture(
+            texture,
+            x,
+            y,
+            RenderTexture {
+                tscale: Some(scale),
+                buffer_resv: resv.cloned(),
+                acquire_sync,
+                release_sync,
+                cd: Some(texture_cd),
+                ..Default::default()
+            },
+        );
+        let clear = self.format().has_alpha.then_some(&Color::TRANSPARENT);
+        let flags = renderer.flags;
+        self.render(
+            fb_acquire_sync,
+            fb_release_sync,
+            fb_cd,
+            &ops,
+            flags,
+            clear,
+            &fb_cd.linear,
+            None,
+            fb_cd,
+        )
+    }
+
+    pub fn render_custom(
+        self: &Rc<Self>,
+        acquire_sync: AcquireSync,
+        release_sync: ReleaseSync,
+        cd: &Rc<ColorDescription>,
+        scale: Scale,
+        scaling_filter: ScalingFilter,
+        clear: Option<&Color>,
+        clear_cd: &Rc<LinearColorDescription>,
+        blend_buffer: Option<&Rc<dyn GfxBlendBuffer>>,
+        blend_cd: &Rc<ColorDescription>,
+        default_cd: &Rc<ColorDescription>,
+        f: &mut dyn FnMut(&mut RendererBase),
+    ) -> Result<Option<FdSync>, GfxError> {
+        let mut ops = vec![];
+        let mut renderer =
+            self.renderer_base(&mut ops, scale, scaling_filter, Transform::None, default_cd);
+        f(&mut renderer);
+        let flags = renderer.flags;
+        self.render(
+            acquire_sync,
+            release_sync,
+            cd,
+            &ops,
+            flags,
+            clear,
+            clear_cd,
+            blend_buffer,
+            blend_cd,
+        )
+    }
+
+    pub fn create_render_pass(
+        &self,
+        node: &dyn Node,
+        state: &State,
+        cursor_rect: Option<Rect>,
+        scale: Scale,
+        scaling_filter: ScalingFilter,
+        render_cursor: bool,
+        render_hardware_cursor: bool,
+        black_background: bool,
+        fill_black_in_grace_period: bool,
+        transform: Transform,
+        visualizer: Option<&DamageVisualizer>,
+        visualize_compositing: bool,
+    ) -> GfxRenderPass {
+        create_render_pass(
+            self.physical_size(),
+            node,
+            state,
+            cursor_rect,
+            scale,
+            scaling_filter,
+            render_cursor,
+            render_hardware_cursor,
+            black_background,
+            fill_black_in_grace_period,
+            transform,
+            visualizer,
+            visualize_compositing,
+        )
+    }
+
+    pub fn perform_render_pass(
+        self: &Rc<Self>,
+        acquire_sync: AcquireSync,
+        release_sync: ReleaseSync,
+        cd: &Rc<ColorDescription>,
+        pass: &GfxRenderPass,
+        region: &Region,
+        blend_buffer: Option<&Rc<dyn GfxBlendBuffer>>,
+        blend_cd: &Rc<ColorDescription>,
+    ) -> Result<Option<FdSync>, GfxError> {
+        self.render_with_region(
+            acquire_sync,
+            release_sync,
+            cd,
+            &pass.ops,
+            pass.flags,
+            pass.clear.as_ref(),
+            &pass.clear_cd,
+            region,
+            blend_buffer,
+            blend_cd,
+        )
+    }
+
+    pub fn render_output(
+        self: &Rc<Self>,
+        acquire_sync: AcquireSync,
+        release_sync: ReleaseSync,
+        cd: &Rc<ColorDescription>,
+        node: &OutputNode,
+        state: &State,
+        cursor_rect: Option<Rect>,
+        scale: Scale,
+        render_hardware_cursor: bool,
+        fill_black_in_grace_period: bool,
+        blend_buffer: Option<&Rc<dyn GfxBlendBuffer>>,
+        blend_cd: &Rc<ColorDescription>,
+        visualize_compositing: bool,
+    ) -> Result<Option<FdSync>, GfxError> {
+        self.render_node(
+            acquire_sync,
+            release_sync,
+            cd,
+            node,
+            state,
+            cursor_rect,
+            scale,
+            node.global.persistent.scaling_filter.get(),
+            true,
+            render_hardware_cursor,
+            node.has_fullscreen(RenderTL),
+            fill_black_in_grace_period,
+            node.node_state[RenderTL].transform.get(),
+            blend_buffer,
+            blend_cd,
+            visualize_compositing,
+        )
+    }
+
+    pub fn render_node(
+        self: &Rc<Self>,
+        acquire_sync: AcquireSync,
+        release_sync: ReleaseSync,
+        cd: &Rc<ColorDescription>,
+        node: &dyn Node,
+        state: &State,
+        cursor_rect: Option<Rect>,
+        scale: Scale,
+        scaling_filter: ScalingFilter,
+        render_cursor: bool,
+        render_hardware_cursor: bool,
+        black_background: bool,
+        fill_black_in_grace_period: bool,
+        transform: Transform,
+        blend_buffer: Option<&Rc<dyn GfxBlendBuffer>>,
+        blend_cd: &Rc<ColorDescription>,
+        visualize_compositing: bool,
+    ) -> Result<Option<FdSync>, GfxError> {
+        let pass = self.create_render_pass(
+            node,
+            state,
+            cursor_rect,
+            scale,
+            scaling_filter,
+            render_cursor,
+            render_hardware_cursor,
+            black_background,
+            fill_black_in_grace_period,
+            transform,
+            None,
+            visualize_compositing,
+        );
+        self.perform_render_pass(
+            acquire_sync,
+            release_sync,
+            cd,
+            &pass,
+            &self.full_region(),
+            blend_buffer,
+            blend_cd,
+        )
+    }
+
+    pub fn render_hardware_cursor(
+        self: &Rc<Self>,
+        acquire_sync: AcquireSync,
+        release_sync: ReleaseSync,
+        cursor: &dyn Cursor,
+        state: &State,
+        scale: Scale,
+        scaling_filter: ScalingFilter,
+        transform: Transform,
+        cd: &Rc<ColorDescription>,
+    ) -> Result<Option<FdSync>, GfxError> {
+        let mut ops = vec![];
+        let mut renderer = Renderer {
+            base: self.renderer_base(
+                &mut ops,
+                scale,
+                scaling_filter,
+                transform,
+                state.color_manager.srgb_gamma22(),
+            ),
+            state,
+            logical_extents: Rect::new_empty(0, 0),
+            pixel_extents: {
+                let (width, height) = self.logical_size(transform);
+                Rect::new_saturating(0, 0, width, height)
+            },
+            title_icons: None,
+            bar_icons: None,
+        };
+        cursor.render_hardware_cursor(&mut renderer);
+        let flags = renderer.base.flags;
+        self.render(
+            acquire_sync,
+            release_sync,
+            cd,
+            &ops,
+            flags,
+            Some(&Color::TRANSPARENT),
+            &cd.linear,
+            None,
+            cd,
+        )
+    }
+
+    fn render_with_region(
+        self: &Rc<Self>,
+        acquire_sync: AcquireSync,
+        release_sync: ReleaseSync,
+        cd: &Rc<ColorDescription>,
+        ops: &[GfxApiOp],
+        flags: GfxFlags,
+        clear: Option<&Color>,
+        clear_cd: &Rc<LinearColorDescription>,
+        region: &Region,
+        blend_buffer: Option<&Rc<dyn GfxBlendBuffer>>,
+        blend_cd: &Rc<ColorDescription>,
+    ) -> Result<Option<FdSync>, GfxError> {
+        let mut sync = vec![];
+        if flags.intersects(GFX_HAS_LAZY) {
+            for op in ops {
+                if let GfxApiOp::CopyTexture(ct) = op
+                    && let Some(lazy) = &ct.lazy
+                {
+                    lazy.record_use(TextureUse::Render);
+                    lazy.perform_lazy_work(&mut sync).map_err(GfxError)?;
+                }
+            }
+        }
+        self.clone().render_with_region_impl(
+            acquire_sync,
+            release_sync,
+            cd,
+            ops,
+            clear,
+            clear_cd,
+            region,
+            blend_buffer,
+            blend_cd,
+            &sync,
+        )
+    }
+}
+
+pub trait GfxTexture: Any + Debug {
+    fn size(&self) -> (i32, i32);
+    fn dmabuf(&self) -> Option<&Rc<DmaBuf>>;
+    fn format(&self) -> &'static Format;
+}
+
+pub trait ShmGfxTexture: GfxTexture {}
+
+pub trait AsyncShmGfxTextureCallback {
+    fn completed(self: Rc<Self>, res: Result<(), GfxError>);
+}
+
+bitflags! {
+    StagingBufferUsecase: u32;
+        STAGING_UPLOAD,
+        STAGING_DOWNLOAD,
+}
+
+pub trait GfxStagingBuffer: Any {
+    fn size(&self) -> usize;
+}
+
+pub trait GfxBuffer: Any {}
+
+pub trait AsyncShmGfxTextureTransferCancellable {
+    fn cancel(&self, id: u64);
+}
+
+pub struct PendingShmTransfer {
+    cancel: Rc<dyn AsyncShmGfxTextureTransferCancellable>,
+    id: u64,
+}
+
+pub trait ShmMemory {
+    fn len(&self) -> usize;
+    fn safe_access(&self) -> ShmMemoryBacking;
+    fn access(&self, f: &mut dyn FnMut(&[Cell<u8>])) -> Result<(), Box<dyn Error + Sync + Send>>;
+}
+
+pub enum ShmMemoryBacking {
+    Ptr(*const [Cell<u8>]),
+    Fd(Rc<OwnedFd>, usize),
+}
+
+impl ShmMemory for Vec<Cell<u8>> {
+    fn len(&self) -> usize {
+        self.len()
+    }
+
+    fn safe_access(&self) -> ShmMemoryBacking {
+        ShmMemoryBacking::Ptr(&**self)
+    }
+
+    fn access(&self, f: &mut dyn FnMut(&[Cell<u8>])) -> Result<(), Box<dyn Error + Sync + Send>> {
+        f(self);
+        Ok(())
+    }
+}
+
+pub trait AsyncShmGfxTexture: GfxTexture {
+    fn staging_size(&self) -> usize {
+        0
+    }
+
+    fn async_upload(
+        self: Rc<Self>,
+        staging: &Rc<dyn GfxStagingBuffer>,
+        callback: Rc<dyn AsyncShmGfxTextureCallback>,
+        mem: Rc<dyn ShmMemory>,
+        damage: Region,
+    ) -> Result<Option<PendingShmTransfer>, GfxError>;
+
+    fn async_upload_from_buffer(
+        self: Rc<Self>,
+        buf: &Rc<dyn GfxBuffer>,
+        callback: Rc<dyn AsyncShmGfxTextureCallback>,
+        damage: Region,
+    ) -> Result<Option<PendingShmTransfer>, GfxError> {
+        let _ = buf;
+        let _ = callback;
+        let _ = damage;
+
+        #[derive(Debug, Error)]
+        #[error("Host buffers are not supported")]
+        struct E;
+        Err(GfxError(Box::new(E)))
+    }
+
+    fn sync_upload(self: Rc<Self>, shm: &[Cell<u8>], damage: Region) -> Result<(), GfxError>;
+
+    fn compatible_with(
+        &self,
+        format: &'static Format,
+        width: i32,
+        height: i32,
+        stride: i32,
+    ) -> bool;
+}
+
+pub trait GfxContext: Debug {
+    fn reset_status(&self) -> Option<ResetStatus>;
+    fn drm_device_id(&self) -> Option<DrmDeviceId>;
+
+    fn render_node(&self) -> Option<Rc<CString>>;
+
+    fn formats(&self) -> &Rc<AHashMap<u32, GfxFormat>>;
+
+    fn fast_ram_access(&self) -> bool;
+
+    fn dmabuf_fb(self: Rc<Self>, buf: &Rc<DmaBuf>) -> Result<Rc<dyn GfxFramebuffer>, GfxError>;
+
+    fn dmabuf_tex(self: Rc<Self>, buf: &Rc<DmaBuf>) -> Result<Rc<dyn GfxTexture>, GfxError>;
+
+    fn shmem_texture(
+        self: Rc<Self>,
+        old: Option<Rc<dyn ShmGfxTexture>>,
+        data: &[Cell<u8>],
+        format: &'static Format,
+        width: i32,
+        height: i32,
+        stride: i32,
+        damage: Option<&[Rect]>,
+    ) -> Result<Rc<dyn ShmGfxTexture>, GfxError>;
+
+    fn async_shmem_texture(
+        self: Rc<Self>,
+        format: &'static Format,
+        width: i32,
+        height: i32,
+        stride: i32,
+        cpu_worker: &Rc<CpuWorker>,
+    ) -> Result<Rc<dyn AsyncShmGfxTexture>, GfxError>;
+
+    fn allocator(&self) -> Rc<dyn Allocator>;
+
+    fn gfx_api(&self) -> GfxApi;
+
+    fn create_internal_fb(
+        self: Rc<Self>,
+        cpu_worker: &Rc<CpuWorker>,
+        width: i32,
+        height: i32,
+        stride: i32,
+        format: &'static Format,
+    ) -> Result<Rc<dyn GfxInternalFramebuffer>, GfxError>;
+
+    fn create_read_write_img(
+        self: Rc<Self>,
+        dma_buf_ids: &DmaBufIds,
+        width: i32,
+        height: i32,
+        format: &'static Format,
+    ) -> Result<(Rc<dyn GfxFramebuffer>, Rc<dyn GfxTexture>), GfxError>;
+
+    fn syncobj_ctx(&self) -> Option<&Rc<SyncobjCtx>>;
+
+    fn create_staging_buffer(
+        &self,
+        size: usize,
+        usecase: StagingBufferUsecase,
+    ) -> Rc<dyn GfxStagingBuffer> {
+        let _ = usecase;
+        struct Dummy(usize);
+        impl GfxStagingBuffer for Dummy {
+            fn size(&self) -> usize {
+                self.0
+            }
+        }
+        Rc::new(Dummy(size))
+    }
+
+    fn acquire_blend_buffer(
+        &self,
+        width: i32,
+        height: i32,
+    ) -> Result<Rc<dyn GfxBlendBuffer>, GfxError>;
+
+    fn supports_color_management(&self) -> bool {
+        false
+    }
+
+    fn supports_alpha_modes(&self) -> bool {
+        false
+    }
+
+    fn supports_invalid_modifier(&self) -> bool {
+        false
+    }
+
+    fn create_dmabuf_buffer(
+        &self,
+        dmabuf: &OwnedFd,
+        offset: usize,
+        size: usize,
+        format: &'static Format,
+    ) -> Result<Rc<dyn GfxBuffer>, GfxError> {
+        let _ = dmabuf;
+        let _ = offset;
+        let _ = size;
+        let _ = format;
+
+        #[derive(Debug, Error)]
+        #[error("Host buffers are not supported")]
+        struct E;
+        Err(GfxError(Box::new(E)))
+    }
+
+    fn supports_wait_sync(&self) -> bool {
+        false
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct GfxWriteModifier {
+    pub needs_render_usage: bool,
+}
+
+pub fn needs_render_usage<'a>(mut modifiers: impl Iterator<Item = &'a GfxWriteModifier>) -> bool {
+    modifiers.any(|m| m.needs_render_usage)
+}
+
+#[derive(Debug)]
+pub struct GfxFormat {
+    pub format: &'static Format,
+    pub read_modifiers: IndexSet<Modifier>,
+    pub write_modifiers: IndexMap<Modifier, GfxWriteModifier>,
+    pub supports_shm: bool,
+}
+
+#[derive(Error)]
+#[error(transparent)]
+pub struct GfxError(pub Box<dyn Error + Send>);
+
+impl Debug for GfxError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        Debug::fmt(&self.0, f)
+    }
+}
+
+impl GfxFormat {
+    pub fn cross_intersect(&self, other: &GfxFormat) -> GfxFormat {
+        assert_eq!(self.format, other.format);
+        GfxFormat {
+            format: self.format,
+            read_modifiers: self
+                .read_modifiers
+                .iter()
+                .copied()
+                .filter(|m| other.write_modifiers.contains_key(m))
+                .collect(),
+            write_modifiers: self
+                .write_modifiers
+                .iter()
+                .map(|(m, v)| (*m, v.clone()))
+                .filter(|(m, _)| other.read_modifiers.contains(m))
+                .collect(),
+            supports_shm: self.supports_shm && other.supports_shm,
+        }
+    }
+}
+
+pub fn cross_intersect_formats(
+    local: &AHashMap<u32, GfxFormat>,
+    remote: &AHashMap<u32, GfxFormat>,
+) -> AHashMap<u32, GfxFormat> {
+    let mut res = AHashMap::new();
+    for lf in local.values() {
+        if let Some(rf) = remote.get(&lf.format.drm) {
+            let f = lf.cross_intersect(rf);
+            if f.read_modifiers.is_empty() && f.write_modifiers.is_empty() {
+                continue;
+            }
+            res.insert(f.format.drm, f);
+        }
+    }
+    res
+}
+
+impl PendingShmTransfer {
+    pub fn new(cancel: Rc<dyn AsyncShmGfxTextureTransferCancellable>, id: u64) -> Self {
+        Self { cancel, id }
+    }
+}
+
+impl Drop for PendingShmTransfer {
+    fn drop(&mut self) {
+        self.cancel.cancel(self.id);
+    }
+}
+
+pub fn create_render_pass(
+    physical_size: (i32, i32),
+    node: &dyn Node,
+    state: &State,
+    cursor_rect: Option<Rect>,
+    scale: Scale,
+    scaling_filter: ScalingFilter,
+    render_cursor: bool,
+    render_hardware_cursor: bool,
+    black_background: bool,
+    fill_black_in_grace_period: bool,
+    transform: Transform,
+    visualizer: Option<&DamageVisualizer>,
+    visualize_compositing: bool,
+) -> GfxRenderPass {
+    let srgb_gamma22 = state.color_manager.srgb_gamma22();
+    if fill_black_in_grace_period && state.idle.in_grace_period.get() {
+        return GfxRenderPass {
+            ops: vec![],
+            clear: Some(Color::SOLID_BLACK),
+            clear_cd: srgb_gamma22.linear.clone(),
+            flags: Default::default(),
+        };
+    }
+    let mut ops = vec![];
+    let mut renderer = Renderer {
+        base: renderer_base(
+            physical_size,
+            &mut ops,
+            scale,
+            scaling_filter,
+            transform,
+            srgb_gamma22,
+        ),
+        state,
+        logical_extents: node.node_absolute_position(LiveTL).at_point(0, 0),
+        pixel_extents: {
+            let (width, height) = logical_size(physical_size, transform);
+            Rect::new_saturating(0, 0, width, height)
+        },
+        title_icons: state.icons.get_title_icons(state, scale),
+        bar_icons: state.icons.get_bar_icons(state, scale),
+    };
+    node.node_render(&mut renderer, 0, 0, None);
+    if let Some(rect) = cursor_rect {
+        let seats = state.globals.lock_seats();
+        for seat in seats.values() {
+            let (x, y) = seat.pointer_cursor().position_int();
+            if let Some(im) = seat.input_method() {
+                for (_, popup) in im.popups() {
+                    if popup.surface.node_visible(LiveTL) {
+                        let pos = popup.surface.buffer_abs_pos[RenderTL].get();
+                        let extents = popup.surface.extents.get().move_(pos.x1(), pos.y1());
+                        if extents.intersects(&rect) {
+                            let (x, y) = rect.translate(pos.x1(), pos.y1());
+                            renderer.render_surface(&popup.surface, x, y, None);
+                        }
+                    }
+                }
+            }
+            if let Some(highlight) = seat.ui_drag_highlight() {
+                renderer.render_highlight(&highlight.move_(-rect.x1(), -rect.y1()));
+            }
+            if let Some(drag) = seat.toplevel_drag() {
+                drag.render(&mut renderer, &rect);
+            }
+            if let Some(dnd_icon) = seat.dnd_icon() {
+                dnd_icon.render(&mut renderer, &rect, x, y);
+            }
+            if render_cursor {
+                let cursor_user_group = seat.cursor_group();
+                if (render_hardware_cursor || !cursor_user_group.hardware_cursor())
+                    && let Some(cursor_user) = cursor_user_group.active()
+                    && let Some(cursor) = cursor_user.get()
+                {
+                    cursor.tick();
+                    let (mut x, mut y) = cursor_user.position();
+                    x -= Fixed::from_int(rect.x1());
+                    y -= Fixed::from_int(rect.y1());
+                    cursor.render(&mut renderer, x, y);
+                }
+            }
+        }
+    }
+    if let Some(visualizer) = visualizer
+        && let Some(cursor_rect) = cursor_rect
+    {
+        visualizer.render(&cursor_rect, &mut renderer.base);
+    }
+    if visualize_compositing
+        && state.visualize_compositing.get()
+        && let Some(icon) = state.icons.get_compositing_icon(state, scale)
+    {
+        renderer.base.render_texture(
+            &icon.icon,
+            0,
+            0,
+            RenderTexture {
+                skip_for_scanout: true,
+                ..Default::default()
+            },
+        );
+    }
+    let c = match black_background {
+        true => Color::SOLID_BLACK,
+        false => state.theme.colors.background.get(),
+    };
+    let flags = renderer.base.flags;
+    GfxRenderPass {
+        ops,
+        clear: Some(c),
+        clear_cd: state.color_manager.srgb_gamma22().linear.clone(),
+        flags,
+    }
+}
+
+pub fn renderer_base<'a>(
+    physical_size: (i32, i32),
+    ops: &'a mut Vec<GfxApiOp>,
+    scale: Scale,
+    scaling_filter: ScalingFilter,
+    transform: Transform,
+    default_cd: &'a Rc<ColorDescription>,
+) -> RendererBase<'a> {
+    let (width, height) = logical_size(physical_size, transform);
+    RendererBase {
+        ops,
+        scaled: scale != 1,
+        scale,
+        scalef: scale.to_f64(),
+        scaling_filter,
+        transform,
+        fb_width: width as _,
+        fb_height: height as _,
+        default_cd,
+        flags: Default::default(),
+    }
+}
+
+pub fn logical_size(physical_size: (i32, i32), transform: Transform) -> (i32, i32) {
+    transform.maybe_swap(physical_size)
+}
+
+pub struct ReservedSyncobjPoint {
+    pub ctx: Rc<SyncobjCtx>,
+    pub syncobj: Rc<Syncobj>,
+    pub point: SyncobjPoint,
+    pub sync_file: OnceCell<Option<SyncFile>>,
+    pub signaled: Eventfd,
+}
+
+impl Debug for ReservedSyncobjPoint {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ReservedSyncobjPoint")
+            .field("syncobj", &self.syncobj.id())
+            .field("point", &self.point)
+            .finish_non_exhaustive()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum FdSync {
+    SyncFile(SyncFile),
+    Syncobj(Rc<ReservedSyncobjPoint>),
+}
+
+unsafe impl UnsafeCellCloneSafe for FdSync {}
+
+impl FdSync {
+    pub async fn try_signaled(&self, ring: &Rc<IoUring>) -> Result<(), IoUringError> {
+        match self {
+            FdSync::SyncFile(f) => ring.readable(&f.0).await.map(drop),
+            FdSync::Syncobj(obj) => obj.signaled.signaled().await,
+        }
+    }
+
+    pub async fn signaled(&self, ring: &Rc<IoUring>, name: &str) {
+        if let Err(e) = self.try_signaled(ring).await {
+            log::error!(
+                "Could not wait for {name} sync to become signaled: {}",
+                ErrorFmt(e),
+            );
+        }
+    }
+
+    pub fn signaled_blocking(&self, name: &str) {
+        let res = match self {
+            FdSync::Syncobj(obj) => obj.signaled.signaled_blocking(),
+            FdSync::SyncFile(f) => {
+                let mut pollfd = c::pollfd {
+                    fd: f.raw(),
+                    events: c::POLLIN,
+                    revents: 0,
+                };
+                uapi::poll(slice::from_mut(&mut pollfd), -1)
+                    .map(drop)
+                    .to_os_error()
+            }
+        };
+        if let Err(e) = res {
+            log::error!(
+                "Could not wait for {name} sync to become signaled: {}",
+                ErrorFmt(e),
+            );
+        }
+    }
+
+    pub fn is_unsignaled(&self) -> bool {
+        !self.is_signaled()
+    }
+
+    pub fn is_signaled(&self) -> bool {
+        match self {
+            FdSync::Syncobj(obj) => obj.signaled.is_signaled(),
+            FdSync::SyncFile(f) => {
+                let mut pollfd = c::pollfd {
+                    fd: f.raw(),
+                    events: c::POLLIN,
+                    revents: 0,
+                };
+                uapi::poll(slice::from_mut(&mut pollfd), 0) == Ok(1)
+            }
+        }
+    }
+
+    pub fn get_sync_file(&self) -> Option<&SyncFile> {
+        match self {
+            FdSync::SyncFile(f) => Some(f),
+            FdSync::Syncobj(obj) => {
+                if obj.signaled.is_signaled() {
+                    return None;
+                }
+                obj.sync_file
+                    .get_or_init(|| {
+                        match obj.ctx.export_sync_file_blocking(&obj.syncobj, obj.point) {
+                            Ok(sf) => Some(sf),
+                            Err(e) => {
+                                log::error!("Could not export sync file: {}", ErrorFmt(e));
+                                None
+                            }
+                        }
+                    })
+                    .as_ref()
+            }
+        }
+    }
+
+    pub fn signaled_external(
+        &self,
+        ring: &Rc<IoUring>,
+        cb: Rc<dyn PollCallback>,
+    ) -> Result<Option<PendingPoll>, IoUringError> {
+        match self {
+            FdSync::SyncFile(f) => ring.readable_external(&f.0, cb).map(Some),
+            FdSync::Syncobj(obj) => obj.signaled.signaled_external(cb),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct DirectScanoutPosition {
+    pub src_width: i32,
+    pub src_height: i32,
+    pub crtc_x: i32,
+    pub crtc_y: i32,
+    pub crtc_width: i32,
+    pub crtc_height: i32,
+}
+
+impl GfxRenderPass {
+    pub fn prepare_direct_scanout(
+        &self,
+        mode_w: i32,
+        mode_h: i32,
+        blend_cd: &Rc<ColorDescription>,
+        cd: &Rc<ColorDescription>,
+        mut no_scaling: bool,
+    ) -> Option<(&CopyTexture, DirectScanoutPosition)> {
+        let ct = 'ct: {
+            let mut ops = self.ops.iter().rev();
+            let ct = 'ct2: {
+                for op in &mut ops {
+                    match op {
+                        GfxApiOp::Sync => {}
+                        GfxApiOp::FillRect(_) => {
+                            // Top-most layer must be a texture.
+                            return None;
+                        }
+                        GfxApiOp::CopyTexture(ct) => {
+                            if !ct.skip_for_scanout {
+                                break 'ct2 ct;
+                            }
+                        }
+                    }
+                }
+                return None;
+            };
+            if ct.alpha_mode != AlphaMode::PremultipliedElectrical {
+                // Direct scanout requires premultiplied electrical alpha.
+                return None;
+            }
+            if !ct.cd.embeds_into(cd) {
+                // Direct scanout requires embeddable color descriptions.
+                return None;
+            }
+            if !ct.opaque && !ct.cd.embeds_into(blend_cd) {
+                // Blending changes the appearance of translucent buffers.
+                return None;
+            }
+            if ct.alpha.is_some() {
+                // Direct scanout with alpha factor is not supported.
+                return None;
+            }
+            if !ct.tex.format().has_alpha && ct.target.is_covering() {
+                // Texture covers the entire screen and is opaque.
+                break 'ct ct;
+            }
+            for op in ops {
+                match op {
+                    GfxApiOp::Sync => {}
+                    GfxApiOp::FillRect(fr) => {
+                        if fr.effective_color() == Color::SOLID_BLACK {
+                            // Black fills can be ignored because this is the CRTC background color.
+                            if fr.rect.is_covering() {
+                                // If fill covers the entire screen, we don't have to look further.
+                                break 'ct ct;
+                            }
+                        } else {
+                            // Fill could be visible.
+                            return None;
+                        }
+                    }
+                    GfxApiOp::CopyTexture(_) => {
+                        // Texture could be visible.
+                        return None;
+                    }
+                }
+            }
+            if let Some(clear) = self.clear
+                && clear != Color::SOLID_BLACK
+            {
+                // Background could be visible.
+                return None;
+            }
+            ct
+        };
+        if let AcquireSync::None | AcquireSync::Implicit = ct.acquire_sync {
+            // Cannot perform scanout without explicit sync.
+            return None;
+        }
+        if ct.source.buffer_transform != ct.target.output_transform {
+            // Rotations and mirroring are not supported.
+            return None;
+        }
+        if !ct.source.is_covering() {
+            // Viewports are not supported.
+            return None;
+        }
+        if ct.target.x1 < -1.0 || ct.target.y1 < -1.0 || ct.target.x2 > 1.0 || ct.target.y2 > 1.0 {
+            // Rendering outside the screen is not supported.
+            return None;
+        }
+        let (tex_w, tex_h) = ct.tex.size();
+        let (x1, x2, y1, y2) = {
+            let plane_w = mode_w as f32;
+            let plane_h = mode_h as f32;
+            let ((x1, x2), (y1, y2)) = ct
+                .target
+                .output_transform
+                .maybe_swap(((ct.target.x1, ct.target.x2), (ct.target.y1, ct.target.y2)));
+            (
+                (x1 + 1.0) * plane_w / 2.0,
+                (x2 + 1.0) * plane_w / 2.0,
+                (y1 + 1.0) * plane_h / 2.0,
+                (y2 + 1.0) * plane_h / 2.0,
+            )
+        };
+        let (crtc_w, crtc_h) = (x2 - x1, y2 - y1);
+        if crtc_w < 0.0 || crtc_h < 0.0 {
+            // Flipping x or y axis is not supported.
+            return None;
+        }
+        if ct.scaling_filter == ScalingFilter::Nearest {
+            // Nearest scaling is not supported.
+            no_scaling = true;
+        }
+        if no_scaling && (tex_w as f32, tex_h as f32) != (crtc_w, crtc_h) {
+            // If scaling is not supported, we cannot scale the texture.
+            return None;
+        }
+        let position = DirectScanoutPosition {
+            src_width: tex_w,
+            src_height: tex_h,
+            crtc_x: x1 as _,
+            crtc_y: y1 as _,
+            crtc_width: crtc_w as _,
+            crtc_height: crtc_h as _,
+        };
+        Some((ct, position))
+    }
+}

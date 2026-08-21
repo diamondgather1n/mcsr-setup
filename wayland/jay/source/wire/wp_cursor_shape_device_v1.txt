@@ -1,0 +1,7 @@
+request destroy (destructor) {
+}
+
+request set_shape {
+    serial: u32,
+    shape: u32,
+}

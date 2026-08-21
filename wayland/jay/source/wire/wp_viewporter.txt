@@ -1,0 +1,7 @@
+request destroy (destructor) {
+}
+
+request get_viewport {
+    id: id(wp_viewport) (new),
+    surface: id(wl_surface),
+}

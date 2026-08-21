@@ -1,0 +1,12 @@
+# requests
+
+request create {
+    id: id(org_kde_kwin_server_decoration),
+    surface: id(wl_surface),
+}
+
+# events
+
+event default_mode {
+    mode: u32,
+}

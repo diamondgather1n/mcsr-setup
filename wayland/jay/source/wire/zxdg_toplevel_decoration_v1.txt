@@ -1,0 +1,13 @@
+request destroy (destructor) {
+}
+
+request set_mode {
+    mode: u32,
+}
+
+request unset_mode {
+}
+
+event configure {
+    mode: u32,
+}

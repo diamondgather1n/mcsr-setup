@@ -1,0 +1,110 @@
+use {
+    crate::{
+        backend::{InputDevice, InputDeviceCapability},
+        ifs::wl_seat::PX_PER_SCROLL,
+        state::{DeviceHandlerData, InputDeviceData, State},
+        tasks::udev_utils::{UdevProps, udev_props},
+        utils::{asyncevent::AsyncEvent, event_listener::EventListener},
+    },
+    jay_config::_private::DEFAULT_SEAT_NAME,
+    std::{
+        cell::Cell,
+        rc::{Rc, Weak},
+    },
+};
+
+pub fn handle(state: &Rc<State>, dev: Rc<dyn InputDevice>) {
+    let props = match dev.dev_t() {
+        None => UdevProps::default(),
+        Some(dev_t) => udev_props(dev_t, 3),
+    };
+    let data = Rc::new_cyclic(|slf: &Weak<DeviceHandlerData>| DeviceHandlerData {
+        keyboard_id: state.physical_keyboard_ids.next(),
+        seat: Default::default(),
+        px_per_scroll_wheel: Cell::new(PX_PER_SCROLL),
+        px_scroll_multiplier: Default::default(),
+        device: dev.clone(),
+        syspath: props.syspath,
+        devnode: props.devnode,
+        keymap: Default::default(),
+        output: Default::default(),
+        tablet_init: dev.tablet_info(),
+        tablet_pad_init: dev.tablet_pad_info(),
+        scroll_methods: dev.scroll_methods(),
+        input_event_codes: dev.input_event_codes(),
+        is_touch: dev.has_capability(InputDeviceCapability::Touch),
+        is_kb: dev.has_capability(InputDeviceCapability::Keyboard),
+        mods_listener: EventListener::new(slf.clone()),
+    });
+    let ae = Rc::new(AsyncEvent::default());
+    let oh = DeviceHandler {
+        state: state.clone(),
+        dev: dev.clone(),
+        data: data.clone(),
+        ae: ae.clone(),
+    };
+    let handler = state.eng.spawn("input dev handler", oh.handle());
+    state.input_device_handlers.borrow_mut().insert(
+        dev.id(),
+        InputDeviceData {
+            _handler: handler,
+            id: dev.id(),
+            data,
+            async_event: ae,
+        },
+    );
+}
+
+struct DeviceHandler {
+    state: Rc<State>,
+    dev: Rc<dyn InputDevice>,
+    data: Rc<DeviceHandlerData>,
+    ae: Rc<AsyncEvent>,
+}
+
+impl DeviceHandler {
+    pub async fn handle(self) {
+        {
+            let ae = self.ae.clone();
+            self.dev.on_change(Rc::new(move || ae.trigger()));
+        }
+        for seat in self.state.globals.seats.lock().values() {
+            if seat.seat_name() == DEFAULT_SEAT_NAME {
+                self.data.set_seat(&self.state, Some(seat.clone()));
+                break;
+            }
+        }
+        if let Some(config) = self.state.config.get() {
+            config.new_input_device(self.dev.id());
+        }
+        loop {
+            if self.dev.removed() {
+                break;
+            }
+            if let Some(seat) = self.data.seat.get() {
+                let mut any_events = false;
+                while let Some(event) = self.dev.event() {
+                    seat.event(&self.data, event);
+                    any_events = true;
+                }
+                if any_events {
+                    seat.mark_last_active();
+                    self.state.input_occurred();
+                }
+            } else {
+                while self.dev.event().is_some() {
+                    // nothing
+                }
+            }
+            self.ae.triggered().await;
+        }
+        if let Some(config) = self.state.config.get() {
+            config.del_input_device(self.dev.id());
+        }
+        self.state
+            .input_device_handlers
+            .borrow_mut()
+            .remove(&self.dev.id());
+        self.data.set_seat(&self.state, None);
+    }
+}

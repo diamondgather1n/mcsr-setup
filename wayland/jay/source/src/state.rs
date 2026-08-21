@@ -1,0 +1,2568 @@
+use {
+    crate::{
+        acceptor::Acceptor,
+        allocator::BufferObject,
+        async_engine::{AsyncEngine, SpawnedFuture},
+        backend::{
+            Backend, BackendConnectorState, BackendConnectorStateSerials, BackendDrmDevice,
+            BackendEvent, Connector, ConnectorId, ConnectorIds, DrmDeviceId, DrmDeviceIds,
+            HardwareCursorUpdate, InputDevice, InputDeviceGroupIds, InputDeviceId, InputDeviceIds,
+            InputDeviceScrollMethod, MonitorInfo, transaction::BackendConnectorTransactionError,
+        },
+        backends::dummy::DummyBackend,
+        buffer_id_device::{BufferIdDeviceDyn, BufferIdDeviceRegistry},
+        cli::RunArgs,
+        client::{Client, ClientCaps, ClientId, Clients, NUM_CACHED_SERIAL_RANGES, SerialRange},
+        clientmem::ClientMemOffset,
+        cmm::{cmm_description::ColorDescription, cmm_manager::ColorManager},
+        compositor::{LIBEI_SOCKET, LogLevel},
+        config::ConfigProxy,
+        configurable::ConfigureGroups,
+        control_center::{
+            CCI_COLOR_MANAGEMENT, CCI_COMPOSITOR, CCI_GPUS, CCI_IDLE, CCI_LOOK_AND_FEEL,
+            CCI_OUTPUTS, CCI_WORKSPACES, CCI_XWAYLAND, ControlCenters,
+        },
+        copy_device::{CopyDevice, CopyDeviceRegistry},
+        cpu_worker::CpuWorker,
+        criteria::{clm::ClMatcherManager, tlm::TlMatcherManager},
+        cursor::{Cursor, ServerCursors},
+        cursor_user::{CursorUserGroup, CursorUserGroupId, CursorUserGroupIds, CursorUserIds},
+        damage::DamageVisualizer,
+        dbus::Dbus,
+        dmabuf_feedback::DmaBufFeedbackState,
+        egui_adapter::egui_platform::EggState,
+        ei::{
+            ei_acceptor::EiAcceptor,
+            ei_client::{EiClient, EiClients},
+        },
+        evdev::input_event_codes::InputEventCode,
+        eventfd_cache::EventfdCache,
+        fixed::Fixed,
+        forker::ForkerProxy,
+        format::Format,
+        gfx_api::{
+            AcquireSync, BufferResv, BufferResvUser, FdSync, GfxApi, GfxBlendBuffer, GfxContext,
+            GfxError, GfxFramebuffer, GfxTexture, LazyTexture, PendingShmTransfer, ReleaseSync,
+            STAGING_DOWNLOAD, SampleRect, ScalingFilter,
+        },
+        gfx_apis::create_gfx_context,
+        globals::{Globals, GlobalsError, RemovableWaylandGlobal, WaylandGlobal},
+        icons::Icons,
+        ifs::{
+            ext_foreign_toplevel_list_v1::ExtForeignToplevelListV1,
+            ext_idle_notification_v1::ExtIdleNotificationV1,
+            ext_session_lock_v1::ExtSessionLockV1,
+            head_management::{HeadManager, HeadNames},
+            ipc::{
+                DataOfferIds, DataSourceIds, data_control::DataControlDeviceIds,
+                x_data_device::XIpcDeviceIds,
+            },
+            jay_render_ctx::JayRenderCtx,
+            jay_screencast::JayScreencast,
+            jay_seat_events::JaySeatEvents,
+            jay_workspace_watcher::JayWorkspaceWatcher,
+            wl_buffer::WlBuffer,
+            wl_output::{BlendSpace, OutputGlobalOpt, OutputId, PersistentOutputState},
+            wl_seat::{
+                PhysicalKeyboardId, PhysicalKeyboardIds, PositionHintRequest, SeatIds,
+                WlSeatGlobal,
+                tablet::{TabletIds, TabletInit, TabletPadIds, TabletPadInit, TabletToolIds},
+            },
+            wl_surface::{
+                NoneSurfaceExt, PendingStateCache,
+                commit_timeline::CommitCache,
+                tray::TrayItemIds,
+                wl_subsurface::SubsurfaceIds,
+                x_surface::xwindow::{Xwindow, XwindowId},
+                xdg_surface::xdg_toplevel::xdg_toplevel_icon_v1::{
+                    ToplevelIconId, ToplevelIconIds, XdgToplevelIconV1,
+                },
+                zwp_idle_inhibitor_v1::{IdleInhibitorId, IdleInhibitorIds, ZwpIdleInhibitorV1},
+                zwp_input_popup_surface_v2::ZwpInputPopupSurfaceV2,
+            },
+            wlr_output_manager::{
+                WlrOutputManagerState, zwlr_output_head_v1::ZwlrOutputHeadV1,
+                zwlr_output_manager_v1::WlrOutputManagerId,
+            },
+            workspace_manager::WorkspaceManagerState,
+            wp_drm_lease_connector_v1::WpDrmLeaseConnectorV1,
+            wp_drm_lease_device_v1::WpDrmLeaseDeviceV1Global,
+            xdg_activation_token_v1::ActivationToken,
+            zwlr_foreign_toplevel_manager_v1::ZwlrForeignToplevelManagerV1,
+            zwlr_screencopy_frame_v1::ZwlrScreencopyFrameV1,
+        },
+        io_uring::IoUring,
+        kbvm::{KbvmContext, KbvmMap},
+        keyboard::{KeyboardStateIds, LedsListener},
+        leaks::Tracker,
+        logger::Logger,
+        pr_caps::PrCapsThread,
+        rect::{Rect, Region},
+        renderer::{Renderer, renderer_base::RenderTexture},
+        scale::Scale,
+        security_context_acceptor::SecurityContextAcceptors,
+        sm::{SessionManager, SessionReason, ToplevelSession},
+        sqlite::Sqlite,
+        syncobj::wait_for_syncobj::WaitForSyncobj,
+        tagged_acceptor::TaggedAcceptors,
+        theme::{BarPosition, Color, ContainerBorders, Theme, ThemeColored, ThemeSized},
+        time::Time,
+        transactions::{TransactionData, Transactionable, TransactionableExt, Transactions},
+        tree::{
+            ContainerNode, ContainerSplit, Direction, DisplayNode, FindTreeUsecase, FloatNode,
+            FoundNode, LatchListener, NodeBase, NodeIds, NodeVisitor, NodeVisitorBase, OutputNode,
+            OutputNodeId, PlaceholderNode, SplitView, TearingMode, TileState, ToplevelData,
+            ToplevelIdentifier, ToplevelNode, ToplevelNodeBase, Transform, TreeSerial, TreeSerials,
+            TreeTimeline::{self, LiveTL, RenderTL},
+            VrrMode, WorkspaceDisplayOrder, WorkspaceNode, WorkspaceType, WsMoveConfig,
+            generic_node_visitor, move_ws_to_output,
+        },
+        tree_serial_groups::TreeSerialGroups,
+        udmabuf::UdmabufHolder,
+        utils::{
+            asyncevent::AsyncEvent,
+            bindings::Bindings,
+            clamp_ext::ClampExt,
+            clonecell::CloneCell,
+            copyhashmap::CopyHashMap,
+            errorfmt::ErrorFmt,
+            event_listener::{EventListener, EventSource, LazyEventSources},
+            fdcloser::FdCloser,
+            hash_map_ext::HashMapExt,
+            linkedlist::LinkedList,
+            numcell::NumCell,
+            obj_and_id::{ObjAndId, ObjWithId},
+            object_drop_queue::ObjectDropQueue,
+            queue::AsyncQueue,
+            refcounted::RefCounted,
+            run_toplevel::RunToplevel,
+            sleeper::Sleeper,
+        },
+        video::{
+            Modifier,
+            dmabuf::DmaBufIds,
+            drm::{Drm, NodeType},
+        },
+        virtual_output::VirtualOutputs,
+        wheel::Wheel,
+        wire::{
+            ExtForeignToplevelListV1Id, ExtIdleNotificationV1Id, JayRenderCtxId, JaySeatEventsId,
+            JayWorkspaceWatcherId, ZwlrForeignToplevelManagerV1Id,
+        },
+        xwayland::{self, XWaylandEvent},
+    },
+    ahash::{AHashMap, AHashSet},
+    bstr::ByteSlice,
+    isnt::std_1::{collections::IsntHashMapExt, primitive::IsntSliceExt},
+    jay_config::PciId,
+    linearize::{StaticCopyMap, StaticMap},
+    std::{
+        cell::{Cell, RefCell},
+        fmt::{Debug, Formatter},
+        mem,
+        ops::{Deref, DerefMut},
+        rc::{Rc, Weak},
+        sync::Arc,
+        time::{Duration, SystemTime},
+    },
+    thiserror::Error,
+    uapi::{
+        OwnedFd,
+        c::{self, dev_t},
+    },
+};
+
+pub struct State {
+    pub pid: c::pid_t,
+    pub kb_ctx: KbvmContext,
+    pub backend: CloneCell<Rc<dyn Backend>>,
+    pub forker: CloneCell<Option<Rc<ForkerProxy>>>,
+    pub default_keymap: Rc<KbvmMap>,
+    pub eng: Rc<AsyncEngine>,
+    pub render_ctx: CloneCell<Option<Rc<dyn GfxContext>>>,
+    pub render_ctx_drm_device: ObjAndId<Option<Rc<DrmDevData>>>,
+    pub render_ctx_prime_copy_device: CloneCell<Option<Rc<CopyDevice>>>,
+    pub render_ctx_prime_modifiers: CopyHashMap<Option<ConnectorId>, PrimeModifiers>,
+    pub render_ctx_prime_modifiers_stash: RefCell<Vec<Modifier>>,
+    pub render_ctx_version: NumCell<u32>,
+    pub render_ctx_ever_initialized: Cell<bool>,
+    pub cursors: CloneCell<Option<Rc<ServerCursors>>>,
+    pub wheel: Rc<Wheel>,
+    pub clients: Clients,
+    pub globals: Globals,
+    pub connector_ids: ConnectorIds,
+    pub drm_dev_ids: DrmDeviceIds,
+    pub seat_ids: SeatIds,
+    pub idle_inhibitor_ids: IdleInhibitorIds,
+    pub input_device_ids: InputDeviceIds,
+    pub node_ids: NodeIds,
+    pub root: Rc<DisplayNode>,
+    pub workspaces: CopyHashMap<String, Rc<WorkspaceNode>>,
+    pub dummy_output_id: OutputNodeId,
+    pub dummy_output: CloneCell<Option<Rc<OutputNode>>>,
+    pub backend_events: AsyncQueue<BackendEvent>,
+    pub input_device_handlers: RefCell<AHashMap<InputDeviceId, InputDeviceData>>,
+    pub seat_queue: LinkedList<Rc<WlSeatGlobal>>,
+    pub slow_clients: AsyncQueue<Rc<Client>>,
+    pub none_surface_ext: Rc<NoneSurfaceExt>,
+    pub tree_changed_sent: Cell<bool>,
+    pub config: CloneCell<Option<Rc<ConfigProxy>>>,
+    pub config_locked_shortcuts: Cell<bool>,
+    pub theme: Theme,
+    pub pending_container_layout: AsyncQueue<Rc<ContainerNode>>,
+    pub pending_container_render_positions: AsyncQueue<Rc<ContainerNode>>,
+    pub pending_container_render_title: AsyncQueue<Rc<ContainerNode>>,
+    pub pending_output_render_data: AsyncQueue<Rc<OutputNode>>,
+    pub pending_float_layout: AsyncQueue<Rc<FloatNode>>,
+    pub pending_float_titles: AsyncQueue<Rc<FloatNode>>,
+    pub pending_input_popup_positioning: AsyncQueue<Rc<ZwpInputPopupSurfaceV2>>,
+    pub pending_toplevel_screencasts: AsyncQueue<Rc<JayScreencast>>,
+    pub pending_screencast_reallocs_or_reconfigures: AsyncQueue<Rc<JayScreencast>>,
+    pub pending_placeholder_render_textures: AsyncQueue<Rc<PlaceholderNode>>,
+    pub dbus: Dbus,
+    pub fdcloser: Arc<FdCloser>,
+    pub logger: Option<Arc<Logger>>,
+    pub connectors: CopyHashMap<ConnectorId, Rc<ConnectorData>>,
+    pub outputs: CopyHashMap<ConnectorId, Rc<OutputData>>,
+    pub wlr_output_managers: WlrOutputManagerState,
+    pub drm_devs: CopyHashMap<DrmDeviceId, Rc<DrmDevData>>,
+    pub drm_devs_by_dev_t: CopyHashMap<dev_t, Rc<DrmDevData>>,
+    pub status: CloneCell<Rc<String>>,
+    pub idle: IdleState,
+    pub run_args: RunArgs,
+    pub xwayland: XWaylandState,
+    pub acceptor: CloneCell<Option<Rc<Acceptor>>>,
+    pub serial: NumCell<u64>,
+    pub run_toplevel: Rc<RunToplevel>,
+    pub config_dir: Option<String>,
+    pub tracker: Tracker<Self>,
+    pub data_offer_ids: DataOfferIds,
+    pub data_source_ids: DataSourceIds,
+    pub ring: Rc<IoUring>,
+    pub lock: ScreenlockState,
+    pub scales: RefCounted<Scale>,
+    pub cursor_sizes: RefCounted<u32>,
+    pub hardware_tick_cursor: AsyncQueue<Option<Rc<dyn Cursor>>>,
+    pub testers: RefCell<AHashMap<(ClientId, JaySeatEventsId), Rc<JaySeatEvents>>>,
+    pub render_ctx_watchers: CopyHashMap<(ClientId, JayRenderCtxId), Rc<JayRenderCtx>>,
+    pub workspace_watchers: CopyHashMap<(ClientId, JayWorkspaceWatcherId), Rc<JayWorkspaceWatcher>>,
+    pub default_workspace_capture: Cell<bool>,
+    pub default_gfx_api: Cell<GfxApi>,
+    pub activation_tokens: CopyHashMap<ActivationToken, ()>,
+    pub toplevel_lists:
+        CopyHashMap<(ClientId, ExtForeignToplevelListV1Id), Rc<ExtForeignToplevelListV1>>,
+    pub dma_buf_ids: Rc<DmaBufIds>,
+    pub direct_scanout_enabled: Cell<bool>,
+    pub persistent_output_states: CopyHashMap<Rc<OutputId>, Rc<PersistentOutputState>>,
+    pub double_click_interval_usec: Cell<u64>,
+    pub double_click_distance: Cell<i32>,
+    pub create_default_seat: Cell<bool>,
+    pub subsurface_ids: SubsurfaceIds,
+    pub wait_for_syncobj: Rc<WaitForSyncobj>,
+    pub explicit_sync_enabled: Cell<bool>,
+    pub explicit_sync_supported: Cell<bool>,
+    pub keyboard_state_ids: KeyboardStateIds,
+    pub physical_keyboard_ids: PhysicalKeyboardIds,
+    pub security_context_acceptors: SecurityContextAcceptors,
+    pub tagged_acceptors: TaggedAcceptors,
+    pub cursor_user_group_ids: CursorUserGroupIds,
+    pub cursor_user_ids: CursorUserIds,
+    pub cursor_user_groups: CopyHashMap<CursorUserGroupId, Rc<CursorUserGroup>>,
+    pub cursor_user_group_hardware_cursor: CloneCell<Option<Rc<CursorUserGroup>>>,
+    pub input_device_group_ids: InputDeviceGroupIds,
+    pub tablet_ids: TabletIds,
+    pub tablet_tool_ids: TabletToolIds,
+    pub tablet_pad_ids: TabletPadIds,
+    pub damage_visualizer: DamageVisualizer,
+    pub default_vrr_mode: Cell<VrrMode>,
+    pub default_vrr_cursor_hz: Cell<Option<f64>>,
+    pub default_tearing_mode: Cell<TearingMode>,
+    pub ei_acceptor: CloneCell<Option<Rc<EiAcceptor>>>,
+    pub ei_acceptor_future: CloneCell<Option<SpawnedFuture<()>>>,
+    pub enable_ei_acceptor: Cell<bool>,
+    pub ei_clients: EiClients,
+    pub slow_ei_clients: AsyncQueue<Rc<EiClient>>,
+    pub cpu_worker: Rc<CpuWorker>,
+    pub ui_drag_enabled: Cell<bool>,
+    pub ui_drag_threshold_squared: Cell<i32>,
+    pub toplevels: CopyHashMap<ToplevelIdentifier, Weak<dyn ToplevelNode>>,
+    pub const_40hz_latch: EventSource<dyn LatchListener>,
+    pub tray_item_ids: TrayItemIds,
+    pub data_control_device_ids: DataControlDeviceIds,
+    pub workspace_managers: WorkspaceManagerState,
+    pub toplevel_managers:
+        CopyHashMap<(ClientId, ZwlrForeignToplevelManagerV1Id), Rc<ZwlrForeignToplevelManagerV1>>,
+    pub color_management_enabled: Cell<bool>,
+    pub color_manager: Rc<ColorManager>,
+    pub float_above_fullscreen: Cell<bool>,
+    pub icons: Icons,
+    pub show_pin_icon: Cell<bool>,
+    pub cl_matcher_manager: ClMatcherManager,
+    pub tl_matcher_manager: TlMatcherManager,
+    pub caps_thread: Option<PrCapsThread>,
+    pub node_at_tree: RefCell<Vec<FoundNode>>,
+    pub position_hint_requests: AsyncQueue<PositionHintRequest>,
+    pub pending_warp_mouse_to_focus: AsyncQueue<Rc<WlSeatGlobal>>,
+    pub backend_connector_state_serials: BackendConnectorStateSerials,
+    pub head_names: HeadNames,
+    pub show_bar: Cell<bool>,
+    pub enable_primary_selection: Cell<bool>,
+    pub workspace_display_order: Cell<WorkspaceDisplayOrder>,
+    pub outputs_without_hc: NumCell<usize>,
+    pub udmabuf: Rc<UdmabufHolder>,
+    pub gfx_ctx_changed: EventSource<WlBuffer>,
+    pub copy_device_registry: Rc<CopyDeviceRegistry>,
+    pub buffer_id_device_registry: BufferIdDeviceRegistry,
+    pub supports_presentation_feedback: Cell<bool>,
+    pub eventfd_cache: Rc<EventfdCache>,
+    pub lazy_event_sources: Rc<LazyEventSources>,
+    pub bo_drop_queue: Rc<ObjectDropQueue<Rc<dyn BufferObject>>>,
+    pub egg_state: EggState,
+    pub control_centers: ControlCenters,
+    pub virtual_outputs: VirtualOutputs,
+    pub clean_logs_older_than: Cell<Option<SystemTime>>,
+    pub sqlite: Option<Rc<Sqlite>>,
+    pub sm: Option<Rc<SessionManager>>,
+    pub session_management_enabled: Cell<bool>,
+    pub fallback_output: Cell<Option<ConnectorId>>,
+    pub toplevel_icon_ids: ToplevelIconIds,
+    pub toplevel_icons: CopyHashMap<ToplevelIconId, Weak<XdgToplevelIconV1>>,
+    pub tree: Rc<TreeState>,
+    pub commit_cache: CommitCache,
+    pub dmabuf_feedback: DmaBufFeedbackState,
+    pub surface_pending_cache: PendingStateCache,
+    pub no_client_prime: bool,
+    pub lazy_prime_buffer_resv_user: BufferResvUser,
+    pub visualize_compositing: Cell<bool>,
+    pub sleeper: Option<Sleeper>,
+    pub transaction_data: TransactionData<StateTransactionOp>,
+}
+
+// impl Drop for State {
+//     fn drop(&mut self) {
+//         log::info!("drop state");
+//     }
+// }
+
+impl Debug for State {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("State").finish_non_exhaustive()
+    }
+}
+
+#[derive(Default)]
+pub struct TreeState {
+    pub serials: TreeSerials,
+    pub serial_groups: TreeSerialGroups,
+    pub configure_groups: ConfigureGroups,
+    pub transactions: Transactions,
+}
+
+#[derive(Copy, Clone, PartialEq)]
+pub struct PrimeModifier {
+    pub modifier: Modifier,
+    pub max_width: u32,
+    pub max_height: u32,
+}
+
+pub type PrimeModifiers = Rc<AHashMap<u32, Vec<PrimeModifier>>>;
+
+pub struct ScreenlockState {
+    pub locked: SplitView<Cell<bool>>,
+    pub lock: CloneCell<Option<Rc<ExtSessionLockV1>>>,
+}
+
+pub struct XWaylandState {
+    pub enabled: Cell<bool>,
+    pub running: Cell<bool>,
+    pub pidfd: CloneCell<Option<Rc<OwnedFd>>>,
+    pub handler: RefCell<Option<SpawnedFuture<()>>>,
+    pub queue: Rc<AsyncQueue<XWaylandEvent>>,
+    pub ipc_device_ids: XIpcDeviceIds,
+    pub use_wire_scale: Cell<bool>,
+    pub wire_scale: Cell<Option<i32>>,
+    pub windows: CopyHashMap<XwindowId, Rc<Xwindow>>,
+    pub client: CloneCell<Option<Rc<Client>>>,
+    pub display: CloneCell<Option<Rc<String>>>,
+}
+
+pub struct IdleState {
+    pub input: Cell<bool>,
+    pub change: AsyncEvent,
+    pub timeout: Cell<Duration>,
+    pub grace_period: Cell<Duration>,
+    pub timeout_changed: Cell<bool>,
+    pub inhibitors: CopyHashMap<IdleInhibitorId, Rc<ZwpIdleInhibitorV1>>,
+    pub inhibitors_changed: Cell<bool>,
+    pub backend_idle: Cell<bool>,
+    pub inhibited_idle_notifications:
+        CopyHashMap<(ClientId, ExtIdleNotificationV1Id), Rc<ExtIdleNotificationV1>>,
+    pub in_grace_period: Cell<bool>,
+}
+
+impl IdleState {
+    pub fn set_timeout(&self, state: &State, timeout: Duration) {
+        self.timeout.set(timeout);
+        self.timeout_changed(state);
+    }
+
+    pub fn set_grace_period(&self, state: &State, grace_period: Duration) {
+        self.grace_period.set(grace_period);
+        self.timeout_changed(state);
+    }
+
+    fn timeout_changed(&self, state: &State) {
+        self.timeout_changed.set(true);
+        self.change.trigger();
+        state.trigger_cci(CCI_IDLE);
+    }
+
+    pub fn add_inhibitor(&self, state: &State, inhibitor: &Rc<ZwpIdleInhibitorV1>) {
+        self.inhibitors.set(inhibitor.inhibit_id, inhibitor.clone());
+        self.inhibitors_changed(state);
+    }
+
+    pub fn remove_inhibitor(&self, state: &State, inhibitor: &ZwpIdleInhibitorV1) {
+        self.inhibitors.remove(&inhibitor.inhibit_id);
+        self.inhibitors_changed(state);
+        if self.inhibitors.is_empty() {
+            self.resume_inhibited_notifications();
+        }
+    }
+
+    fn inhibitors_changed(&self, state: &State) {
+        self.inhibitors_changed.set(true);
+        self.change.trigger();
+        state.trigger_cci(CCI_IDLE);
+    }
+
+    fn resume_inhibited_notifications(&self) {
+        for notification in self.inhibited_idle_notifications.lock().drain_values() {
+            notification.resume.trigger();
+        }
+    }
+
+    pub fn add_inhibited_notification(&self, n: &Rc<ExtIdleNotificationV1>) {
+        self.inhibited_idle_notifications
+            .set((n.client.id, n.id), n.clone());
+    }
+
+    pub fn remove_inhibited_notification(&self, n: &ExtIdleNotificationV1) {
+        self.inhibited_idle_notifications
+            .remove(&(n.client.id, n.id));
+    }
+}
+
+pub struct InputDeviceData {
+    pub _handler: SpawnedFuture<()>,
+    pub id: InputDeviceId,
+    pub data: Rc<DeviceHandlerData>,
+    pub async_event: Rc<AsyncEvent>,
+}
+
+pub struct DeviceHandlerData {
+    pub keyboard_id: PhysicalKeyboardId,
+    pub seat: CloneCell<Option<Rc<WlSeatGlobal>>>,
+    pub px_per_scroll_wheel: Cell<f64>,
+    pub px_scroll_multiplier: Cell<Option<f64>>,
+    pub device: Rc<dyn InputDevice>,
+    pub syspath: Option<String>,
+    pub devnode: Option<String>,
+    pub keymap: CloneCell<Option<Rc<KbvmMap>>>,
+    pub output: CloneCell<Option<Rc<OutputGlobalOpt>>>,
+    pub tablet_init: Option<Box<TabletInit>>,
+    pub tablet_pad_init: Option<Box<TabletPadInit>>,
+    pub scroll_methods: StaticCopyMap<InputDeviceScrollMethod, bool>,
+    pub input_event_codes: Vec<InputEventCode>,
+    pub is_touch: bool,
+    pub is_kb: bool,
+    pub mods_listener: EventListener<dyn LedsListener>,
+}
+
+pub struct ConnectorData {
+    pub id: ConnectorId,
+    pub connector: Rc<dyn Connector>,
+    pub handler: Cell<Option<SpawnedFuture<()>>>,
+    pub connected: Cell<bool>,
+    pub name: Rc<String>,
+    pub description: RefCell<String>,
+    pub drm_dev: Option<Rc<DrmDevData>>,
+    pub async_event: Rc<AsyncEvent>,
+    pub damaged: Cell<bool>,
+    pub damage: RefCell<Vec<Rect>>,
+    pub needs_vblank_emulation: Cell<bool>,
+    pub damage_intersect: Cell<Rect>,
+    pub state: RefCell<BackendConnectorState>,
+    pub head_manager: HeadManager,
+    pub wlr_output_heads: CopyHashMap<WlrOutputManagerId, Rc<ZwlrOutputHeadV1>>,
+}
+
+pub struct OutputData {
+    pub connector: Rc<ConnectorData>,
+    pub monitor_info: Rc<MonitorInfo>,
+    pub node: Option<Rc<OutputNode>>,
+    pub lease_connectors: Rc<Bindings<WpDrmLeaseConnectorV1>>,
+}
+
+pub struct DrmDevData {
+    pub id: DrmDeviceId,
+    pub dev: Rc<dyn BackendDrmDevice>,
+    pub handler: Cell<Option<SpawnedFuture<()>>>,
+    pub connectors: CopyHashMap<ConnectorId, Rc<ConnectorData>>,
+    pub dev_t: dev_t,
+    pub dev_ts: StaticMap<NodeType, Option<dev_t>>,
+    pub syspath: Option<String>,
+    pub devnode: Option<String>,
+    pub vendor: Option<String>,
+    pub model: Option<String>,
+    pub pci_id: Option<PciId>,
+    pub lease_global: Rc<WpDrmLeaseDeviceV1Global>,
+    pub copy_device: Option<Rc<CopyDevice>>,
+    pub id_device: Option<Rc<dyn BufferIdDeviceDyn>>,
+}
+
+impl ObjWithId for Rc<ConnectorData> {
+    type Id = ConnectorId;
+
+    fn id(&self) -> Self::Id {
+        self.id
+    }
+}
+
+impl ObjWithId for Rc<DrmDevData> {
+    type Id = DrmDeviceId;
+
+    fn id(&self) -> Self::Id {
+        self.id
+    }
+}
+
+impl ConnectorData {
+    pub fn damage(&self) {
+        if !self.damaged.replace(true) {
+            self.connector.damage();
+        }
+    }
+
+    pub fn modify_state(
+        &self,
+        state: &State,
+        f: impl FnOnce(&mut BackendConnectorState),
+    ) -> Result<(), BackendConnectorTransactionError> {
+        let old = self.state.borrow().clone();
+        let mut s = old.clone();
+        f(&mut s);
+        if old == s {
+            return Ok(());
+        }
+        s.serial = state.backend_connector_state_serials.next();
+        let mut tran = self.connector.create_transaction()?;
+        tran.add(&self.connector, s.clone())?;
+        tran.prepare()?.apply()?.commit();
+        self.set_state(state, s);
+        Ok(())
+    }
+
+    pub fn set_state(&self, state: &State, s: BackendConnectorState) {
+        let old = self.state.borrow().clone();
+        if old.serial >= s.serial {
+            return;
+        }
+        *self.state.borrow_mut() = s.clone();
+        macro_rules! b {
+            ($expr:expr) => {{
+                let e = $expr;
+                if e {
+                    state.trigger_cci(CCI_OUTPUTS);
+                }
+                e
+            }};
+        }
+        if b!(old.enabled != s.enabled) {
+            self.head_manager.handle_enabled_change(state, s.enabled);
+        }
+        if b!(old.active != s.active) {
+            self.head_manager.handle_active_change(s.active);
+        }
+        if b!(old.non_desktop_override != s.non_desktop_override) {
+            self.head_manager
+                .handle_non_desktop_override_changed(s.non_desktop_override);
+        }
+        if b!(old.vrr != s.vrr) {
+            self.head_manager.handle_vrr_change(s.vrr);
+        }
+        if b!(old.tearing != s.tearing) {
+            self.head_manager.handle_tearing_enabled_change(s.tearing);
+        }
+        if b!(old.format != s.format) {
+            self.head_manager.handle_format_change(s.format);
+        }
+        if b!((old.color_space, old.eotf) != (s.color_space, s.eotf)) {
+            self.head_manager
+                .handle_colors_change(s.color_space, s.eotf);
+        }
+        if b!(old.mode != s.mode) {
+            self.head_manager.handle_mode_change(s.mode);
+            for head in self.wlr_output_heads.lock().values() {
+                head.handle_mode_change(s.mode);
+            }
+        }
+        if let Some(output) = state.outputs.get(&self.connector.id())
+            && let Some(node) = &output.node
+        {
+            node.update_state(old, s);
+        }
+    }
+}
+
+impl DrmDevData {
+    pub fn make_render_device(&self) {
+        log::info!(
+            "Making {} the render device",
+            self.devnode.as_deref().unwrap_or("unknown"),
+        );
+        self.dev.clone().make_render_device();
+    }
+
+    pub fn set_direct_scanout_enabled(&self, state: &State, enabled: bool) {
+        self.dev.set_direct_scanout_enabled(enabled);
+        state.trigger_cci(CCI_GPUS);
+    }
+
+    pub fn set_flip_margin(&self, state: &State, margin: u64) {
+        self.dev.set_flip_margin(margin);
+        state.trigger_cci(CCI_GPUS);
+    }
+}
+
+struct UpdateTextTexturesVisitor;
+impl NodeVisitorBase for UpdateTextTexturesVisitor {
+    fn visit_container(&mut self, node: &Rc<ContainerNode>) {
+        node.children
+            .iter()
+            .for_each(|c| c.title_tex.borrow_mut().clear());
+        node.schedule_render_titles();
+        node.node_visit_children(self);
+    }
+    fn visit_output(&mut self, node: &Rc<OutputNode>) {
+        node.schedule_update_render_data();
+        node.node_visit_children(self);
+    }
+    fn visit_float(&mut self, node: &Rc<FloatNode>) {
+        node.title_textures.borrow_mut().clear();
+        node.schedule_render_titles();
+        node.node_visit_children(self);
+    }
+    fn visit_workspace(&mut self, node: &Rc<WorkspaceNode>) {
+        node.title_texture.take();
+        node.node_visit_children(self);
+    }
+    fn visit_placeholder(&mut self, node: &Rc<PlaceholderNode>) {
+        node.textures.borrow_mut().clear();
+        node.schedule_update_texture();
+        node.node_visit_children(self);
+    }
+}
+
+impl State {
+    pub fn create_gfx_context(
+        &self,
+        drm_device_id: DrmDeviceId,
+        drm: &Drm,
+        api: Option<GfxApi>,
+    ) -> Result<Rc<dyn GfxContext>, GfxError> {
+        create_gfx_context(
+            &self.eng,
+            &self.ring,
+            &self.eventfd_cache,
+            Some(drm_device_id),
+            drm,
+            api.unwrap_or(self.default_gfx_api.get()),
+            self.caps_thread.as_ref(),
+        )
+    }
+
+    pub fn add_output_scale(&self, scale: Scale) {
+        if self.scales.add(scale) {
+            self.output_scales_changed();
+        }
+    }
+
+    pub fn remove_output_scale(&self, scale: Scale) {
+        if self.scales.remove(&scale) {
+            self.output_scales_changed();
+        }
+    }
+
+    pub fn add_cursor_size(&self, size: u32) {
+        if self.cursor_sizes.add(size) {
+            self.cursor_sizes_changed();
+        }
+    }
+
+    pub fn remove_cursor_size(&self, size: u32) {
+        if self.cursor_sizes.remove(&size) {
+            self.cursor_sizes_changed();
+        }
+    }
+
+    fn output_scales_changed(&self) {
+        self.visit_all_nodes(&mut UpdateTextTexturesVisitor);
+        self.reload_cursors();
+        self.update_xwayland_wire_scale();
+        self.icons.update_sizes(self);
+        self.update_toplevel_icon_sizes();
+    }
+
+    fn update_toplevel_icon_sizes(&self) {
+        for v in self.toplevel_icons.lock().values() {
+            if let Some(v) = v.upgrade() {
+                v.update_sizes();
+            }
+        }
+    }
+
+    fn cursor_sizes_changed(&self) {
+        self.reload_cursors();
+    }
+
+    pub fn devices_enumerated(&self) {
+        if let Some(config) = self.config.get() {
+            config.devices_enumerated()
+        }
+        if self.render_ctx.is_none() {
+            let drm_devs: Vec<_> = self.drm_devs.lock().values().cloned().collect();
+            for dev in &drm_devs {
+                if let Ok(version) = dev.dev.version()
+                    && version.name.contains_str("nvidia")
+                {
+                    continue;
+                }
+                dev.make_render_device();
+                if self.render_ctx.is_some() {
+                    break;
+                }
+            }
+            if self.render_ctx.is_none()
+                && let Some(dev) = drm_devs.first()
+            {
+                dev.make_render_device();
+            }
+        }
+    }
+
+    pub fn set_render_ctx(&self, ctx: Option<Rc<dyn GfxContext>>) {
+        self.egg_state.clear();
+        self.explicit_sync_supported.set(false);
+        self.render_ctx.set(ctx.clone());
+        self.render_ctx_version.fetch_add(1);
+        self.cursors.set(None);
+        self.icons.clear();
+        self.wait_for_syncobj
+            .set_ctx(ctx.as_ref().and_then(|c| c.syncobj_ctx().cloned()));
+        self.virtual_outputs.handle_render_ctx_change(self);
+        self.dmabuf_feedback.update();
+        self.update_render_device(true);
+
+        {
+            struct Walker;
+            impl NodeVisitorBase for Walker {
+                fn visit_container(&mut self, node: &Rc<ContainerNode>) {
+                    node.render_data.borrow_mut().titles.clear();
+                    node.children.iter().for_each(|c| {
+                        c.title_tex.borrow_mut().clear();
+                        c.icon.clear();
+                        c.icons.clear();
+                    });
+                    node.node_visit_children(self);
+                }
+                fn visit_workspace(&mut self, node: &Rc<WorkspaceNode>) {
+                    node.title_texture.take();
+                    node.node_visit_children(self);
+                }
+                fn visit_output(&mut self, node: &Rc<OutputNode>) {
+                    node.render_data.borrow_mut().titles.clear();
+                    node.render_data.borrow_mut().status.take();
+                    node.set_hardware_cursor(None);
+                    node.node_visit_children(self);
+                }
+                fn visit_float(&mut self, node: &Rc<FloatNode>) {
+                    node.title_textures.borrow_mut().clear();
+                    node.icon.clear();
+                    node.icons.clear();
+                    node.node_visit_children(self);
+                }
+                fn visit_placeholder(&mut self, node: &Rc<PlaceholderNode>) {
+                    node.textures.borrow_mut().clear();
+                    node.node_visit_children(self);
+                }
+            }
+            self.visit_all_nodes(&mut Walker);
+            let mut updated_buffers = AHashMap::new();
+            for buffer in self.gfx_ctx_changed.iter() {
+                let had_buffer_texture = buffer.handle_gfx_context_change();
+                updated_buffers.insert(Rc::as_ptr(&buffer), had_buffer_texture);
+            }
+            for client in self.clients.clients.borrow_mut().values() {
+                for surface in client.data.objects.surfaces.lock().values() {
+                    let had_shm_texture = surface.reset_shm_textures();
+                    let had_prime_texture = surface.prime.reset();
+                    if let Some(buffer) = surface.buffer.get() {
+                        let buf = &buffer.buffer.buf;
+                        let had_buffer_texture = *updated_buffers.get(&Rc::as_ptr(buf)).unwrap();
+                        if had_shm_texture || had_prime_texture || had_buffer_texture {
+                            buf.update_texture_or_log(surface, true);
+                        }
+                    }
+                }
+            }
+            for icon in self.toplevel_icons.lock().values() {
+                if let Some(icon) = icon.upgrade() {
+                    icon.handle_render_ctx_change();
+                }
+            }
+        }
+
+        if ctx.is_some() {
+            self.reload_cursors();
+            self.visit_all_nodes(&mut UpdateTextTexturesVisitor);
+        }
+
+        for cursor_user_groups in self.cursor_user_groups.lock().values() {
+            cursor_user_groups.render_ctx_changed();
+        }
+
+        if let Some(ctx) = &ctx {
+            if let Some(ctx) = ctx.syncobj_ctx()
+                && ctx.supports_async_wait()
+            {
+                self.explicit_sync_supported.set(true);
+            }
+            if !self.render_ctx_ever_initialized.replace(true)
+                && let Some(config) = self.config.get()
+            {
+                config.graphics_initialized();
+            }
+        }
+
+        for watcher in self.render_ctx_watchers.lock().values() {
+            watcher.send_render_ctx(ctx.clone());
+        }
+
+        let mut scs = vec![];
+        for client in self.clients.clients.borrow_mut().values() {
+            for sc in client.data.objects.screencasts.lock().values() {
+                scs.push(sc.clone());
+            }
+            for sc in client.data.objects.ext_copy_sessions.lock().values() {
+                sc.stop();
+            }
+        }
+        for sc in scs {
+            sc.do_destroy();
+        }
+
+        self.expose_new_singletons();
+        self.trigger_cci(CCI_COLOR_MANAGEMENT | CCI_GPUS);
+    }
+
+    fn reload_cursors(&self) {
+        if let Some(ctx) = self.render_ctx.get() {
+            let cursors = match ServerCursors::load(&ctx, self) {
+                Ok(c) => c.map(Rc::new),
+                Err(e) => {
+                    log::error!("Could not load the cursors: {}", ErrorFmt(e));
+                    None
+                }
+            };
+            self.cursors.set(cursors);
+            for cursor_user_group in self.cursor_user_groups.lock().values() {
+                cursor_user_group.reload_known_cursor();
+            }
+        }
+    }
+
+    pub fn add_global<T: WaylandGlobal>(&self, global: &Rc<T>) {
+        self.globals.add_global(self, global)
+    }
+
+    pub fn remove_global<T: RemovableWaylandGlobal>(
+        &self,
+        global: &Rc<T>,
+    ) -> Result<(), GlobalsError> {
+        self.globals.remove(self, global)
+    }
+
+    pub fn tree_changed(&self) {
+        // log::info!("state.tree_changed\n{:?}", Backtrace::new());
+        if self.tree_changed_sent.replace(true) {
+            return;
+        }
+        let seats = self.globals.seats.lock();
+        for seat in seats.values() {
+            seat.trigger_tree_changed(false);
+        }
+    }
+
+    pub fn get_map_output(&self, seat: Option<&Rc<WlSeatGlobal>>) -> Rc<OutputNode> {
+        seat.cloned()
+            .or_else(|| self.seat_queue.last().map(|s| s.deref().clone()))
+            .map(|s| s.get_fallback_output())
+            .or_else(|| {
+                self.fallback_output
+                    .get()
+                    .and_then(|o| self.root.outputs.get(&o))
+            })
+            .or_else(|| self.root.outputs.lock().values().next().cloned())
+            .or_else(|| self.dummy_output.get())
+            .unwrap()
+    }
+
+    pub fn ensure_map_workspace(&self, seat: Option<&Rc<WlSeatGlobal>>) -> Rc<WorkspaceNode> {
+        self.get_map_output(seat).ensure_workspace()
+    }
+
+    pub fn get_map_workspace(&self, seat: Option<&Rc<WlSeatGlobal>>) -> Option<Rc<WorkspaceNode>> {
+        self.get_map_output(seat).workspace()
+    }
+
+    pub fn map_restore(
+        self: &Rc<Self>,
+        node: Rc<dyn ToplevelNode>,
+        session: &Rc<ToplevelSession>,
+        has_parent: bool,
+    ) -> bool {
+        let s = &session.state;
+        let data = node.tl_data();
+        let on = || {
+            let o = s.output.get()?;
+            for on in self.root.outputs.lock().values() {
+                if on.global.output_id.hash == o {
+                    return Some(on.clone());
+                }
+            }
+            None
+        };
+        let ws = || {
+            let Some(name) = s.workspace.get() else {
+                return Some(on()?.ensure_normal_workspace());
+            };
+            let ty = s.workspace_ty.get().unwrap_or(WorkspaceType::Normal);
+            match self.workspaces.get(&*name) {
+                Some(ws) => {
+                    let Some(o) = session.state.output.get() else {
+                        return Some(ws);
+                    };
+                    match ty {
+                        WorkspaceType::Normal => {
+                            if ws.ty == ty {
+                                let ws_on = ws.node_state[LiveTL].output.get();
+                                if ws_on.global.output_id.hash == o {
+                                    if session.session.reason() == SessionReason::Recover {
+                                        return Some(ws);
+                                    }
+                                    if ws_on.node_state[LiveTL].workspace.id() == Some(ws.id) {
+                                        return Some(ws);
+                                    }
+                                }
+                            }
+                            Some(on()?.ensure_normal_workspace())
+                        }
+                        WorkspaceType::Overlay => Some(ws),
+                    }
+                }
+                None => match ty {
+                    WorkspaceType::Normal => {
+                        let on = on()?;
+                        if session.session.reason() == SessionReason::Recover {
+                            return Some(on.create_normal_workspace(&name));
+                        }
+                        if let Some(ws) = on.node_state[LiveTL].workspace.get() {
+                            return Some(ws);
+                        }
+                        let ws = if let Some(initial) = self.initial_workspace_output_id(&name)
+                            && initial != Some(on.id)
+                        {
+                            on.ensure_workspace()
+                        } else {
+                            on.create_normal_workspace(&name)
+                        };
+                        Some(ws)
+                    }
+                    WorkspaceType::Overlay => Some(self.create_overlay_workspace(&name)),
+                },
+            }
+        };
+        let ws = if let Some(pos) = s.floating_pos.get() {
+            let Some(ws) = ws() else {
+                return false;
+            };
+            let op = ws.node_state[LiveTL]
+                .output
+                .get()
+                .node_absolute_position(LiveTL);
+            self.map_floating(
+                node.clone(),
+                pos.width(),
+                pos.height(),
+                &ws,
+                Some((pos.x1() + op.x1(), pos.y1() + op.y1())),
+            );
+            ws
+        } else if s.fullscreen.get() {
+            let Some(ws) = ws() else {
+                return false;
+            };
+            self.map_tiled_on(node.clone(), &ws);
+            data.set_fullscreen(self, node.clone(), &ws);
+            ws
+        } else if !has_parent {
+            let Some(ws) = ws() else {
+                return false;
+            };
+            self.map_tiled_on(node.clone(), &ws);
+            ws
+        } else {
+            return false;
+        };
+        if ws.ty == WorkspaceType::Normal
+            && ws.node_state[LiveTL].output.get().node_state[LiveTL]
+                .workspace
+                .id()
+                != Some(ws.id)
+        {
+            data.request_attention(&*node);
+        }
+        true
+    }
+
+    pub fn map_tiled(self: &Rc<Self>, node: Rc<dyn ToplevelNode>) {
+        let seat = self.seat_queue.last();
+        self.do_map_tiled(seat.as_deref(), node.clone());
+        self.focus_after_map(node, seat.as_deref());
+    }
+
+    fn do_map_tiled(self: &Rc<Self>, seat: Option<&Rc<WlSeatGlobal>>, node: Rc<dyn ToplevelNode>) {
+        let ws = self.ensure_map_workspace(seat);
+        self.map_tiled_on(node, &ws);
+    }
+
+    pub fn map_tiled_on(self: &Rc<Self>, node: Rc<dyn ToplevelNode>, ws: &Rc<WorkspaceNode>) {
+        if let Some(c) = ws.node_state[LiveTL].container.get() {
+            let la = c.clone().tl_last_active_child();
+            let lap = la
+                .tl_data()
+                .parent
+                .get()
+                .and_then(|n| n.node_into_container());
+            if let Some(lap) = lap {
+                lap.add_child_after(&*la, node);
+            } else {
+                c.append_child(node);
+            }
+        } else {
+            let container = ContainerNode::new(self, ws, node, ContainerSplit::Horizontal);
+            ws.set_container(&container);
+        }
+    }
+
+    pub fn map_floating(
+        self: &Rc<Self>,
+        node: Rc<dyn ToplevelNode>,
+        inner_width: i32,
+        inner_height: i32,
+        workspace: &Rc<WorkspaceNode>,
+        abs_pos: Option<(i32, i32)>,
+    ) {
+        let mut width = inner_width + 2 * self.theme.sizes.border_width.get(LiveTL);
+        let mut height = inner_height
+            + 2 * self.theme.sizes.border_width.get(LiveTL)
+            + self.theme.title_plus_underline_height(LiveTL);
+        let output = workspace.node_state[LiveTL].output.get();
+        let output_rect = output.node_state[LiveTL].pos.get();
+        let position = if let Some((mut x1, mut y1)) = abs_pos {
+            y1 = y1.clamp_saturating(output_rect.y1() + 1, output_rect.y2());
+            x1 = x1.clamp_saturating(output_rect.x1() - inner_width + 1, output_rect.x2() - 1);
+            y1 -= self.theme.sizes.border_width.get(LiveTL)
+                + self.theme.title_plus_underline_height(LiveTL);
+            x1 -= self.theme.sizes.border_width.get(LiveTL);
+            Rect::new_sized_saturating(x1, y1, width, height)
+        } else {
+            let mut x1 = output_rect.x1();
+            let mut y1 = output_rect.y1();
+            if width < output_rect.width() {
+                x1 += (output_rect.width() - width) / 2;
+            } else {
+                width = output_rect.width();
+            }
+            if height < output_rect.height() {
+                y1 += (output_rect.height() - height) / 2;
+            } else {
+                height = output_rect.height();
+            }
+            Rect::new_sized_saturating(x1, y1, width, height)
+        };
+        FloatNode::new(self, workspace, position, node.clone());
+        self.focus_after_map(node, self.seat_queue.last().as_deref());
+    }
+
+    fn focus_after_map(&self, node: Rc<dyn ToplevelNode>, seat: Option<&Rc<WlSeatGlobal>>) {
+        if !node.node_visible(LiveTL) {
+            return;
+        }
+        let Some(seat) = seat else {
+            return;
+        };
+        if let Some(config) = self.config.get()
+            && !config.auto_focus(node.tl_data())
+        {
+            return;
+        }
+        node.node_do_focus_dyn(&seat, Direction::Unspecified);
+    }
+
+    pub fn show_workspace2(
+        &self,
+        seat: Option<&Rc<WlSeatGlobal>>,
+        output: &Rc<OutputNode>,
+        ws: &Rc<WorkspaceNode>,
+    ) -> bool {
+        let mut pinned_is_focused = false;
+        if ws.ty == WorkspaceType::Normal
+            && let Some(seat) = seat
+        {
+            for pinned in output.pinned.iter() {
+                pinned
+                    .deref()
+                    .clone()
+                    .node_visit_dyn(&mut generic_node_visitor(|node| {
+                        node.node_seat_state().for_each_kb_focus(|s| {
+                            pinned_is_focused |= s.id() == seat.id();
+                        });
+                    }));
+            }
+        }
+        let did_change = output.show_workspace(&ws);
+        let mut did_focus = false;
+        if !pinned_is_focused && let Some(seat) = seat {
+            did_focus = ws.do_focus(seat, Direction::Unspecified);
+        }
+        if !did_change {
+            return did_focus;
+        }
+        ws.flush_jay_workspaces();
+        if !output.is_dummy {
+            output.schedule_update_render_data();
+            self.tree_changed();
+        }
+        did_focus
+    }
+
+    pub fn show_workspace(
+        &self,
+        seat: &Rc<WlSeatGlobal>,
+        name: &str,
+        ty: WorkspaceType,
+        mut output: Option<Rc<OutputNode>>,
+    ) {
+        let mut output = || {
+            output
+                .get_or_insert_with(|| seat.get_fallback_output())
+                .clone()
+        };
+        let ws = match self.workspaces.get(name) {
+            Some(ws) => ws,
+            _ => match ty {
+                WorkspaceType::Normal => {
+                    let output = output();
+                    if output.is_dummy {
+                        log::warn!("Not showing workspace because seat is on dummy output");
+                        return;
+                    }
+                    output.create_normal_workspace(name)
+                }
+                WorkspaceType::Overlay => self.create_overlay_workspace(name),
+            },
+        };
+        let output = match ty {
+            WorkspaceType::Normal => ws.node_state[LiveTL].output.get(),
+            WorkspaceType::Overlay => output(),
+        };
+        self.show_workspace2(Some(seat), &output, &ws);
+        seat.maybe_schedule_warp_mouse_to_focus();
+    }
+
+    pub fn float_map_ws(&self) -> Rc<WorkspaceNode> {
+        if let Some(seat) = self.seat_queue.last() {
+            let output = seat.get_fallback_output();
+            if !output.is_dummy {
+                return output.ensure_workspace();
+            }
+        }
+        if let Some(output) = self.root.outputs.lock().values().next().cloned() {
+            return output.ensure_workspace();
+        }
+        self.dummy_output.get().unwrap().ensure_normal_workspace()
+    }
+
+    pub fn set_status(&self, status: &str) {
+        let status = Rc::new(status.to_owned());
+        self.status.set(status.clone());
+        let outputs = self.root.outputs.lock();
+        for output in outputs.values() {
+            output.set_status(&status);
+        }
+    }
+
+    pub fn input_occurred(&self) {
+        if !self.idle.input.replace(true) {
+            self.idle.change.trigger();
+        }
+    }
+
+    pub fn start_xwayland(self: &Rc<Self>) {
+        if !self.xwayland.enabled.get() {
+            return;
+        }
+        let mut handler = self.xwayland.handler.borrow_mut();
+        if handler.is_none() {
+            *handler = Some(self.eng.spawn("xwayland", xwayland::manage(self.clone())));
+        }
+    }
+
+    pub fn stop_xwayland(&self) {
+        if self.xwayland.running.get() {
+            return;
+        }
+        self.xwayland.handler.take();
+    }
+
+    pub fn set_xwayland_enabled(self: &Rc<Self>, enabled: bool) {
+        if self.xwayland.enabled.replace(enabled) == enabled {
+            return;
+        }
+        if enabled {
+            self.start_xwayland();
+        } else {
+            self.stop_xwayland();
+        }
+        self.trigger_cci(CCI_XWAYLAND);
+    }
+
+    pub fn set_xwayland_use_wire_scale(&self, use_wire_scale: bool) {
+        if self.xwayland.use_wire_scale.replace(use_wire_scale) == use_wire_scale {
+            return;
+        }
+        self.update_xwayland_wire_scale();
+        self.trigger_cci(CCI_XWAYLAND);
+    }
+
+    pub fn next_serial(&self, client: Option<&Client>) -> u64 {
+        let serial = self.serial.fetch_add(1);
+        if let Some(client) = client {
+            'update_range: {
+                let mut serials = client.serials.borrow_mut();
+                if let Some(last) = serials.back_mut()
+                    && last.hi.wrapping_add(1) == serial
+                {
+                    last.hi = serial;
+                    break 'update_range;
+                }
+                if serials.len() >= NUM_CACHED_SERIAL_RANGES {
+                    serials.pop_front();
+                }
+                serials.push_back(SerialRange {
+                    lo: serial,
+                    hi: serial,
+                });
+            }
+        }
+        serial as _
+    }
+
+    pub fn damage_full(self: &Rc<Self>, tt: TreeTimeline) {
+        let rect = self.root.node_state[tt].extents.get();
+        match tt {
+            LiveTL => self.schedule_damage(rect),
+            RenderTL => self.damage(rect),
+        }
+    }
+
+    pub fn schedule_damage(self: &Rc<Self>, rect: Rect) {
+        self.add_transaction_op(StateTransactionOp::Damage(rect));
+    }
+
+    pub fn damage(&self, rect: Rect) {
+        self.damage2(false, false, rect);
+    }
+
+    pub fn damage2(&self, cursor: bool, skip_hc: bool, rect: Rect) {
+        if rect.is_empty() {
+            return;
+        }
+        self.damage_visualizer.add(rect);
+        for output in self.root.outputs.lock().values() {
+            if output.node_state[RenderTL].pos.get().intersects(&rect) {
+                if skip_hc && output.hardware_cursor.is_some() {
+                    continue;
+                }
+                output.add_damage_area(&rect);
+                if cursor && output.schedule.defer_cursor_updates() {
+                    output.schedule.software_cursor_changed();
+                } else {
+                    output.global.connector.damage();
+                }
+            }
+        }
+    }
+
+    pub fn set_locked(self: &Rc<Self>, locked: bool) {
+        self.lock.locked[LiveTL].set(locked);
+        self.add_transaction_op(StateTransactionOp::SetLocked(locked));
+        if let Some(config) = self.config.get() {
+            config.locked(locked);
+        }
+    }
+
+    pub fn do_unlock(self: &Rc<Self>) {
+        self.set_locked(false);
+        self.lock.lock.take();
+        for output in self.root.outputs.lock().values() {
+            if let Some(surface) = output.set_lock_surface(None) {
+                surface.destroy_node();
+            }
+        }
+        self.tree_changed();
+        self.damage_full(LiveTL);
+    }
+
+    pub fn clear(self: &Rc<Self>) {
+        self.lock.lock.take();
+        self.xwayland.handler.borrow_mut().take();
+        self.clients.clear();
+        if let Some(config) = self.config.set(None) {
+            config.clear();
+        }
+        if let Some(forker) = self.forker.set(None) {
+            forker.clear();
+        }
+        self.acceptor.set(None);
+        self.backend.set(Rc::new(DummyBackend)).clear();
+        self.run_toplevel.clear();
+        self.xwayland.handler.borrow_mut().take();
+        self.xwayland.queue.clear();
+        self.xwayland.windows.clear();
+        self.idle.inhibitors.clear();
+        self.idle.change.clear();
+        for drm_dev in self.drm_devs.lock().drain_values() {
+            drm_dev.handler.take();
+            drm_dev.connectors.clear();
+        }
+        self.drm_devs_by_dev_t.clear();
+        for connector in self.connectors.lock().drain_values() {
+            connector.handler.take();
+            connector.async_event.clear();
+        }
+        self.outputs.clear();
+        for output in self.root.outputs.lock().values() {
+            output.clear();
+        }
+        self.wlr_output_managers.clear();
+        self.dbus.clear();
+        self.pending_container_layout.clear();
+        self.pending_float_layout.clear();
+        self.pending_input_popup_positioning.clear();
+        self.pending_toplevel_screencasts.clear();
+        self.pending_screencast_reallocs_or_reconfigures.clear();
+        self.pending_placeholder_render_textures.clear();
+        self.render_ctx_watchers.clear();
+        self.workspace_watchers.clear();
+        self.toplevel_lists.clear();
+        self.security_context_acceptors.clear();
+        self.tagged_acceptors.clear();
+        self.slow_clients.clear();
+        for h in self.input_device_handlers.borrow_mut().drain_values() {
+            h.async_event.clear();
+        }
+        self.backend_events.clear();
+        for (_, ws) in self.workspaces.clear() {
+            ws.clear();
+        }
+        {
+            let seats = mem::take(self.globals.seats.lock().deref_mut());
+            for seat in seats.values() {
+                seat.clear();
+            }
+        }
+        self.globals.clear();
+        self.render_ctx.set(None);
+        self.render_ctx_drm_device.set(None);
+        self.render_ctx_prime_copy_device.set(None);
+        self.root.clear();
+        if let Some(output) = self.dummy_output.set(None) {
+            output.clear();
+        }
+        self.wheel.clear();
+        self.eng.clear();
+        self.ei_acceptor.take();
+        self.ei_acceptor_future.take();
+        self.ei_clients.clear();
+        self.slow_ei_clients.clear();
+        self.toplevels.clear();
+        self.workspace_managers.clear();
+        self.cl_matcher_manager.clear();
+        self.tl_matcher_manager.clear();
+        self.node_at_tree.borrow_mut().clear();
+        self.position_hint_requests.clear();
+        self.pending_warp_mouse_to_focus.clear();
+        self.const_40hz_latch.clear();
+        self.cursor_user_groups.clear();
+        self.cursor_user_group_hardware_cursor.take();
+        self.cpu_worker.clear();
+        self.wait_for_syncobj.clear();
+        self.lazy_event_sources.clear();
+        self.bo_drop_queue.kill();
+        self.egg_state.clear();
+        self.control_centers.clear();
+        self.virtual_outputs.clear();
+        if let Some(sm) = &self.sm {
+            sm.flush_all();
+            sm.clear();
+        }
+        if let Some(sqlite) = &self.sqlite {
+            sqlite.clear();
+        }
+        self.tree.configure_groups.clear();
+        self.tree.transactions.clear(self);
+    }
+
+    pub fn remove_toplevel_id(&self, id: ToplevelIdentifier) {
+        self.toplevels.remove(&id);
+        if let Some(config) = self.config.get() {
+            config.toplevel_removed(id);
+        }
+    }
+
+    pub fn damage_hardware_cursors(&self, render: bool) {
+        for output in self.root.outputs.lock().values() {
+            output.damage_hardware_cursor(render);
+        }
+    }
+
+    pub fn refresh_hardware_cursors(&self) {
+        if let Some(g) = self.cursor_user_group_hardware_cursor.get()
+            && let Some(u) = g.active()
+        {
+            u.update_hardware_cursor();
+            return;
+        }
+        self.damage_hardware_cursors(false)
+    }
+
+    pub fn present_hardware_cursor(
+        &self,
+        output: &Rc<OutputNode>,
+        hc: &mut dyn HardwareCursorUpdate,
+    ) {
+        if self.idle.in_grace_period.get() {
+            hc.set_enabled(false);
+            return;
+        }
+        let Some(g) = self.cursor_user_group_hardware_cursor.get() else {
+            hc.set_enabled(false);
+            return;
+        };
+        g.present_hardware_cursor(output, hc);
+    }
+
+    pub fn for_each_seat_tester<F: Fn(&JaySeatEvents)>(&self, f: F) {
+        let testers = self.testers.borrow_mut();
+        for tester in testers.values() {
+            f(tester);
+        }
+    }
+
+    pub fn present_output(
+        &self,
+        output: &OutputNode,
+        fb: &Rc<dyn GfxFramebuffer>,
+        cd: &Rc<ColorDescription>,
+        acquire_sync: AcquireSync,
+        release_sync: ReleaseSync,
+        tex: &Rc<dyn GfxTexture>,
+        render_hw_cursor: bool,
+        blend_buffer: Option<&Rc<dyn GfxBlendBuffer>>,
+        blend_cd: &Rc<ColorDescription>,
+    ) -> Result<Option<FdSync>, GfxError> {
+        let sync = fb.render_output(
+            acquire_sync,
+            release_sync,
+            cd,
+            output,
+            self,
+            Some(output.node_state[RenderTL].pos.get()),
+            output.node_state[RenderTL].scale.get(),
+            render_hw_cursor,
+            true,
+            blend_buffer,
+            blend_cd,
+            true,
+        )?;
+        output.latched(false);
+        output.perform_screencopies(
+            tex,
+            cd,
+            None,
+            None,
+            &AcquireSync::Unnecessary,
+            ReleaseSync::None,
+            !render_hw_cursor,
+            0,
+            0,
+            None,
+        );
+        Ok(sync)
+    }
+
+    pub fn perform_screencopy(
+        &self,
+        src: &Rc<dyn GfxTexture>,
+        resv: Option<&Rc<dyn BufferResv>>,
+        lazy: Option<&Rc<dyn LazyTexture>>,
+        acquire_sync: &AcquireSync,
+        release_sync: ReleaseSync,
+        src_cd: &Rc<ColorDescription>,
+        target: &Rc<dyn GfxFramebuffer>,
+        target_acquire_sync: AcquireSync,
+        target_release_sync: ReleaseSync,
+        target_transform: Transform,
+        target_cd: &Rc<ColorDescription>,
+        position: Rect,
+        render_hardware_cursors: bool,
+        x_off: i32,
+        y_off: i32,
+        size: Option<(i32, i32)>,
+        transform: Transform,
+        scale: Scale,
+        scaling_filter: ScalingFilter,
+    ) -> Result<Option<FdSync>, GfxError> {
+        let mut ops = vec![];
+        let mut renderer = Renderer {
+            base: target.renderer_base(
+                &mut ops,
+                scale,
+                scaling_filter,
+                target_transform,
+                self.color_manager.srgb_gamma22(),
+            ),
+            state: self,
+            logical_extents: position.at_point(0, 0),
+            pixel_extents: {
+                let (width, height) = target.logical_size(target_transform);
+                Rect::new_sized_saturating(0, 0, width, height)
+            },
+            title_icons: None,
+            bar_icons: None,
+        };
+        let mut sample_rect = SampleRect::identity();
+        sample_rect.buffer_transform = transform;
+        renderer.base.render_texture(
+            src,
+            x_off,
+            y_off,
+            RenderTexture {
+                tpoints: Some(sample_rect),
+                tsize: size,
+                tscale: Some(scale),
+                buffer_resv: resv.cloned(),
+                acquire_sync: acquire_sync.clone(),
+                release_sync,
+                cd: Some(src_cd),
+                lazy: lazy.cloned(),
+                ..Default::default()
+            },
+        );
+        if render_hardware_cursors
+            && let Some(cursor_user_group) = self.cursor_user_group_hardware_cursor.get()
+            && let Some(cursor_user) = cursor_user_group.active()
+            && let Some(cursor) = cursor_user.get()
+        {
+            let (mut x, mut y) = cursor_user.position();
+            x = x + x_off - Fixed::from_int(position.x1());
+            y = y + y_off - Fixed::from_int(position.y1());
+            cursor.render(&mut renderer, x, y);
+        }
+        let flags = renderer.base.flags;
+        target.render(
+            target_acquire_sync,
+            target_release_sync,
+            target_cd,
+            &ops,
+            flags,
+            Some(&Color::SOLID_BLACK),
+            &target_cd.linear,
+            None,
+            target_cd,
+        )
+    }
+
+    pub fn perform_shm_screencopy(
+        &self,
+        src: &Rc<dyn GfxTexture>,
+        src_cd: &Rc<ColorDescription>,
+        resv: Option<&Rc<dyn BufferResv>>,
+        lazy: Option<&Rc<dyn LazyTexture>>,
+        acquire_sync: &AcquireSync,
+        position: Rect,
+        x_off: i32,
+        y_off: i32,
+        size: Option<(i32, i32)>,
+        capture: &Rc<ZwlrScreencopyFrameV1>,
+        mem: &Rc<ClientMemOffset>,
+        stride: i32,
+        format: &'static Format,
+        transform: Transform,
+        scale: Scale,
+        scaling_filter: ScalingFilter,
+    ) -> Result<Option<PendingShmTransfer>, ShmScreencopyError> {
+        let Some(ctx) = self.render_ctx.get() else {
+            return Err(ShmScreencopyError::NoRenderContext);
+        };
+        let fb = ctx
+            .clone()
+            .create_internal_fb(
+                &self.cpu_worker,
+                capture.rect.width(),
+                capture.rect.height(),
+                stride,
+                format,
+            )
+            .map_err(ShmScreencopyError::CreateTemporaryFb)?;
+        self.perform_screencopy(
+            src,
+            resv,
+            lazy,
+            acquire_sync,
+            ReleaseSync::None,
+            src_cd,
+            &(fb.clone() as Rc<dyn GfxFramebuffer>),
+            AcquireSync::Unnecessary,
+            ReleaseSync::None,
+            transform,
+            self.color_manager.srgb_gamma22(),
+            position,
+            true,
+            x_off - capture.rect.x1(),
+            y_off - capture.rect.y1(),
+            size,
+            transform,
+            scale,
+            scaling_filter,
+        )
+        .map_err(ShmScreencopyError::CopyToTemporary)?;
+        let staging = ctx.create_staging_buffer(fb.staging_size(), STAGING_DOWNLOAD);
+        let pending = fb
+            .download(
+                &staging,
+                capture.clone(),
+                mem.clone(),
+                Region::new(capture.rect.at_point(0, 0)),
+            )
+            .map_err(ShmScreencopyError::ReadPixels)?;
+        Ok(pending)
+    }
+
+    pub fn create_seat(self: &Rc<Self>, name: &str) -> Rc<WlSeatGlobal> {
+        self.tree_changed_sent.set(false);
+        let global_name = self.globals.name();
+        let seat = WlSeatGlobal::new(global_name, name, self);
+        self.globals.add_global(self, &seat);
+        self.ei_clients.announce_seat(&seat);
+        seat
+    }
+
+    pub fn set_backend_idle(self: &Rc<Self>, idle: bool) {
+        if self.idle.backend_idle.replace(idle) != idle {
+            self.root.update_visible(self);
+        }
+    }
+
+    pub fn root_visible(&self) -> bool {
+        !self.idle.backend_idle.get()
+    }
+
+    pub fn find_closest_output(&self, mut x: i32, mut y: i32) -> (Rc<OutputNode>, i32, i32) {
+        let mut optimal_dist = i128::MAX;
+        let mut optimal_output = None;
+        let outputs = self.root.outputs.lock();
+        for output in outputs.values() {
+            let pos = output.node_state[LiveTL].pos.get();
+            let dist = pos.dist_squared(x, y);
+            if dist == 0 {
+                if pos.contains(x, y) {
+                    return (output.clone(), x, y);
+                }
+            }
+            if dist < optimal_dist {
+                optimal_dist = dist;
+                optimal_output = Some(output.clone());
+            }
+        }
+        if let Some(output) = optimal_output {
+            let pos = output.node_state[LiveTL].pos.get();
+            if pos.is_empty() {
+                return (output, pos.x1(), pos.y1());
+            }
+            if x < pos.x1() {
+                x = pos.x1();
+            } else if x >= pos.x2() {
+                x = pos.x2() - 1;
+            }
+            if y < pos.y1() {
+                y = pos.y1();
+            } else if y >= pos.y2() {
+                y = pos.y2() - 1;
+            }
+            return (output, x, y);
+        }
+        (self.dummy_output.get().unwrap(), 0, 0)
+    }
+
+    pub fn now(&self) -> Time {
+        self.eng.now()
+    }
+
+    pub fn now_nsec(&self) -> u64 {
+        self.eng.now().nsec()
+    }
+
+    pub fn now_usec(&self) -> u64 {
+        self.eng.now().usec()
+    }
+
+    pub fn now_msec(&self) -> u64 {
+        self.eng.now().msec()
+    }
+
+    pub fn output_extents_changed(&self) {
+        self.root.update_extents();
+        for seat in self.globals.seats.lock().values() {
+            seat.output_extents_changed();
+        }
+    }
+
+    pub fn update_ei_acceptor(self: &Rc<Self>) {
+        self.update_ei_acceptor2();
+        if let Some(forker) = self.forker.get() {
+            match self.ei_acceptor.get() {
+                None => {
+                    forker.unsetenv(LIBEI_SOCKET.as_bytes());
+                }
+                Some(s) => {
+                    forker.setenv(LIBEI_SOCKET.as_bytes(), s.socket_name().as_bytes());
+                }
+            }
+        }
+    }
+
+    fn update_ei_acceptor2(self: &Rc<Self>) {
+        if self.ei_acceptor.is_some() == self.enable_ei_acceptor.get() {
+            return;
+        }
+        if self.enable_ei_acceptor.get() {
+            let (acceptor, future) = match EiAcceptor::spawn(self) {
+                Ok(v) => v,
+                Err(e) => {
+                    log::error!("Could not create libei socket: {}", ErrorFmt(e));
+                    return;
+                }
+            };
+            self.ei_acceptor.set(Some(acceptor));
+            self.ei_acceptor_future.set(Some(future));
+        } else {
+            log::info!("Disabling libei socket");
+            self.ei_acceptor.take();
+            self.ei_acceptor_future.take();
+        }
+    }
+
+    pub fn vblank(&self, connector: ConnectorId) {
+        if let Some(output) = self.root.outputs.get(&connector) {
+            output.vblank();
+        }
+    }
+
+    #[cfg(feature = "it")]
+    pub fn latch(&self, connector: ConnectorId) {
+        if let Some(output) = self.root.outputs.get(&connector) {
+            output.latched(false);
+        }
+    }
+
+    #[cfg(feature = "it")]
+    pub fn latch_tearing(&self, connector: ConnectorId) {
+        if let Some(output) = self.root.outputs.get(&connector) {
+            output.latched(true);
+        }
+    }
+
+    #[cfg(feature = "it")]
+    pub async fn idle(&self) {
+        loop {
+            self.eng.idle().await;
+            if self.cpu_worker.wait_idle() {
+                break;
+            }
+        }
+    }
+
+    pub fn ui_drag_threshold_reached(&self, (x1, y1): (i32, i32), (x2, y2): (i32, i32)) -> bool {
+        if !self.ui_drag_enabled.get() {
+            return false;
+        }
+        let dx = x1 - x2;
+        let dy = y1 - y2;
+        dx * dx + dy * dy > self.ui_drag_threshold_squared.get()
+    }
+
+    pub fn update_xwayland_wire_scale(&self) {
+        let scale = self
+            .scales
+            .lock()
+            .iter()
+            .map(|v| v.0.round_up())
+            .max()
+            .unwrap_or(1);
+        let wire_scale = match self.xwayland.use_wire_scale.get() {
+            true => Some(scale as i32),
+            false => None,
+        };
+        self.xwayland.wire_scale.set(wire_scale);
+        for client in self.clients.clients.borrow().values() {
+            let client = &client.data;
+            if !client.is_xwayland {
+                continue;
+            }
+            if client.wire_scale.replace(wire_scale) == wire_scale {
+                continue;
+            }
+            for output in client.objects.outputs.lock().values() {
+                output.send_updates();
+            }
+            for surface in client.objects.surfaces.lock().values() {
+                surface.handle_xwayland_wire_scale_change();
+            }
+        }
+    }
+
+    pub fn tray_icon_size(&self) -> i32 {
+        if !self.show_bar.get() {
+            return 0;
+        }
+        (self.theme.sizes.bar_height(LiveTL) - 2).max(0)
+    }
+
+    pub fn color_management_available(&self) -> bool {
+        if !self.color_management_enabled.get() {
+            return false;
+        }
+        let Some(ctx) = self.render_ctx.get() else {
+            return false;
+        };
+        ctx.supports_color_management()
+    }
+
+    pub fn initial_tile_state(&self, data: &ToplevelData) -> Option<TileState> {
+        self.config.get()?.initial_tile_state(data)
+    }
+
+    pub fn update_capabilities(
+        &self,
+        data: &Rc<Client>,
+        bounding_caps: ClientCaps,
+        set_bounding_caps: bool,
+    ) {
+        if let Some(config) = self.config.get() {
+            config.update_capabilities(data, bounding_caps, set_bounding_caps);
+        }
+    }
+
+    pub fn find_output_in_direction(
+        &self,
+        source_output: &OutputNode,
+        direction: Direction,
+    ) -> Option<Rc<OutputNode>> {
+        if source_output.is_dummy {
+            return None;
+        }
+
+        let outputs = self.root.outputs.lock();
+
+        let ref_box = source_output.node_state[LiveTL].pos.get();
+        let ref_x1 = ref_box.x1();
+        let ref_y1 = ref_box.y1();
+        let ref_x2 = ref_box.x2();
+        let ref_y2 = ref_box.y2();
+
+        // Use the center of the source output as the reference point (like wlroots)
+        let (ref_lx, ref_ly) = ref_box.center();
+
+        // Find the closest output in the given direction using wlroots-style algorithm
+        let mut min_distance = i64::MAX;
+        let mut closest_output = None;
+
+        for output in outputs.values() {
+            if output.id == source_output.id {
+                continue;
+            }
+
+            let box_pos = output.node_state[LiveTL].pos.get();
+            let box_x1 = box_pos.x1();
+            let box_y1 = box_pos.y1();
+            let box_x2 = box_pos.x2();
+            let box_y2 = box_pos.y2();
+
+            // Edge-based direction check (like wlroots)
+            // Test to make sure this output is in the given direction
+            let is_in_direction = match direction {
+                Direction::Left => box_x2 <= ref_x1,
+                Direction::Right => box_x1 >= ref_x2,
+                Direction::Up => box_y2 <= ref_y1,
+                Direction::Down => box_y1 >= ref_y2,
+                Direction::Unspecified => false,
+            };
+
+            if !is_in_direction {
+                continue;
+            }
+
+            // Calculate distance from reference point to closest point on this output
+            // This mimics wlr_box_closest_point + squared Euclidean distance
+            let closest_x = ref_lx.clamp(box_x1, box_x2);
+            let closest_y = ref_ly.clamp(box_y1, box_y2);
+
+            let dx = (closest_x - ref_lx) as i64;
+            let dy = (closest_y - ref_ly) as i64;
+            let distance = dx * dx + dy * dy;
+
+            if distance < min_distance {
+                min_distance = distance;
+                closest_output = Some(output);
+            }
+        }
+
+        closest_output.cloned()
+    }
+
+    pub fn node_at(&self, x: i32, y: i32) -> FoundNode {
+        let mut found_tree = self.node_at_tree.borrow_mut();
+        found_tree.push(FoundNode {
+            node: self.root.clone(),
+            x,
+            y,
+        });
+        self.root
+            .node_find_tree_at(x, y, &mut found_tree, FindTreeUsecase::None);
+        let node = found_tree.pop().unwrap();
+        found_tree.clear();
+        node
+    }
+
+    pub fn move_ws_to_output(&self, ws: &Rc<WorkspaceNode>, output: &Rc<OutputNode>) {
+        if output.is_dummy {
+            return;
+        }
+        if ws.node_state[LiveTL].output.id() == output.id {
+            return;
+        }
+        let config = WsMoveConfig {
+            make_visible_always: false,
+            make_visible_if_empty: true,
+            source_is_destroyed: false,
+            before: None,
+        };
+        move_ws_to_output(ws, &output, config);
+        ws.desired_output.set(output.global.output_id.clone());
+        self.tree_changed();
+    }
+
+    fn expose_new_singletons(&self) {
+        self.globals.expose_new_singletons(self);
+    }
+
+    pub fn set_color_management_enabled(&self, enabled: bool) {
+        self.color_management_enabled.set(enabled);
+        self.expose_new_singletons();
+        self.trigger_cci(CCI_COLOR_MANAGEMENT);
+    }
+
+    pub fn set_session_management_enabled(&self, enabled: bool) {
+        self.session_management_enabled.set(enabled);
+        self.expose_new_singletons();
+        self.trigger_cci(CCI_COMPOSITOR);
+    }
+
+    pub fn set_primary_selection_enabled(&self, enabled: bool) {
+        self.enable_primary_selection.set(enabled);
+        self.expose_new_singletons();
+        self.trigger_cci(CCI_LOOK_AND_FEEL);
+    }
+
+    pub fn set_explicit_sync_enabled(&self, enabled: bool) {
+        self.explicit_sync_enabled.set(enabled);
+        self.expose_new_singletons();
+    }
+
+    pub fn set_log_level(&self, level: LogLevel) {
+        if let Some(logger) = &self.logger {
+            logger.set_level(level);
+            self.trigger_cci(CCI_COMPOSITOR);
+        }
+    }
+
+    pub fn perform_clean_logs_older_than(&self) {
+        if let Some(time) = self.clean_logs_older_than.get()
+            && let Some(logger) = &self.logger
+        {
+            logger.clean_logs_older_than(time);
+        }
+    }
+
+    fn colors_changed(self: &Rc<Self>) {
+        struct V;
+        impl NodeVisitorBase for V {
+            fn visit_container(&mut self, node: &Rc<ContainerNode>) {
+                node.on_colors_changed();
+                node.node_visit_children(self);
+            }
+
+            fn visit_output(&mut self, node: &Rc<OutputNode>) {
+                node.on_colors_changed();
+                node.node_visit_children(self);
+            }
+
+            fn visit_float(&mut self, node: &Rc<FloatNode>) {
+                node.on_colors_changed();
+                node.node_visit_children(self);
+            }
+        }
+        self.visit_all_nodes(&mut V);
+        self.damage_full(LiveTL);
+        self.damage_full(RenderTL);
+        self.icons.clear();
+        self.trigger_cci(CCI_LOOK_AND_FEEL);
+    }
+
+    pub fn reset_colors(self: &Rc<Self>) {
+        self.theme.colors.reset();
+        self.colors_changed();
+    }
+
+    pub fn quit(&self) {
+        log::info!("Quitting");
+        self.ring.stop();
+    }
+
+    pub fn reload_config(self: &Rc<Self>) {
+        log::info!("Reloading config");
+        let config = match ConfigProxy::from_config_dir(self) {
+            Ok(c) => c,
+            Err(e) => {
+                log::error!("Cannot reload config: {}", ErrorFmt(e));
+                return;
+            }
+        };
+        if let Some(config) = self.config.take() {
+            config.destroy();
+            for seat in self.globals.seats.lock().values() {
+                seat.clear_shortcuts();
+            }
+        }
+        self.config_locked_shortcuts.set(false);
+        config.configure(true);
+        let config = Rc::new(config);
+        self.config.set(Some(config.clone()));
+        if self.lock.locked[LiveTL].get() {
+            config.locked(true);
+        }
+    }
+
+    pub fn set_ei_socket_enabled(self: &Rc<Self>, enabled: bool) {
+        self.enable_ei_acceptor.set(enabled);
+        self.update_ei_acceptor();
+        self.trigger_cci(CCI_COMPOSITOR);
+    }
+
+    pub fn set_workspace_display_order(&self, order: WorkspaceDisplayOrder) {
+        self.workspace_display_order.set(order);
+        for output in self.root.outputs.lock().values() {
+            output.handle_workspace_display_order_update();
+        }
+        self.trigger_cci(CCI_COMPOSITOR);
+    }
+
+    fn spaces_changed(self: &Rc<Self>) {
+        struct V;
+        impl NodeVisitorBase for V {
+            fn visit_container(&mut self, node: &Rc<ContainerNode>) {
+                node.on_spaces_changed();
+                node.node_visit_children(self);
+            }
+            fn visit_output(&mut self, node: &Rc<OutputNode>) {
+                node.on_spaces_changed();
+                node.node_visit_children(self);
+            }
+            fn visit_float(&mut self, node: &Rc<FloatNode>) {
+                node.on_spaces_changed();
+                node.node_visit_children(self);
+            }
+        }
+        self.visit_all_nodes(&mut V);
+        self.damage_full(LiveTL);
+        self.damage_full(RenderTL);
+        self.icons.update_sizes(self);
+        for client in self.clients.clients.borrow().values() {
+            let mgrs = &client.data.objects.xdg_toplevel_icon_managers;
+            for v in mgrs.lock().values() {
+                v.send_sizes();
+            }
+        }
+        self.update_toplevel_icon_sizes();
+        self.trigger_cci(CCI_LOOK_AND_FEEL);
+    }
+
+    pub fn set_show_bar(self: &Rc<Self>, show: bool) {
+        self.show_bar.set(show);
+        self.spaces_changed();
+    }
+
+    pub fn set_show_titles(self: &Rc<Self>, show: bool) {
+        self.theme.show_titles[LiveTL].set(show);
+        self.spaces_changed();
+        self.add_transaction_op(StateTransactionOp::SetShowTitles(show));
+    }
+
+    pub fn set_show_window_icons(&self, show: bool) {
+        self.theme.show_window_icons.set(show);
+        struct V;
+        impl NodeVisitorBase for V {
+            fn visit_container(&mut self, node: &Rc<ContainerNode>) {
+                node.schedule_render_titles();
+                node.node_visit_children(self);
+            }
+            fn visit_float(&mut self, node: &Rc<FloatNode>) {
+                node.schedule_render_titles();
+                node.node_visit_children(self);
+            }
+        }
+        self.visit_all_nodes(&mut V);
+        self.trigger_cci(CCI_LOOK_AND_FEEL);
+    }
+
+    pub fn set_window_icons_grayscale(self: &Rc<Self>, show: bool) {
+        self.theme.window_icons_grayscale.set(show);
+        self.damage_full(RenderTL);
+        self.trigger_cci(CCI_LOOK_AND_FEEL);
+    }
+
+    pub fn set_ui_drag_enabled(&self, enabled: bool) {
+        self.ui_drag_enabled.set(enabled);
+        self.trigger_cci(CCI_LOOK_AND_FEEL);
+    }
+
+    pub fn set_ui_drag_threshold(&self, threshold: i32) {
+        self.ui_drag_threshold_squared
+            .set(threshold.saturating_mul(threshold));
+        self.trigger_cci(CCI_LOOK_AND_FEEL);
+    }
+
+    pub fn set_show_pin_icon(&self, show: bool) {
+        self.show_pin_icon.set(show);
+        self.trigger_cci(CCI_LOOK_AND_FEEL);
+        for stacked in self.root.stacked.stacked.iter() {
+            if let Some(float) = stacked.deref().clone().node_into_float() {
+                float.schedule_render_titles();
+            }
+        }
+    }
+
+    pub fn set_float_above_fullscreen(self: &Rc<Self>, v: bool) {
+        self.float_above_fullscreen.set(v);
+        self.trigger_cci(CCI_LOOK_AND_FEEL);
+        for seat in self.globals.seats.lock().values() {
+            seat.emulate_cursor_moved();
+            seat.trigger_tree_changed(false);
+        }
+        self.root.update_visible(self);
+    }
+
+    pub fn reset_sizes(self: &Rc<Self>) {
+        self.theme.sizes.reset(LiveTL);
+        self.spaces_changed();
+        self.add_transaction_op(StateTransactionOp::ResetSizes);
+    }
+
+    fn fonts_changed(&self) {
+        self.trigger_cci(CCI_LOOK_AND_FEEL);
+        struct V;
+        impl NodeVisitorBase for V {
+            fn visit_container(&mut self, node: &Rc<ContainerNode>) {
+                node.schedule_render_titles();
+                node.node_visit_children(self);
+            }
+            fn visit_output(&mut self, node: &Rc<OutputNode>) {
+                node.schedule_update_render_data();
+                node.node_visit_children(self);
+            }
+            fn visit_float(&mut self, node: &Rc<FloatNode>) {
+                node.schedule_render_titles();
+                node.node_visit_children(self);
+            }
+        }
+        self.visit_all_nodes(&mut V);
+    }
+
+    pub fn reset_fonts(&self) {
+        let theme = &self.theme;
+        theme.font.set(self.theme.default_font.clone());
+        theme.bar_font.set(None);
+        theme.title_font.set(None);
+        self.egg_state.reset_fonts();
+        self.fonts_changed();
+    }
+
+    pub fn set_font(&self, font: &str) {
+        self.theme.font.set(Arc::new(font.to_string()));
+        self.fonts_changed();
+    }
+
+    pub fn set_bar_font(&self, font: Option<&str>) {
+        let font = font.map(|font| Arc::new(font.to_string()));
+        self.theme.bar_font.set(font);
+        self.fonts_changed();
+    }
+
+    pub fn set_title_font(&self, font: Option<&str>) {
+        let font = font.map(|font| Arc::new(font.to_string()));
+        self.theme.title_font.set(font);
+        self.fonts_changed();
+    }
+
+    pub fn set_egui_fonts(&self, proportional: Option<Vec<&str>>, monospace: Option<Vec<&str>>) {
+        if let Some(fonts) = &proportional {
+            self.egg_state.set_proportional_fonts(fonts);
+        }
+        if let Some(fonts) = &monospace {
+            self.egg_state.set_monospace_fonts(fonts);
+        }
+        self.fonts_changed();
+    }
+
+    pub fn set_bar_position(self: &Rc<Self>, p: BarPosition) {
+        self.theme.bar_position[LiveTL].set(p);
+        self.spaces_changed();
+        self.add_transaction_op(StateTransactionOp::SetBarPosition(p));
+    }
+
+    pub fn set_container_borders(self: &Rc<Self>, p: ContainerBorders) {
+        self.theme.container_borders[LiveTL].set(p);
+        self.spaces_changed();
+        self.add_transaction_op(StateTransactionOp::SetContainerBorders(p));
+    }
+
+    fn set_size_(&self, tl: TreeTimeline, sized: ThemeSized, size: i32) {
+        let field = sized.field(&self.theme);
+        field.val[tl].set(size);
+        field.set[tl].set(true);
+    }
+
+    pub fn set_size(self: &Rc<Self>, sized: ThemeSized, size: i32) {
+        self.set_size_(LiveTL, sized, size);
+        self.spaces_changed();
+        self.add_transaction_op(StateTransactionOp::SetSize(sized, size));
+    }
+
+    pub fn set_color(self: &Rc<Self>, colored: ThemeColored, v: Color) {
+        let field = colored.field(&self.theme);
+        field.val.set(v);
+        field.set.set(true);
+        self.colors_changed();
+    }
+
+    pub fn ensure_persistent_output_state(
+        &self,
+        output_id: &Rc<OutputId>,
+    ) -> Rc<PersistentOutputState> {
+        match self.persistent_output_states.get(output_id) {
+            Some(ds) => ds,
+            _ => {
+                let ds = self.new_persistent_output_state();
+                self.persistent_output_states
+                    .set(output_id.clone(), ds.clone());
+                ds
+            }
+        }
+    }
+
+    pub fn new_persistent_output_state(&self) -> Rc<PersistentOutputState> {
+        let x1 = self
+            .root
+            .outputs
+            .lock()
+            .values()
+            .map(|o| o.node_state[LiveTL].pos.get().x2())
+            .max()
+            .unwrap_or(0);
+        Rc::new(PersistentOutputState {
+            transform: Default::default(),
+            scale: Default::default(),
+            scaling_filter: Default::default(),
+            pos: Cell::new((x1, 0)),
+            vrr_mode: Cell::new(self.default_vrr_mode.get()),
+            vrr_cursor_hz: Cell::new(self.default_vrr_cursor_hz.get()),
+            tearing_mode: Cell::new(self.default_tearing_mode.get()),
+            brightness: Cell::new(None),
+            blend_space: Cell::new(BlendSpace::Srgb),
+            use_native_gamut: Cell::new(false),
+        })
+    }
+
+    pub fn flush_sqlite_blocking(&self) {
+        if let Some(sm) = &self.sm {
+            sm.flush_all();
+        }
+        if let Some(sqlite) = &self.sqlite {
+            sqlite.blocking_roundtrip();
+        }
+    }
+
+    pub fn visit_all_nodes(&self, visitor: &mut dyn NodeVisitor) {
+        self.root.node_visit(visitor);
+        if let Some(output) = self.dummy_output.get() {
+            for ws in output.workspaces.iter_valid(LiveTL) {
+                visitor.visit_workspace(&ws);
+            }
+            for ws in self.workspaces.lock().values() {
+                if ws.ty == WorkspaceType::Overlay && ws.node_state[LiveTL].output.id() == output.id
+                {
+                    ws.node_visit(visitor);
+                }
+            }
+        }
+    }
+
+    pub fn create_overlay_workspace(&self, name: &str) -> Rc<WorkspaceNode> {
+        let on = self.dummy_output.get().unwrap();
+        let ws = WorkspaceNode::new(&on, name, WorkspaceType::Overlay);
+        ws.opt.set(Some(ws.clone()));
+        self.workspaces.set(name.to_string(), ws.clone());
+        self.trigger_cci(CCI_WORKSPACES);
+        ws
+    }
+
+    pub fn next_tree_serial(&self) -> TreeSerial {
+        let mut s = self.tree.serials.next();
+        if s.raw() as u32 == 0 {
+            s = self.tree.serials.next();
+        }
+        s
+    }
+
+    pub fn map_tree_serial32(&self, s: u32) -> TreeSerial {
+        const MASK: u64 = u32::MAX as u64;
+        let last = self.tree.serials.last().raw();
+        let mut serial = last & !MASK | s as u64;
+        if serial > last {
+            serial = serial.saturating_sub(MASK + 1);
+        }
+        TreeSerial::from_raw(serial)
+    }
+
+    #[expect(dead_code)]
+    pub fn validate_tree_serial(&self, s: u64) -> Option<TreeSerial> {
+        let last = self.tree.serials.last().raw();
+        if s > last {
+            return None;
+        }
+        Some(TreeSerial::from_raw(s))
+    }
+
+    pub fn update_render_device(&self, render_ctx_changed: bool) {
+        let ctx = self.render_ctx.get();
+        let id = ctx.as_ref().and_then(|c| c.drm_device_id());
+        let drm_dev = id.and_then(|id| self.drm_devs.get(&id));
+        if !render_ctx_changed && drm_dev.id() == self.render_ctx_drm_device.id() {
+            return;
+        }
+        let copy_dev = drm_dev.as_ref().and_then(|dev| dev.copy_device.clone());
+        self.render_ctx_drm_device.set(drm_dev);
+        self.render_ctx_prime_copy_device.set(copy_dev.clone());
+        self.render_ctx_prime_modifiers.clear();
+        if let Some(ctx) = &ctx
+            && let Some(copy_dev) = &copy_dev
+        {
+            let mut res = AHashMap::new();
+            for format in ctx.formats().values() {
+                let supported_mods: AHashMap<_, _> = copy_dev
+                    .dst_support(format.format)
+                    .iter()
+                    .map(|s| {
+                        (
+                            s.modifier,
+                            PrimeModifier {
+                                modifier: s.modifier,
+                                max_width: s.max_width,
+                                max_height: s.max_height,
+                            },
+                        )
+                    })
+                    .collect();
+                let mods: Vec<_> = format
+                    .read_modifiers
+                    .iter()
+                    .copied()
+                    .filter_map(|m| supported_mods.get(&m))
+                    .copied()
+                    .collect();
+                if mods.is_not_empty() {
+                    res.insert(format.format.drm, mods);
+                }
+            }
+            if res.is_not_empty() {
+                let base = Rc::new(res);
+                for connector in self.connectors.lock().values() {
+                    self.update_prime_scanout_modifiers_(&base, connector);
+                }
+                self.render_ctx_prime_modifiers.set(None, base.clone());
+            }
+        }
+        self.dmabuf_feedback.update();
+    }
+
+    pub fn update_prime_scanout_modifiers_id(&self, id: ConnectorId) {
+        if let Some(con) = self.connectors.get(&id) {
+            self.update_prime_scanout_modifiers(&con);
+        }
+    }
+
+    pub fn update_prime_scanout_modifiers(&self, connector: &ConnectorData) {
+        let Some(base) = self.render_ctx_prime_modifiers.get(&None) else {
+            return;
+        };
+        self.update_prime_scanout_modifiers_(&base, connector);
+    }
+
+    fn update_prime_scanout_modifiers_(&self, base: &PrimeModifiers, connector: &ConnectorData) {
+        let res = self.calculate_prime_scanout_modifiers(base, connector);
+        self.render_ctx_prime_modifiers.set(Some(connector.id), res);
+    }
+
+    fn calculate_prime_scanout_modifiers(
+        &self,
+        base: &PrimeModifiers,
+        connector: &ConnectorData,
+    ) -> PrimeModifiers {
+        let Some(supported) = connector.connector.scanout_formats() else {
+            return base.clone();
+        };
+        let supported: AHashSet<_> = supported
+            .iter()
+            .map(|&(fmt, modifier)| (fmt.drm, modifier))
+            .collect();
+        let mut res = AHashMap::new();
+        for (&format, modifiers) in &**base {
+            let mut mods = vec![];
+            for &modifier in modifiers {
+                if supported.contains(&(format, modifier.modifier)) {
+                    mods.push(modifier);
+                }
+            }
+            if mods.is_empty() {
+                mods = modifiers.clone();
+            }
+            res.insert(format, mods);
+        }
+        if res == **base {
+            base.clone()
+        } else {
+            Rc::new(res)
+        }
+    }
+
+    pub fn set_visualize_compositing(self: &Rc<Self>, visualize: bool) {
+        if self.visualize_compositing.replace(visualize) == visualize {
+            return;
+        }
+        self.damage_full(RenderTL);
+        self.trigger_cci(CCI_COMPOSITOR);
+    }
+
+    pub fn initial_workspace_output_id(&self, name: &str) -> Option<Option<OutputNodeId>> {
+        let config = self.config.get()?;
+        let initial = config.initial_output_for_workspace(name)?;
+        Some(initial.map(|o| o.id))
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum ShmScreencopyError {
+    #[error("There is no render context")]
+    NoRenderContext,
+    #[error("Could not create a bridge framebuffer")]
+    CreateTemporaryFb(#[source] GfxError),
+    #[error("Could not copy texture to bridge framebuffer")]
+    CopyToTemporary(#[source] GfxError),
+    #[error("Could not read pixels from texture")]
+    ReadPixels(#[source] GfxError),
+}
+
+pub enum StateTransactionOp {
+    Clear,
+    SetLocked(bool),
+    SetShowTitles(bool),
+    ResetSizes,
+    SetBarPosition(BarPosition),
+    SetSize(ThemeSized, i32),
+    Damage(Rect),
+    SetContainerBorders(ContainerBorders),
+}
+
+impl Transactionable for State {
+    type T = StateTransactionOp;
+
+    fn data(&self) -> &TransactionData<Self::T> {
+        &self.transaction_data
+    }
+
+    fn apply(self: &Rc<Self>, op: Self::T) {
+        match op {
+            StateTransactionOp::Clear => {
+                self.pending_container_render_positions.clear();
+                self.pending_container_render_title.clear();
+                self.pending_output_render_data.clear();
+                self.pending_float_titles.clear();
+            }
+            StateTransactionOp::SetLocked(v) => {
+                self.lock.locked[RenderTL].set(v);
+            }
+            StateTransactionOp::SetShowTitles(v) => {
+                self.theme.show_titles[RenderTL].set(v);
+            }
+            StateTransactionOp::ResetSizes => {
+                self.theme.sizes.reset(RenderTL);
+            }
+            StateTransactionOp::SetBarPosition(v) => {
+                self.theme.bar_position[RenderTL].set(v);
+            }
+            StateTransactionOp::SetSize(sized, size) => {
+                self.set_size_(RenderTL, sized, size);
+            }
+            StateTransactionOp::Damage(v) => {
+                self.damage(v);
+            }
+            StateTransactionOp::SetContainerBorders(v) => {
+                self.theme.container_borders[RenderTL].set(v);
+            }
+        }
+    }
+}

@@ -1,0 +1,9 @@
+request create (destructor) {
+    image_description: id(wp_image_description_v1) (new),
+}
+
+request set_icc_file {
+    icc_profile: fd,
+    offset: u32,
+    length: u32,
+}

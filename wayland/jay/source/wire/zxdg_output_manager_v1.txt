@@ -1,0 +1,7 @@
+request destroy (destructor) {
+}
+
+request get_xdg_output {
+    id: id(zxdg_output_v1) (new),
+    output: id(wl_output),
+}

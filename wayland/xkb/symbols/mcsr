@@ -152,7 +152,7 @@ xkb_symbols "norwegian" {
     key <FK11> { [ NoSymbol ] };
     key <FK12> { [ NoSymbol ] };
 
-    // macro keys and keyd speedrun output remaps
+    // Macro keys; gameplay remaps are applied by Waywall.
     // inet(evdev) gives FK13-FK16 XF86 keysyms by default, so override
     // both the canonical names and their evdev aliases.
     key <I156> { [ u, l ] };

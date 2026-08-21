@@ -10,11 +10,6 @@ show_startup_tips false
 show_release_notes false
 support_kitty_keyboard_protocol true
 
-env {
-    EDITOR "micro"
-    VISUAL "micro"
-}
-
 keybinds {
       normal {
           bind "Ctrl Shift t" { NewTab; }

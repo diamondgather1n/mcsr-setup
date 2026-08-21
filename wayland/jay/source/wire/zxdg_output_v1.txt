@@ -1,0 +1,23 @@
+request destroy (destructor) {
+}
+
+event logical_position {
+    x: i32,
+    y: i32,
+}
+
+event logical_size {
+    width: i32,
+    height: i32,
+}
+
+event done {
+}
+
+event name (since = 2) {
+    name: str,
+}
+
+event description (since = 2) {
+    description: str,
+}

@@ -1,0 +1,7 @@
+request destroy (destructor) {
+}
+
+request get_fifo {
+    id: id(wp_fifo_v1) (new),
+    surface: id(wl_surface),
+}

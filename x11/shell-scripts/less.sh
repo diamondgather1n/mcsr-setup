@@ -26,7 +26,7 @@ helium-browser --new-window "${main_urls[@]}" &
 
 qpwgraph &
 spotify &
-flatpak run --branch=stable --arch=x86_64 --command=obs com.obsproject.Studio &
+/usr/bin/obs &
 
 "$scripts/i3 config.sh"
 i3-msg "workspace 7" >/dev/null 2>&1

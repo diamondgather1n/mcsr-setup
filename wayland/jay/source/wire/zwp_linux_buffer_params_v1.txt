@@ -1,0 +1,36 @@
+request destroy (destructor) {
+}
+
+request add {
+    fd: fd,
+    plane_idx: u32,
+    offset: u32,
+    stride: u32,
+    modifier: u64,
+}
+
+request create {
+    width: i32,
+    height: i32,
+    format: u32,
+    flags: u32,
+}
+
+event created {
+    buffer: id(wl_buffer) (new),
+}
+
+event failed {
+}
+
+request create_immed (since = 2) {
+    buffer_id: id(wl_buffer) (new),
+    width: i32,
+    height: i32,
+    format: u32,
+    flags: u32,
+}
+
+request set_sampling_device (since = 6) {
+    device: pod(uapi::c::dev_t),
+}

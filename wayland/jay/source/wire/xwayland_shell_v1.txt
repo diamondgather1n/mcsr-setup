@@ -1,0 +1,7 @@
+request destroy (destructor) {
+}
+
+request get_xwayland_surface {
+    id: id(xwayland_surface_v1) (new),
+    surface: id(wl_surface),
+}

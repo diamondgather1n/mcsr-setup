@@ -1,0 +1,270 @@
+# requests
+
+request destroy {
+
+}
+
+request get_all {
+
+}
+
+request set_repeat_rate {
+    seat: str,
+    repeat_rate: i32,
+    repeat_delay: i32,
+}
+
+request set_keymap {
+    seat: str,
+    keymap: fd,
+    keymap_len: u32,
+}
+
+request use_hardware_cursor {
+    seat: str,
+    use_hardware_cursor: u32,
+}
+
+request get_keymap {
+    seat: str,
+}
+
+request set_accel_profile {
+    id: u32,
+    profile: i32,
+}
+
+request set_accel_speed {
+    id: u32,
+    speed: pod(f64),
+}
+
+request set_tap_enabled {
+    id: u32,
+    enabled: u32,
+}
+
+request set_tap_drag_enabled {
+    id: u32,
+    enabled: u32,
+}
+
+request set_tap_drag_lock_enabled {
+    id: u32,
+    enabled: u32,
+}
+
+request set_left_handed {
+    id: u32,
+    enabled: u32,
+}
+
+request set_natural_scrolling {
+    id: u32,
+    enabled: u32,
+}
+
+request set_px_per_wheel_scroll {
+    id: u32,
+    px: pod(f64),
+}
+
+request set_transform_matrix {
+    id: u32,
+    m11: pod(f64),
+    m12: pod(f64),
+    m21: pod(f64),
+    m22: pod(f64),
+}
+
+request set_cursor_size {
+    seat: str,
+    size: u32,
+}
+
+request attach {
+    id: u32,
+    seat: str,
+}
+
+request detach {
+    id: u32,
+}
+
+request get_seat {
+    name: str,
+}
+
+request get_device {
+    id: u32,
+}
+
+request set_device_keymap {
+    id: u32,
+    keymap: fd,
+    keymap_len: u32,
+}
+
+request get_device_keymap {
+    id: u32,
+}
+
+request map_to_output {
+    id: u32,
+    output: optstr,
+}
+
+request set_calibration_matrix (since = 4) {
+    id: u32,
+    m00: pod(f32),
+    m01: pod(f32),
+    m02: pod(f32),
+    m10: pod(f32),
+    m11: pod(f32),
+    m12: pod(f32),
+}
+
+request set_click_method (since = 19) {
+    id: u32,
+    method: i32,
+}
+
+request set_middle_button_emulation (since = 19) {
+    id: u32,
+    enabled: u32,
+}
+
+request set_simple_im_enabled (since = 22) {
+    seat: str,
+    enabled: u32,
+}
+
+request reload_simple_im (since = 22) {
+    seat: str,
+}
+
+request set_keymap_from_names (since = 24) {
+    seat: str,
+    rules: optstr,
+    model: optstr,
+    layout: optstr,
+    variant: optstr,
+    options: optstr,
+}
+
+request set_device_keymap_from_names (since = 24) {
+    id: u32,
+    rules: optstr,
+    model: optstr,
+    layout: optstr,
+    variant: optstr,
+    options: optstr,
+}
+
+request set_keymap_from_builder (since = 32) {
+    seat: str,
+    builder: id(jay_keymap_builder),
+}
+
+request set_device_keymap_from_builder (since = 32) {
+    id: u32,
+    builder: id(jay_keymap_builder),
+}
+
+request set_px_scroll_multiplier (since = 33) {
+    id: u32,
+    mul: pod(f64),
+}
+
+request set_scroll_method (since = 34) {
+    id: u32,
+    method: i32,
+}
+
+request set_scroll_button (since = 35) {
+    id: u32,
+    button: u32,
+}
+
+request set_scroll_button_lock (since = 36) {
+    id: u32,
+    enabled: u32,
+}
+
+# events
+
+event seat {
+    name: str,
+    repeat_rate: i32,
+    repeat_delay: i32,
+    hardware_cursor: u32,
+}
+
+event input_device {
+    id: u32,
+    name: str,
+    seat: str,
+    syspath: str,
+    devnode: str,
+    capabilities: array(pod(i32)),
+    accel_available: u32,
+    accel_profile: i32,
+    accel_speed: pod(f64),
+    tap_available: u32,
+    tap_enabled: u32,
+    tap_drag_enabled: u32,
+    tap_drag_lock_enabled: u32,
+    left_handed_available: u32,
+    left_handed: u32,
+    natural_scrolling_available: u32,
+    natural_scrolling_enabled: u32,
+    px_per_wheel_scroll: pod(f64),
+    transform_matrix: array(pod(u8)),
+}
+
+event error {
+    msg: str,
+}
+
+event keymap {
+    keymap: fd,
+    keymap_len: u32,
+}
+
+event input_device_output {
+    id: u32,
+    output: str,
+}
+
+event calibration_matrix (since = 4) {
+    m00: pod(f32),
+    m01: pod(f32),
+    m02: pod(f32),
+    m10: pod(f32),
+    m11: pod(f32),
+    m12: pod(f32),
+}
+
+event click_method (since = 19) {
+    click_method: i32,
+}
+
+event middle_button_emulation (since = 19) {
+    middle_button_emulation_enabled: u32,
+}
+
+event scroll_methods (since = 34) {
+    scroll_methods: u32,
+}
+
+event scroll_method (since = 34) {
+    scroll_method: i32,
+}
+
+event scroll_button (since = 35) {
+    scroll_button: u32,
+}
+
+event scroll_button_lock (since = 36) {
+    enabled: u32,
+}

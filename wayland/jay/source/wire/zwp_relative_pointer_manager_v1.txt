@@ -1,0 +1,7 @@
+request destroy (destructor) {
+}
+
+request get_relative_pointer {
+    id: id(zwp_relative_pointer_v1) (new),
+    pointer: id(wl_pointer),
+}

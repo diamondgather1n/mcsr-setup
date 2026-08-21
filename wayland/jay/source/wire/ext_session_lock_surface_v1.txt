@@ -1,0 +1,12 @@
+request destroy (destructor) {
+}
+
+request ack_configure {
+    serial: u32,
+}
+
+event configure {
+    serial: u32,
+    width: u32,
+    height: u32,
+}

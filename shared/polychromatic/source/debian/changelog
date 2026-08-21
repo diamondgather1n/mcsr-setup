@@ -1,0 +1,489 @@
+polychromatic (0.9.6) noble; urgency=low
+
+  * Fix missing brightness option for BlackWidow Ultimate 2012.
+  * Controller: Add device map for Razer Mouse Dock Pro.
+  * Controller: Improve messaging for unsupported devices.
+  * Troubleshooter: Check for 'openrazer' user group.
+
+ -- Luke Horwell <code@horwell.me>  Wed, 24 Dec 2025 21:12:50 +0000
+
+polychromatic (0.9.5) noble; urgency=low
+
+  * Controller: Fix our configuration window not being used in OpenRazer >=3.10.
+  * OpenRazer: Hide known buggy "None" effect for Basilisk V3 in OpenRazer <=3.7.0.
+  * Update French translation.
+  * Controller: Add links for translations and update license formatting.
+  * Add deprecation message for polychromatic-cli.
+
+ -- Luke Horwell <code@horwell.me>  Fri, 18 Apr 2025 17:14:40 +0000
+
+polychromatic (0.9.4) noble; urgency=low
+
+  * Controller: Improve DPI presentation for high DPI devices.
+  * Controller: Fix editor playback loop skipping over the first frame.
+  * Troubleshooter: Detect when Python library fails to load.
+  * Remove unused code.
+  * Drop 'sassc' build dependency.
+
+ -- Luke Horwell <code@horwell.me>  Sat, 15 Mar 2025 14:16:00 +0000
+
+polychromatic (0.9.3) noble; urgency=low
+
+  * Controller: Add device map for Razer Huntsman V2 Analog (UK)
+  * OpenRazer: Only show on-the-fly macro instructions if available.
+  * Fix crash when effect file is moved or renamed.
+  * Changes specific for the Flatpak version.
+  * Add appstream metainfo.
+
+ -- Luke Horwell <code@horwell.me>  Sat, 02 Nov 2024 15:38:38 +0000
+
+polychromatic (0.9.2) noble; urgency=low
+
+  * Controller: Fix broken header graphic when tiling application.
+  * Controller: Hide Y axis for Razer Basilisk Essential.
+  * Troubleshooter: Improve secure boot check.
+  * Fix 'Hz' typo for DeathAdder 3.5G DPI list.
+  * OpenRazer: Add "persistence_dual_boot_quirk" config option.
+
+ -- Luke Horwell <code@horwell.me>  Mon, 29 Jul 2024 18:41:18 +0100
+
+polychromatic (0.9.1) noble; urgency=low
+
+  * Fix various translation issues.
+  * Set the desktop filename for Wayland.
+  * Update translation for Simplified Chinese.
+
+ -- Luke Horwell <code@horwell.me>  Mon, 13 May 2024 15:44:12 +0100
+
+polychromatic (0.9.0) noble; urgency=low
+
+  * Port to PyQt6.
+  * Fix effect restoration when closing 'Inspect Matrix'.
+  * Remove some unused code.
+
+ -- Luke Horwell <code@horwell.me>  Wed, 24 Apr 2024 08:45:30 +0100
+
+polychromatic (0.8.4) focal; urgency=low
+
+  * Controller: Add device map for Razer Huntsman Mini (US)
+  * Controller: Fix "remember window position" setting
+  * Update translation for German.
+
+ -- Luke Horwell <code@horwell.me>  Sun, 14 Apr 2024 20:31:27 +0100
+
+polychromatic (0.8.3) focal; urgency=low
+
+  * Controller: Add device map for Razer Blackwidow V4 Pro.
+  * Controller: Add device map for Razer Cynosa V2 (US).
+  * Controller: Volume icons in device graphics are now consistent.
+  * OpenRazer: Add "Wheel" effect for compatible devices.
+  * Troubleshooter: Check for old copies of OpenRazer's Python library.
+  * Add translation for Georgian.
+
+ -- Luke Horwell <code@horwell.me>  Sun, 19 Nov 2023 15:44:24 +0000
+
+polychromatic (0.8.2) focal; urgency=low
+
+  * Controller: Add device map for Razer BlackWidow V3 (US).
+  * Controller: Fix crash when multiple non-RGB devices present.
+  * Controller: Fix crash with entering invalid values in DPI custom stages dialog.
+  * OpenRazer: Add "On" effect.
+  * OpenRazer: Add "Breath Random" effect for mono devices.
+  * OpenRazer: Fix missing "Blinking" effect
+  * Exclude Razer Phone 2 as an unknown device.
+  * Fix missing colour input for Reactive effect.
+  * Update translations for Simplified Chinese; German and Polish.
+
+ -- Luke Horwell <code@horwell.me>  Sun, 08 Oct 2023 13:17:20 +0100
+
+polychromatic (0.8.1-2) focal; urgency=low
+
+  * Add missing data directory.
+
+ -- Luke Horwell <code@horwell.me>  Tue, 02 May 2023 10:03:14 +0100
+
+polychromatic (0.8.1) focal; urgency=low
+
+  * Controller: Add device map for Huntsman Tournament Edition.
+  * Controller: Add device map for Ornata V2 (US)
+  * Controller: Improve messaging for unrecognised devices.
+  * Controller: Fix error caused by unreliable internet connection.
+  * Controller: Fix placeholder text colour in metadata dialog.
+  * Controller: Fix XDG_CONFIG_HOME path for OpenRazer.
+  * Controller: Fix missing translations for spinbox tooltips.
+  * Controller: Fix tab error when OpenRazer daemon becomes faulty.
+  * OpenRazer: Add keyswitch optimisation option.
+  * Update translations for Simplified Chinese and German.
+
+ -- Luke Horwell <code@horwell.me>  Mon, 01 May 2023 17:59:48 +0100
+
+polychromatic (0.8.0) focal; urgency=low
+
+  * General: Add scroll options for Razer Basilisk V3.
+  * General: Rework application architecture.
+  * General: Rework integration with OpenRazer.
+  * General: Improve "Apply to All" by detecting capable options.
+  * General: Improve error handling.
+  * Controller: Add device map for Razer Cynosa V2 (Nordic).
+  * Controller: Add device map for Base Station V2 Chroma.
+  * Controller: Add support for DPI sync and per-device DPI stages.
+  * Tray: Show error dialogs when actions fail.
+  * CLI: Show battery info.
+  * Fix missing locales.
+  * Update translations for French; add Polish.
+
+ -- Luke Horwell <code@horwell.me>  Sun, 04 Dec 2022 16:42:04 +0000
+
+polychromatic (0.7.3) focal; urgency=low
+
+  * Controller: Add device map for Razer Blade 2021 Advanced
+  * Controller: Add device map for Razer Basilisk V3
+  * Add support for polling rates up to 8000 Hz
+  * Fix crash when tray applet is not installed
+  * Improve OpenRazer troubleshooter for Python and DKMS checks.
+  * Update icon for battery charging.
+  * Exclude Razer Seiren X as an unknown device.
+
+ -- Luke Horwell <code@horwell.me>  Thu, 23 Dec 2021 15:09:12 +0000
+
+polychromatic (0.7.2) focal; urgency=low
+
+  * Controller: Fix compatibility with Python 3.10.
+  * Controller: Change error message wording.
+
+ -- Luke Horwell <code@horwell.me>  Sun, 17 Oct 2021 16:06:15 +0100
+
+polychromatic (0.7.1) focal; urgency=low
+
+  * Controller: Change keyboard shortcuts for changing HSL in editor.
+  * Controller: Fix crash on Python 3.10.
+  * Controller: Fix crash when styles were missing.
+  * Controller: Fix controls that were supposed to be in a disabled state.
+  * Controller: Fix retrieval of versions in About dialogs.
+  * Controller: Add support for future setting changes in OpenRazer Preferences.
+  * Controller: Improvements to OpenRazer troubleshooter.
+  * General: Fix crash if there was a "data" Python module.
+  * General: Swap positions of logo/scroll wheel in UI.
+  * General: Fix error setting idle_time and low_battery_threshold.
+  * General: Fix error setting Pulsate/Static for BlackWidow 2013-era keyboards.
+  * General: Fix graphics for charging zones.
+  * Tray: Add support for Ayatana Indicators.
+  * CLI: Fix error setting DPI for certain mice.
+  * Add StartupWMClass to launcher.
+  * Minor spelling corrections.
+  * Depend on AyatanaAppIndicator3 instead of AppIndicator3.
+
+ -- Luke Horwell <code@horwell.me>  Wed, 13 Oct 2021 20:14:56 +0100
+
+polychromatic (0.7.0) focal; urgency=low
+
+  * Controller: Drop WebKitGTK. Now uses PyQt5.
+  * Controller: New UI design and menus.
+  * Controller: New custom effect editor with support for frame-based animations.
+  * Controller: New device graphics to map against.
+  * Controller: Add option to hide key labels in editor.
+  * Controller: New troubleshooter for OpenRazer.
+  * Controller: New configuration editor for OpenRazer.
+  * Controller: New 'Apply to All' feature.
+  * Controller: New preferences interface.
+  * Controller: New 'Device Info' and 'Inspect Matrix' options.
+  * Controller: New colour picker and saved colour list management.
+  * Controller: New icon picker - add support for (low-res) Steam games and custom icons.
+  * Controller: New DPI picker, with support for independent X/Y axis.
+  * Controller: Warn when using incompatible configuration.
+  * Controller: Add support for native system theme (distro-dependent)
+  * Controller: Add window behaviour and toolbar preferences.
+  * Controller: Add ability to refresh view.
+  * Controller: Drop --print-device-info parameter (use 'Device Info' instead)
+  * Tray: New menu design.
+  * Tray: Add support for GTK Status Icon.
+  * Tray: New option to delay autostart (to fix race conditions)
+  * CLI: New command line interface (polychromatic-cli)
+  * Helper: Replaces the tray applet autostart desktop launcher.
+  * Helper: New background process to run software effects.
+  * OpenRazer: No longer a hard dependency.
+  * OpenRazer: Add support for multizoned hardware.
+  * OpenRazer: Add support for battery status, sleep and low power modes.
+  * Support custom effects for all compatible hardware.
+  * Add option to open mouse preferences.
+  * Add option to define DPI range.
+  * Add information about macros and key remapping.
+  * Add XDG desktop actions to desktop launcher.
+  * New modular backend.
+  * New icons and/or updated.
+  * New (partial) translations: pt_BR, fr_FR, fi_FI, ru, nl, zh_CN
+  * Change shebang to '/usr/bin/python3'
+  * Build: Change build system to meson/ninja.
+  * Build: Switch from 'lessc' to 'sassc'
+  * Build: New locale scripts. Source language is now en_GB.
+
+ -- Luke Horwell <code@horwell.me>  Sat, 07 Aug 2021 14:25:35 +0100
+
+polychromatic (0.3.12) xenial; urgency=low
+
+  * The DPI/Poll Rate labels were hard to read.
+  * Daemon screen in Preferences came up blank.
+  * Address misaligned button text.
+  * Add warning if the old PPA is detected.
+
+ -- Luke Horwell <code@horwell.me>  Thu, 19 Apr 2018 23:21:11 +0100
+
+polychromatic (0.3.11.2) xenial; urgency=low
+
+  * Fix profile editor never being displayed.
+
+ -- Luke Horwell <code@horwell.me>  Sat, 30 Sep 2017 20:14:52 +0100
+
+polychromatic (0.3.11.1) xenial; urgency=low
+
+  * Update dependencies for OpenRazer. Please use ppa:openrazer/stable instead.
+  * Update error screens when initialization errors occur.
+  * Prevent a segfault with newer WebKit versions.
+  * Internal changes to how styling is compiled.
+
+ -- Luke Horwell <code@horwell.me>  Wed, 06 Sep 2017 21:00:00 +0100
+
+polychromatic (0.3.10) xenial; urgency=low
+
+  * Catch more exceptions.
+  * Clean up how booleans are stored interally.
+  * Internal code refactoring, namely the preferences page.
+  * No longer depends on WebKit >=2.12
+  * Prevent exception when devicestate file didn't exist.
+  * Properly add support for starlight effect.
+
+ -- Luke Horwell <code@horwell.me>  Thu, 10 Aug 2017 21:24:39 +0100
+
+polychromatic (0.3.9.3) xenial; urgency=low
+
+  * Daemon configuration paths updated.
+  * Beginnings of some code refactoring.
+
+ -- Luke Horwell <code@horwell.me>  Sat, 01 Jul 2017 23:29:21 +0100
+
+polychromatic (0.3.9.2) xenial; urgency=low
+
+  * Daemon has renamed razer-service to razer-daemon.
+
+ -- Luke Horwell <code@horwell.me>  Sun, 11 Jun 2017 17:40:05 +0100
+
+polychromatic (0.3.9.1) xenial; urgency=low
+
+  * Re-licensed as GPL3.
+  * Add German translation.
+  * Fix profile matrix rows/cols for non-BW devices.
+  * Various fixes to prevent exceptions.
+
+ -- Luke Horwell <code@horwell.me>  Mon, 29 May 2017 16:38:59 +0100
+
+polychromatic (0.3.9) xenial; urgency=low
+
+  * Fix wrong colour for green shade variants.
+  * Fix corrupt screen when choosing an application.
+  * Improved logic when devices cannot be found.
+  * Add support for mice with "backlight" functions.
+  * Add support for polling rate.
+  * Limit DPI according to mouse.
+  * Ensure 'sync_effects_enabled' is disabled in daemon.
+  * Hide "effects" menu in tray if device doesn't support them.
+  * Sync device state changes between tray/controller.
+
+ -- Luke Horwell <code@horwell.me>  Wed, 03 May 2017 18:36:48 +0100
+
+polychromatic (0.3.8) xenial; urgency=low
+
+  * Internal code clean-ups.
+  * Prevent an exception when creating a new profile.
+  * Only show relevant daemon service options.
+  * Only show macros, game mode or profiles if supported by device.
+  * Overhaul tray applet, with improved device support.
+  * Add support for scroll brightness toggles.
+  * UI tweaks and improvements.
+  * Show green grades for Ultimate keyboards.
+  * Fix Overview tab not being selected properly.
+  * Update translation templates and eb_GB locales.
+
+ -- Luke Horwell <code@horwell.me>  Tue, 04 Apr 2017 23:18:22 +0100
+
+polychromatic (0.3.7.1) xenial; urgency=low
+
+  * Fix regression when editing profiles.
+  * Fix regression with wave effect in header.
+  * Stop "syncing" mouse DPI with hardware.
+  * Add starlight FX for future daemon support.
+  * Add Naga Hex V2 ring in UI.
+  * Update application icons.
+  * Tweak message when restarting daemon.
+
+ -- Luke Horwell <code@horwell.me>  Thu, 16 Mar 2017 22:07:28 +0100
+
+polychromatic (0.3.7-1) xenial; urgency=low
+
+  * Repackaged for Launchpad.
+
+ -- Luke Horwell <code@horwell.me>  Thu, 09 Mar 2017 22:12:49 +0100
+
+polychromatic (0.3.7) xenial; urgency=low
+
+  * Add support for logo and scroll wheel.
+  * Add options for mouse DPI.
+  * Add ability to create/modify your own colours.
+  * Add "Breeze" tray icons for KDE desktops.
+  * New features on Overview Screen -- show firmware version and colour in use.
+  * Improvements to error, loading and restarting daemon screens.
+  * Use daemon for determining device images.
+  * Speed up the refresh rate when setting the ripple effect.
+  * Prevent missing images for device icons and header background.
+  * Update categories for desktop launcher.
+  * Add man pages.
+  * Internal fix when saving files in ~/.config/polychromatic
+  * Show warnings when daemon versions differ.
+  * Reshuffled data files and code clean ups.
+
+ -- Luke Horwell <code@horwell.me>  Tue, 07 Mar 2017 21:41:13 +0100
+
+polychromatic (0.3.6.1) xenial; urgency=low
+
+  * Revert WebKit2 workaround as regression is fixed in WebKitGTK 2.14.3.
+
+ -- Luke Horwell <code@horwell.me>  Tue, 17 Jan 2017 21:15:42 +0100
+
+polychromatic (0.3.6) xenial; urgency=low
+
+  * Add button to gracefully stop the daemon.
+  * Add images for headsets and keypads.
+  * Show device images on Overview screen.
+  * When device features cannot be set, show an error in the footer.
+  * Colourise terminal colours.
+  * Show tooltip when hovering over device tabs.
+  * Show more friendly errors when things go wrong.
+  * File metadata fixes.
+  * Re-sync BlackWidow Chroma demo.
+  * Update en_GB locale.
+  * Stabilize the behaviour of processing signals with WebKit2.
+
+ -- Luke Horwell <code@horwell.me>  Sat, 14 Jan 2017 17:20:58 +0100
+
+polychromatic (0.3.5) xenial; urgency=low
+
+  * Prevent crash when device serial returned null.
+  * Correct logic for showing "No Devices Found" screen.
+  * Update verbose messages when running with "-v" flag.
+  * Fix wrong reactive colours being set.
+  * Add device overview screen.
+  * Drop obsolete "Enable Macro Keys" button.
+
+ -- Luke Horwell <code@horwell.me>  Wed, 13 Dec 2016 20:53:04 +0100
+
+polychromatic (0.3.4) xenial; urgency=low
+
+  * Detect when a Razer product is connected.
+  * Track and retain device states.
+  * Show optional zenity dialog when restarting daemon.
+  * Fix "Reset Preferences" button.
+  * Miscellaneous UI fixes.
+
+ -- Luke Horwell <code@horwell.me>  Sat, 02 Oct 2016 21:26:22 +0100
+
+polychromatic (0.3.3) xenial; urgency=low
+
+  * Ensure FN/Space keys are enabled for keyboards that support it.
+  * Add tabs to preferences.
+  * Depend on python3-requests.
+  * View change logs from within the application.
+  * Add daemon settings to preferences.
+  * Add ability to restart daemon service.
+  * Prevent tray applet crash when profile didn't exist.
+  * Prevent tray applet crash when daemon is not ready/present.
+  * Add loading screen while Controller initialises.
+  * Add demo option - Synchronised Razer BlackWidow Chroma Advert.
+  * Remove useless "device refresh" button.
+
+ -- Luke Horwell <code@horwell.me>  Sat, 02 Oct 2016 21:26:22 +0100
+
+polychromatic (0.3.2) xenial; urgency=low
+
+  * Add keyboard navigation support.
+  * Dropdown menus are themed.
+  * Minor UI changes.
+    * Consistent use of normal cursor.
+    * Profile editor tools relocated and shows selected tool.
+
+ -- Luke Horwell <code@horwell.me>  Sun, 02 Oct 2016 21:26:22 +0100
+
+polychromatic (0.3.1) xenial; urgency=low
+
+  * Display error message on daemon initialisation failures.
+  * Set process title earlier to prevent muddled process name.
+  * Add daemon/library version information to About.
+  * Ensure only supported features are shown.
+  * Add support for pulsate effect on Razer BW2013.
+  * Add support for logo lighting on Razer Abyssus.
+
+ -- Luke Horwell <code@horwell.me>  Sun, 25 Sep 2016 17:34:26 +0100
+
+polychromatic (0.3.0) xenial; urgency=low
+
+  * Migrate to the new daemon.
+  * Implement multi-device support.
+  * Add ripple effects.
+  * Hide features unsupported to selected device.
+  * Upgrade configuration to version 4.
+    * Switches to JSON profile format.
+    * Drops centralised index method.
+  * Show graphical error messages.
+  * Fix broken open folder button.
+  * Add icons to effects list.
+  * New "dynamic" headings.
+  * New tray applet icons and string updates.
+  * Internal code tweaks and improvements.
+
+ -- Luke Horwell <code@horwell.me>  Sun, 18 Sep 2016 09:51:32 +0100
+
+polychromatic (0.2.3) xenial; urgency=low
+
+  * Add autostart entry.
+  * Show warning when ran under DaemonV2.
+
+ -- Luke Horwell <code@horwell.me>  Sun, 14 Aug 2016 22:16:12 +0100
+
+polychromatic (0.2.2) xenial; urgency=low
+
+  * New application logo.
+  * Upgraded profile format.
+  * New application profiles list, with support for icons and renaming.
+  * Add option to choose an existing application for new profiles.
+  * Amendments to user interface.
+  * Uses custom WebKit controls.
+  * Automatically reload the tray applet on changes.
+  * Refreshed translations.
+  * Tray applet loads preferred colours.
+  * Internal code clean-up.
+  * Create packages for Yakkety.
+
+ -- Luke Horwell <code@horwell.me>  Sun, 31 Jul 2016 20:49:00 +0100
+
+polychromatic (0.2.1) xenial; urgency=low
+
+  * New dialogue prompts for profile creation/deletion.
+  * Add translation support.
+  * Use a Python module for setting process title.
+  * Internal code clean-up.
+
+ -- Luke Horwell <code@horwell.me>  Thu, 7 Jul 2016 17:15:00 +0100
+
+
+polychromatic (0.2.02) xenial; urgency=low
+
+  * Migrated to WebKit2.
+  * Internal project restructure.
+  * Prepared packaging for Ubuntu.
+
+ -- Luke Horwell <code@horwell.me>  Sun, 12 Jun 2016 14:38:00 +0100
+
+
+polychromatic (0.1.0) xenial; urgency=low
+
+  * Initial Release
+
+ -- Luke Horwell <code@horwell.me>  Tue, 17 May 2016 14:57:00 +0100

@@ -1,0 +1,15 @@
+request destroy (destructor, since = 3) {
+}
+
+event begin (since = 3) {
+    serial: u32,
+    time: u32,
+    surface: id(wl_surface),
+    fingers: u32,
+}
+
+event end (since = 3) {
+    serial: u32,
+    time: u32,
+    cancelled: i32,
+}

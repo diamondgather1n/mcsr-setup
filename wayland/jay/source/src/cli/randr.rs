@@ -1,0 +1,1514 @@
+use {
+    crate::{
+        backend::{BackendColorSpace, BackendEotfs},
+        cli::{
+            GlobalArgs,
+            json::{
+                JsonConnector, JsonDrmDevice, JsonMode, JsonOutput, JsonPrimaries, JsonRandrData,
+                JsonTearingMode, JsonVrrMode, jsonl,
+            },
+        },
+        cmm::cmm_primaries::Primaries,
+        format::{Format, XRGB8888},
+        gfx_api::ScalingFilter,
+        ifs::wl_output::BlendSpace,
+        scale::Scale,
+        tools::tool_client::{Handle, ToolClient, with_tool_client},
+        tree::Transform,
+        utils::{errorfmt::ErrorFmt, ordered_float::F64, static_text::StaticText},
+        wire::{JayRandrId, jay_compositor, jay_randr},
+    },
+    clap::{
+        Args, Subcommand, ValueEnum,
+        builder::{PossibleValue, PossibleValuesParser},
+    },
+    derivative::Derivative,
+    isnt::std_1::vec::IsntVecExt,
+    jay_config::video::{ScalingFilter as ConfigScalingFilter, TearingMode, VrrMode},
+    linearize::LinearizeExt,
+    std::{
+        cell::RefCell,
+        fmt::{self, Display, Formatter},
+        rc::Rc,
+        str::FromStr,
+        time::Duration,
+    },
+    thiserror::Error,
+};
+
+#[derive(Args, Debug)]
+pub struct RandrArgs {
+    #[clap(subcommand)]
+    pub command: Option<RandrCmd>,
+}
+
+#[derive(Subcommand, Debug, Derivative)]
+#[derivative(Default)]
+pub enum RandrCmd {
+    /// Show the current settings.
+    #[derivative(Default)]
+    Show(ShowArgs),
+    /// Modify the settings of a graphics card.
+    Card(CardArgs),
+    /// Modify the settings of an output.
+    Output(OutputArgs),
+    /// Modify virtual outputs.
+    VirtualOutput(VirtualOutputArgs),
+}
+
+#[derive(Args, Debug, Default)]
+pub struct ShowArgs {
+    /// Show all available modes.
+    #[arg(long)]
+    pub modes: bool,
+    /// Show all available formats.
+    #[arg(long)]
+    pub formats: bool,
+}
+
+#[derive(Args, Debug)]
+pub struct CardArgs {
+    /// The card to modify, e.g. card0.
+    pub card: String,
+    #[clap(subcommand)]
+    pub command: CardCommand,
+}
+
+#[derive(Subcommand, Debug, Clone)]
+pub enum CardCommand {
+    /// Make this device the primary device.
+    Primary,
+    /// Modify the graphics API used by the card.
+    Api(ApiArgs),
+    /// Modify the direct scanout setting of the card.
+    DirectScanout(DirectScanoutArgs),
+    /// Modify timing settings of the card.
+    Timing(TimingArgs),
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct TimingArgs {
+    #[clap(subcommand)]
+    pub cmd: TimingCmd,
+}
+
+#[derive(Subcommand, Debug, Clone)]
+pub enum TimingCmd {
+    /// Sets the margin to use for page flips.
+    ///
+    /// This is duration between the compositor initiating a page flip and the output's
+    /// vblank event. This determines the minimum input latency. The default is 1.5 ms.
+    ///
+    /// Note that if the margin is too small, the compositor will dynamically increase it.
+    SetFlipMargin(SetFlipMarginArgs),
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct SetFlipMarginArgs {
+    /// The margin in milliseconds.
+    pub margin_ms: f64,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct ApiArgs {
+    #[clap(subcommand)]
+    pub cmd: ApiCmd,
+}
+
+#[derive(Subcommand, Debug, Clone)]
+pub enum ApiCmd {
+    /// Use OpenGL for rendering in this card.
+    #[clap(name = "opengl")]
+    OpenGl,
+    /// Use Vulkan for rendering in this card.
+    #[clap(name = "vulkan")]
+    Vulkan,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct DirectScanoutArgs {
+    #[clap(subcommand)]
+    pub cmd: DirectScanoutCmd,
+}
+
+#[derive(Subcommand, Debug, Clone)]
+pub enum DirectScanoutCmd {
+    /// Enable direct scanout.
+    Enable,
+    /// Disable direct scanout.
+    Disable,
+}
+
+#[derive(Args, Debug)]
+pub struct OutputArgs {
+    /// The output to modify, e.g. DP-1.
+    pub output: String,
+    #[clap(subcommand)]
+    pub command: OutputCommand,
+}
+
+#[derive(Subcommand, Debug, Clone)]
+pub enum OutputCommand {
+    /// Modify the transform of the output.
+    Transform(TransformArgs),
+    /// Modify the scale of the output.
+    Scale(ScaleArgs),
+    /// Modify the scaling filter of the output.
+    ScalingFilter(ScalingFilterArgs),
+    /// Modify the mode of the output.
+    Mode(ModeArgs),
+    /// Modify the position of the output.
+    Position(PositionArgs),
+    /// Enable the output.
+    Enable,
+    /// Disable the output.
+    Disable,
+    /// Override the display's non-desktop setting.
+    NonDesktop(NonDesktopArgs),
+    /// Change VRR settings.
+    Vrr(VrrArgs),
+    /// Change tearing settings.
+    Tearing(TearingArgs),
+    /// Change format settings.
+    Format(FormatSettings),
+    /// Change color settings.
+    Colors(ColorsSettings),
+    /// Change the output brightness.
+    Brightness(BrightnessArgs),
+    /// Change the blend space.
+    BlendSpace(BlendSpaceArgs),
+    /// Change whether the display primaries are used.
+    UseNativeGamut(UseNativeGamutArgs),
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct UseNativeGamutArgs {
+    /// Configures whether the display primaries are used.
+    ///
+    /// By default, Jay pretends that the display uses sRGB primaries. This is also how
+    /// most other systems behave. In reality, most displays use a much larger gamut. For
+    /// example, they advertise that they support 95% of the DCI-P3 gamut. If the display
+    /// is interpreting colors in their native gamut, then colors will appear more
+    /// saturated than their specification.
+    ///
+    /// If this is set to `true`, Jay assumes that the display uses the primaries
+    /// advertised in its EDID. This might produce more accurate colors while also
+    /// allowing color-managed applications to use the full gamut of the display.
+    ///
+    /// This setting has no effect when the display is explicitly operating in a wide
+    /// color space.
+    ///
+    /// The default is `false`.
+    #[arg(action = clap::ArgAction::Set)]
+    pub use_native_gamut: bool,
+}
+
+#[derive(ValueEnum, Debug, Clone)]
+pub enum NonDesktopType {
+    Default,
+    False,
+    True,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct NonDesktopArgs {
+    /// Whether this output is a non-desktop output.
+    pub setting: NonDesktopType,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct VrrArgs {
+    #[clap(subcommand)]
+    pub command: VrrCommand,
+}
+
+#[derive(Subcommand, Debug, Clone)]
+pub enum VrrCommand {
+    /// Sets the mode that determines when VRR is enabled.
+    SetMode(SetVrrModeArgs),
+    /// Sets the maximum refresh rate of the cursor.
+    SetCursorHz(CursorHzArgs),
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct SetVrrModeArgs {
+    #[clap(value_enum)]
+    pub mode: VrrModeArg,
+}
+
+#[derive(ValueEnum, Debug, Copy, Clone, Hash, PartialEq)]
+pub enum VrrModeArg {
+    /// VRR is never enabled.
+    Never,
+    /// VRR is always enabled.
+    Always,
+    /// VRR is enabled when one or more applications are displayed fullscreen.
+    Variant1,
+    /// VRR is enabled when a single application is displayed fullscreen.
+    Variant2,
+    /// VRR is enabled when a single game or video is displayed fullscreen.
+    Variant3,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct CursorHzArgs {
+    /// The rate at which the cursor will be updated on screen.
+    pub rate: String,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct FormatSettings {
+    #[clap(subcommand)]
+    pub command: FormatCommand,
+}
+
+#[derive(Subcommand, Debug, Clone)]
+pub enum FormatCommand {
+    /// Sets the format of the framebuffer.
+    Set {
+        #[clap(value_enum)]
+        format: &'static Format,
+    },
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct TearingArgs {
+    #[clap(subcommand)]
+    pub command: TearingCommand,
+}
+
+#[derive(Subcommand, Debug, Clone)]
+pub enum TearingCommand {
+    /// Sets the mode that determines when tearing is enabled.
+    SetMode(SetTearingModeArgs),
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct SetTearingModeArgs {
+    #[clap(value_enum)]
+    pub mode: TearingModeArg,
+}
+
+#[derive(ValueEnum, Debug, Copy, Clone, Hash, PartialEq)]
+pub enum TearingModeArg {
+    /// Tearing is never enabled.
+    Never,
+    /// Tearing is always enabled.
+    Always,
+    /// Tearing is enabled when one or more applications are displayed fullscreen.
+    Variant1,
+    /// Tearing is enabled when a single application is displayed fullscreen.
+    Variant2,
+    /// Tearing is enabled when a single application is displayed fullscreen and the
+    /// application has requested tearing.
+    ///
+    /// This is the default.
+    Variant3,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct PositionArgs {
+    /// The top-left x coordinate.
+    pub x: i32,
+    /// The top-left y coordinate.
+    pub y: i32,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct ModeArgs {
+    /// The width.
+    pub width: i32,
+    /// The height.
+    pub height: i32,
+    /// The refresh rate.
+    pub refresh_rate: f64,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct ScaleArgs {
+    /// Rounds the scale to a value that can be stored in a floating-point number. This
+    /// might be useful because some applications store scales as floating-point numbers
+    /// and can become blurry if the scale cannot be represented exactly.
+    #[arg(long)]
+    pub round_to_float: bool,
+    /// The new scale.
+    pub scale: f64,
+}
+
+#[derive(ValueEnum, Debug, Clone)]
+pub enum CliScalingFilter {
+    /// Linear scaling.
+    Linear,
+    /// Nearest scaling.
+    Nearest,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct ScalingFilterArgs {
+    /// The scaling filter.
+    scaling_filter: CliScalingFilter,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct TransformArgs {
+    #[clap(subcommand)]
+    pub command: TransformCmd,
+}
+
+#[derive(Subcommand, Debug, Clone)]
+pub enum TransformCmd {
+    /// Apply no transformation.
+    None,
+    /// Rotate the content 90 degrees counter-clockwise.
+    #[clap(name = "rotate-90")]
+    Rotate90,
+    /// Rotate the content 180 degrees counter-clockwise.
+    #[clap(name = "rotate-180")]
+    Rotate180,
+    /// Rotate the content 270 degrees counter-clockwise.
+    #[clap(name = "rotate-270")]
+    Rotate270,
+    /// Flip the content around the vertical axis.
+    Flip,
+    /// Flip the content around the vertical axis, then rotate 90 degrees counter-clockwise.
+    #[clap(name = "flip-rotate-90")]
+    FlipRotate90,
+    /// Flip the content around the vertical axis, then rotate 180 degrees counter-clockwise.
+    #[clap(name = "flip-rotate-180")]
+    FlipRotate180,
+    /// Flip the content around the vertical axis, then rotate 270 degrees counter-clockwise.
+    #[clap(name = "flip-rotate-270")]
+    FlipRotate270,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct ColorsSettings {
+    #[clap(subcommand)]
+    pub command: ColorsCommand,
+}
+
+#[derive(Subcommand, Debug, Clone)]
+pub enum ColorsCommand {
+    /// Sets the color space and EOTF of the output.
+    Set {
+        /// The name of the color space.
+        #[clap(value_parser = PossibleValuesParser::new(color_space_possible_values()))]
+        color_space: String,
+        /// The name of the EOTF.
+        #[clap(value_parser = PossibleValuesParser::new(eotf_possible_values()))]
+        eotf: String,
+    },
+}
+
+fn color_space_possible_values() -> Vec<PossibleValue> {
+    let mut res = vec![];
+    for cs in BackendColorSpace::variants() {
+        use BackendColorSpace::*;
+        let help = match cs {
+            Default => "The default color space (usually sRGB)",
+            Bt2020 => "The BT.2020 color space",
+        };
+        res.push(PossibleValue::new(cs.name()).help(help));
+    }
+    res
+}
+
+fn eotf_possible_values() -> Vec<PossibleValue> {
+    let mut res = vec![];
+    for cs in BackendEotfs::variants() {
+        use BackendEotfs::*;
+        let help = match cs {
+            Default => "The default EOTF (usually gamma22)",
+            Pq => "The PQ EOTF",
+        };
+        res.push(PossibleValue::new(cs.name()).help(help));
+    }
+    res
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct BrightnessArgs {
+    /// The brightness of standard white in cd/m^2 or `default` to use the default
+    /// brightness.
+    ///
+    /// The default brightness depends on the EOTF:
+    ///
+    /// - default: the maximum display brightness
+    /// - PQ: 203 cd/m^2.
+    ///
+    /// When using the default EOTF, you likely want to set this to `default`
+    /// and adjust the display hardware brightness setting instead.
+    ///
+    /// When used with the default transfer function, the default brightness is anchored
+    /// at 80 cd/m^2. That is, setting this to 40 cd/m^2 makes everything appear half as
+    /// bright as normal and creates 50% HDR headroom.
+    ///
+    /// This has no effect unless the vulkan renderer is used.
+    #[clap(verbatim_doc_comment, value_parser = parse_brightness)]
+    brightness: Brightness,
+}
+
+#[derive(Debug, Clone)]
+pub enum Brightness {
+    Default,
+    Lux(f64),
+}
+
+#[derive(Debug, Error)]
+#[error("Value is neither `default` nor a floating point value")]
+struct ParseBrightnessError;
+
+fn parse_brightness(s: &str) -> Result<Brightness, ParseBrightnessError> {
+    if s == "default" {
+        return Ok(Brightness::Default);
+    }
+    f64::from_str(s)
+        .map(Brightness::Lux)
+        .map_err(|_| ParseBrightnessError)
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct BlendSpaceArgs {
+    /// The space to blend translucent surfaces in.
+    #[clap(value_parser = PossibleValuesParser::new(blend_space_possible_values()))]
+    blend_space: String,
+}
+
+fn blend_space_possible_values() -> Vec<PossibleValue> {
+    let mut res = vec![];
+    for bs in BlendSpace::variants() {
+        use BlendSpace::*;
+        let help = match bs {
+            Linear => "Linear space, more accurate but brighter",
+            Srgb => "sRGB space, the classic desktop blend space",
+        };
+        res.push(PossibleValue::new(bs.name()).help(help));
+    }
+    res
+}
+
+#[derive(Args, Debug)]
+pub struct VirtualOutputArgs {
+    #[clap(subcommand)]
+    pub command: VirtualOutputCommand,
+}
+
+#[derive(Subcommand, Debug, Clone)]
+pub enum VirtualOutputCommand {
+    /// Create a virtual output.
+    Create(CreateVirtualOutputArgs),
+    /// Remove a virtual output.
+    Remove(RemoveVirtualOutputArgs),
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct CreateVirtualOutputArgs {
+    /// The name of the virtual output.
+    pub name: String,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct RemoveVirtualOutputArgs {
+    /// The name of the virtual output.
+    pub name: String,
+}
+
+pub fn main(global: GlobalArgs, args: RandrArgs) {
+    with_tool_client(global.log_level, |tc| async move {
+        let idle = Rc::new(Randr { tc: tc.clone() });
+        idle.run(&global, args).await;
+    });
+}
+
+#[derive(Clone, Debug)]
+struct Device {
+    pub id: u64,
+    pub syspath: String,
+    pub devnode: String,
+    pub vendor: u32,
+    pub vendor_name: String,
+    pub model: u32,
+    pub model_name: String,
+    pub gfx_api: String,
+    pub render_device: bool,
+}
+
+#[derive(Clone, Debug)]
+struct Connector {
+    pub _id: u64,
+    pub drm_device: Option<u64>,
+    pub name: String,
+    pub enabled: bool,
+    pub output: Option<Output>,
+}
+
+#[derive(Clone, Debug, Default)]
+struct Output {
+    pub scale: f64,
+    pub width: i32,
+    pub height: i32,
+    pub x: i32,
+    pub y: i32,
+    pub transform: Transform,
+    pub manufacturer: String,
+    pub product: String,
+    pub serial_number: String,
+    pub width_mm: i32,
+    pub height_mm: i32,
+    pub current_mode: Option<Mode>,
+    pub modes: Vec<Mode>,
+    pub non_desktop: bool,
+    pub vrr_capable: bool,
+    pub vrr_enabled: bool,
+    pub vrr_mode: VrrMode,
+    pub vrr_cursor_hz: Option<f64>,
+    pub tearing_mode: TearingMode,
+    pub formats: Vec<String>,
+    pub format: Option<String>,
+    pub flip_margin_ns: Option<u64>,
+    pub supported_color_spaces: Vec<String>,
+    pub current_color_space: Option<String>,
+    pub supported_eotfs: Vec<String>,
+    pub current_eotf: Option<String>,
+    pub brightness_range: Option<(f64, f64)>,
+    pub brightness: Option<f64>,
+    pub blend_space: Option<String>,
+    pub native_gamut: Option<Primaries>,
+    pub use_native_gamut: bool,
+    pub arbitrary_modes: bool,
+    pub scaling_filter: Option<ScalingFilter>,
+}
+
+#[derive(Copy, Clone, Debug)]
+struct Mode {
+    pub width: i32,
+    pub height: i32,
+    pub refresh_rate_millihz: u32,
+    pub current: bool,
+}
+
+impl Mode {
+    fn refresh_rate(&self) -> f64 {
+        (self.refresh_rate_millihz as f64) / 1000.0
+    }
+}
+
+impl Display for Mode {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} x {} @ {}",
+            self.width,
+            self.height,
+            self.refresh_rate(),
+        )
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+struct Data {
+    default_api: String,
+    drm_devices: Vec<Device>,
+    connectors: Vec<Connector>,
+}
+
+struct Randr {
+    tc: Rc<ToolClient>,
+}
+
+impl Randr {
+    async fn run(self: &Rc<Self>, global: &GlobalArgs, args: RandrArgs) {
+        let tc = &self.tc;
+        let comp = tc.jay_compositor().await;
+        let randr = tc.id();
+        tc.send(jay_compositor::GetRandr {
+            self_id: comp,
+            id: randr,
+        });
+        match args.command.unwrap_or_default() {
+            RandrCmd::Show(args) => self.show(global, randr, args).await,
+            RandrCmd::Card(args) => self.card(randr, args).await,
+            RandrCmd::Output(args) => self.output(randr, args).await,
+            RandrCmd::VirtualOutput(args) => self.virtual_output(randr, args).await,
+        }
+    }
+
+    fn handle_error<F: Fn(&str) + 'static>(&self, randr: JayRandrId, f: F) {
+        jay_randr::Error::handle(&self.tc, randr, (), move |_, msg| {
+            f(msg.msg);
+            std::process::exit(1);
+        });
+    }
+
+    async fn output(self: &Rc<Self>, randr: JayRandrId, args: OutputArgs) {
+        let tc = &self.tc;
+        match args.command {
+            OutputCommand::Transform(t) => {
+                self.handle_error(randr, |msg| {
+                    eprintln!("Could not modify the transform: {}", msg);
+                });
+                let transform = match t.command {
+                    TransformCmd::None => Transform::None,
+                    TransformCmd::Rotate90 => Transform::Rotate90,
+                    TransformCmd::Rotate180 => Transform::Rotate180,
+                    TransformCmd::Rotate270 => Transform::Rotate270,
+                    TransformCmd::Flip => Transform::Flip,
+                    TransformCmd::FlipRotate90 => Transform::FlipRotate90,
+                    TransformCmd::FlipRotate180 => Transform::FlipRotate180,
+                    TransformCmd::FlipRotate270 => Transform::FlipRotate270,
+                };
+                tc.send(jay_randr::SetTransform {
+                    self_id: randr,
+                    output: &args.output,
+                    transform: transform.to_wl(),
+                });
+            }
+            OutputCommand::Scale(t) => {
+                self.handle_error(randr, |msg| {
+                    eprintln!("Could not modify the scale: {}", msg);
+                });
+                let scale = match t.round_to_float {
+                    true => Scale::from_f64_as_float(t.scale),
+                    false => Scale::from_f64(t.scale),
+                };
+                tc.send(jay_randr::SetScale {
+                    self_id: randr,
+                    output: &args.output,
+                    scale: scale.to_wl(),
+                });
+            }
+            OutputCommand::Mode(t) => {
+                let name = args.output.to_ascii_lowercase();
+                let data = self.get(randr).await;
+                let Some(connector) = data
+                    .connectors
+                    .iter()
+                    .find(|c| c.name.to_ascii_lowercase() == name)
+                else {
+                    log::error!("Connector with name `{}` does not exist", args.output);
+                    return;
+                };
+                let Some(output) = &connector.output else {
+                    log::error!("Connector {} is not connected", connector.name);
+                    return;
+                };
+                let mode = 'mode: {
+                    if let Some(mode) = output.modes.iter().find(|m| {
+                        m.width == t.width
+                            && m.height == t.height
+                            && m.refresh_rate() == t.refresh_rate
+                    }) {
+                        break 'mode *mode;
+                    }
+                    if output.arbitrary_modes {
+                        break 'mode Mode {
+                            width: t.width,
+                            height: t.height,
+                            refresh_rate_millihz: (t.refresh_rate * 1_000.0).round() as u32,
+                            current: false,
+                        };
+                    }
+                    log::error!(
+                        "Output {} does not support this refresh rate",
+                        connector.name
+                    );
+                    return;
+                };
+                self.handle_error(randr, |msg| {
+                    eprintln!("Could not modify the mode: {}", msg);
+                });
+                tc.send(jay_randr::SetMode {
+                    self_id: randr,
+                    output: &args.output,
+                    width: mode.width,
+                    height: mode.height,
+                    refresh_rate_millihz: mode.refresh_rate_millihz,
+                });
+            }
+            OutputCommand::Position(t) => {
+                self.handle_error(randr, |msg| {
+                    eprintln!("Could not modify the position: {}", msg);
+                });
+                tc.send(jay_randr::SetPosition {
+                    self_id: randr,
+                    output: &args.output,
+                    x: t.x,
+                    y: t.y,
+                });
+            }
+            OutputCommand::Enable | OutputCommand::Disable => {
+                let (enable, name) = match args.command {
+                    OutputCommand::Enable => (true, "enable"),
+                    _ => (false, "disable"),
+                };
+                self.handle_error(randr, move |msg| {
+                    eprintln!("Could not {} the output: {}", name, msg);
+                });
+                tc.send(jay_randr::SetEnabled {
+                    self_id: randr,
+                    output: &args.output,
+                    enabled: enable as _,
+                });
+            }
+            OutputCommand::NonDesktop(a) => {
+                self.handle_error(randr, move |msg| {
+                    eprintln!("Could not change the non-desktop setting: {}", msg);
+                });
+                tc.send(jay_randr::SetNonDesktop {
+                    self_id: randr,
+                    output: &args.output,
+                    non_desktop: a.setting as _,
+                });
+            }
+            OutputCommand::Vrr(a) => {
+                self.handle_error(randr, move |msg| {
+                    eprintln!("Could not change the VRR setting: {}", msg);
+                });
+                let parse_rate = |rate: &str| {
+                    if rate.eq_ignore_ascii_case("none") {
+                        f64::INFINITY
+                    } else {
+                        match f64::from_str(rate) {
+                            Ok(v) => v,
+                            Err(e) => {
+                                fatal!("Could not parse rate: {}", ErrorFmt(e));
+                            }
+                        }
+                    }
+                };
+                match a.command {
+                    VrrCommand::SetMode(a) => {
+                        let mode = match a.mode {
+                            VrrModeArg::Never => VrrMode::NEVER,
+                            VrrModeArg::Always => VrrMode::ALWAYS,
+                            VrrModeArg::Variant1 => VrrMode::VARIANT_1,
+                            VrrModeArg::Variant2 => VrrMode::VARIANT_2,
+                            VrrModeArg::Variant3 => VrrMode::VARIANT_3,
+                        };
+                        tc.send(jay_randr::SetVrrMode {
+                            self_id: randr,
+                            output: &args.output,
+                            mode: mode.0,
+                        });
+                    }
+                    VrrCommand::SetCursorHz(r) => {
+                        let hz = parse_rate(&r.rate);
+                        tc.send(jay_randr::SetVrrCursorHz {
+                            self_id: randr,
+                            output: &args.output,
+                            hz,
+                        });
+                    }
+                }
+            }
+            OutputCommand::Tearing(a) => {
+                self.handle_error(randr, move |msg| {
+                    eprintln!("Could not change the tearing setting: {}", msg);
+                });
+                match a.command {
+                    TearingCommand::SetMode(a) => {
+                        let mode = match a.mode {
+                            TearingModeArg::Never => TearingMode::NEVER,
+                            TearingModeArg::Always => TearingMode::ALWAYS,
+                            TearingModeArg::Variant1 => TearingMode::VARIANT_1,
+                            TearingModeArg::Variant2 => TearingMode::VARIANT_2,
+                            TearingModeArg::Variant3 => TearingMode::VARIANT_3,
+                        };
+                        tc.send(jay_randr::SetTearingMode {
+                            self_id: randr,
+                            output: &args.output,
+                            mode: mode.0,
+                        });
+                    }
+                }
+            }
+            OutputCommand::Format(a) => {
+                self.handle_error(randr, move |msg| {
+                    eprintln!("Could not change the framebuffer format: {}", msg);
+                });
+                match a.command {
+                    FormatCommand::Set { format } => {
+                        tc.send(jay_randr::SetFbFormat {
+                            self_id: randr,
+                            output: &args.output,
+                            format: format.name,
+                        });
+                    }
+                }
+            }
+            OutputCommand::Colors(a) => {
+                self.handle_error(randr, move |msg| {
+                    eprintln!("Could not change the colors: {}", msg);
+                });
+                match a.command {
+                    ColorsCommand::Set { color_space, eotf } => {
+                        tc.send(jay_randr::SetColors {
+                            self_id: randr,
+                            output: &args.output,
+                            color_space: &color_space,
+                            eotf: &eotf,
+                        });
+                    }
+                }
+            }
+            OutputCommand::Brightness(a) => {
+                self.handle_error(randr, move |msg| {
+                    eprintln!("Could not change the brightness: {}", msg);
+                });
+                match a.brightness {
+                    Brightness::Default => {
+                        tc.send(jay_randr::UnsetBrightness {
+                            self_id: randr,
+                            output: &args.output,
+                        });
+                    }
+                    Brightness::Lux(lux) => {
+                        tc.send(jay_randr::SetBrightness {
+                            self_id: randr,
+                            output: &args.output,
+                            lux,
+                        });
+                    }
+                }
+            }
+            OutputCommand::BlendSpace(a) => {
+                self.handle_error(randr, move |msg| {
+                    eprintln!("Could not set the blend space: {}", msg);
+                });
+                tc.send(jay_randr::SetBlendSpace {
+                    self_id: randr,
+                    output: &args.output,
+                    blend_space: &a.blend_space,
+                });
+            }
+            OutputCommand::UseNativeGamut(a) => {
+                self.handle_error(randr, move |msg| {
+                    eprintln!(
+                        "Could not change whether the compositor uses the native gamut: {}",
+                        msg,
+                    );
+                });
+                tc.send(jay_randr::SetUseNativeGamut {
+                    self_id: randr,
+                    output: &args.output,
+                    use_native_gamut: a.use_native_gamut as _,
+                });
+            }
+            OutputCommand::ScalingFilter(a) => {
+                self.handle_error(randr, move |msg| {
+                    eprintln!("Could not change the scaling filter: {}", msg,);
+                });
+                tc.send(jay_randr::SetScalingFilter {
+                    self_id: randr,
+                    output: &args.output,
+                    scaling_filter: match a.scaling_filter {
+                        CliScalingFilter::Linear => ConfigScalingFilter::LINEAR.0,
+                        CliScalingFilter::Nearest => ConfigScalingFilter::NEAREST.0,
+                    },
+                });
+            }
+        }
+        tc.round_trip().await;
+    }
+
+    async fn virtual_output(self: &Rc<Self>, randr: JayRandrId, args: VirtualOutputArgs) {
+        let tc = &self.tc;
+        match args.command {
+            VirtualOutputCommand::Create(t) => {
+                self.handle_error(randr, |msg| {
+                    eprintln!("Could not create a virtual output: {}", msg);
+                });
+                tc.send(jay_randr::CreateVirtualOutput {
+                    self_id: randr,
+                    name: &t.name,
+                });
+            }
+            VirtualOutputCommand::Remove(t) => {
+                self.handle_error(randr, |msg| {
+                    eprintln!("Could not remove a virtual output: {}", msg);
+                });
+                tc.send(jay_randr::RemoveVirtualOutput {
+                    self_id: randr,
+                    name: &t.name,
+                });
+            }
+        }
+        tc.round_trip().await;
+    }
+
+    async fn card(self: &Rc<Self>, randr: JayRandrId, args: CardArgs) {
+        let tc = &self.tc;
+        match args.command {
+            CardCommand::Primary => {
+                self.handle_error(randr, |msg| {
+                    eprintln!("Could not set the primary device: {}", msg);
+                });
+                tc.send(jay_randr::MakeRenderDevice {
+                    self_id: randr,
+                    dev: &args.card,
+                });
+            }
+            CardCommand::Api(api) => {
+                self.handle_error(randr, |msg| {
+                    eprintln!("Could not set the API: {}", msg);
+                });
+                let api = match &api.cmd {
+                    ApiCmd::OpenGl => "opengl",
+                    ApiCmd::Vulkan => "vulkan",
+                };
+                tc.send(jay_randr::SetApi {
+                    self_id: randr,
+                    dev: &args.card,
+                    api,
+                });
+            }
+            CardCommand::DirectScanout(ds) => {
+                self.handle_error(randr, |msg| {
+                    eprintln!("Could not modify direct-scanout behavior: {}", msg);
+                });
+                tc.send(jay_randr::SetDirectScanout {
+                    self_id: randr,
+                    dev: &args.card,
+                    enabled: match ds.cmd {
+                        DirectScanoutCmd::Enable => 1,
+                        DirectScanoutCmd::Disable => 0,
+                    },
+                });
+            }
+            CardCommand::Timing(ts) => match ts.cmd {
+                TimingCmd::SetFlipMargin(sfm) => {
+                    self.handle_error(randr, |msg| {
+                        eprintln!("Could not modify the flip margin: {}", msg);
+                    });
+                    tc.send(jay_randr::SetFlipMargin {
+                        self_id: randr,
+                        dev: &args.card,
+                        margin_ns: (sfm.margin_ms * 1_000_000.0) as u64,
+                    });
+                }
+            },
+        }
+        tc.round_trip().await;
+    }
+
+    async fn show(self: &Rc<Self>, global: &GlobalArgs, randr: JayRandrId, args: ShowArgs) {
+        let mut data = self.get(randr).await;
+        data.drm_devices.sort_by(|l, r| l.devnode.cmp(&r.devnode));
+        if global.json {
+            self.show_json(&data);
+        } else {
+            self.show_text(&data, &args);
+        }
+    }
+
+    fn show_json(&self, data: &Data) {
+        let mut drm_devices = Vec::new();
+        for dev in &data.drm_devices {
+            let mut connectors: Vec<_> = data
+                .connectors
+                .iter()
+                .filter(|c| c.drm_device == Some(dev.id))
+                .collect();
+            connectors.sort_by_key(|c| &c.name);
+            drm_devices.push(JsonDrmDevice {
+                devnode: &dev.devnode,
+                syspath: &dev.syspath,
+                vendor: dev.vendor,
+                vendor_name: &dev.vendor_name,
+                model: dev.model,
+                model_name: &dev.model_name,
+                gfx_api: &dev.gfx_api,
+                render_device: dev.render_device,
+                connectors: connectors.into_iter().map(make_json_connector).collect(),
+            });
+        }
+        let mut unbound: Vec<_> = data
+            .connectors
+            .iter()
+            .filter(|c| c.drm_device.is_none())
+            .collect();
+        unbound.sort_by_key(|c| &c.name);
+        let json = JsonRandrData {
+            drm_devices,
+            unbound_connectors: unbound.into_iter().map(make_json_connector).collect(),
+        };
+        jsonl(&json);
+    }
+
+    fn show_text(&self, data: &Data, args: &ShowArgs) {
+        if data.drm_devices.is_not_empty() {
+            println!("drm devices:");
+        }
+        for dev in &data.drm_devices {
+            self.print_drm_device(dev);
+            println!("    connectors:");
+            let mut connectors: Vec<_> = data
+                .connectors
+                .iter()
+                .filter(|c| c.drm_device == Some(dev.id))
+                .collect();
+            connectors.sort_by_key(|c| &c.name);
+            for c in connectors {
+                self.print_connector(c, args.modes, args.formats);
+            }
+        }
+        {
+            let mut connectors: Vec<_> = data
+                .connectors
+                .iter()
+                .filter(|c| c.drm_device.is_none())
+                .collect();
+            if connectors.is_not_empty() {
+                connectors.sort_by_key(|c| &c.name);
+                println!("unbound connectors:");
+                for c in connectors {
+                    self.print_connector(c, args.modes, args.formats);
+                }
+            }
+        }
+    }
+
+    fn print_drm_device(&self, dev: &Device) {
+        println!("  {}:", dev.devnode);
+        println!("    model: {} {}", dev.vendor_name, dev.model_name);
+        println!("    pci-id: {:x}:{:x}", dev.vendor, dev.model);
+        println!("    syspath: {}", dev.syspath);
+        println!("    api: {}", dev.gfx_api);
+        if dev.render_device {
+            println!("    primary device");
+        }
+    }
+
+    fn print_connector(&self, connector: &Connector, modes: bool, formats: bool) {
+        println!("      {}:", connector.name);
+        if !connector.enabled {
+            println!("        disabled");
+        }
+        let Some(o) = &connector.output else {
+            if connector.enabled {
+                println!("        disconnected");
+            }
+            return;
+        };
+        println!("        product: {}", o.product);
+        println!("        manufacturer: {}", o.manufacturer);
+        println!("        serial number: {}", o.serial_number);
+        println!(
+            "        physical size: {}mm x {}mm",
+            o.width_mm, o.height_mm
+        );
+        if o.non_desktop {
+            if connector.enabled {
+                println!("        non-desktop");
+            }
+            return;
+        }
+        println!("        VRR capable: {}", o.vrr_capable);
+        if o.vrr_capable {
+            println!("        VRR enabled: {}", o.vrr_enabled);
+            let mode_str;
+            let mode = match o.vrr_mode {
+                VrrMode::NEVER => "never",
+                VrrMode::ALWAYS => "always",
+                VrrMode::VARIANT_1 => "variant1",
+                VrrMode::VARIANT_2 => "variant2",
+                VrrMode::VARIANT_3 => "variant3",
+                _ => {
+                    mode_str = format!("unknown ({})", o.vrr_mode.0);
+                    &mode_str
+                }
+            };
+            println!("        VRR mode: {}", mode);
+            if let Some(hz) = o.vrr_cursor_hz {
+                println!("        VRR cursor hz: {}", hz);
+            }
+        }
+        {
+            let mode_str;
+            let mode = match o.tearing_mode {
+                TearingMode::NEVER => "never",
+                TearingMode::ALWAYS => "always",
+                TearingMode::VARIANT_1 => "variant1",
+                TearingMode::VARIANT_2 => "variant2",
+                TearingMode::VARIANT_3 => "variant3",
+                _ => {
+                    mode_str = format!("unknown ({})", o.tearing_mode.0);
+                    &mode_str
+                }
+            };
+            println!("        Tearing mode: {}", mode);
+        }
+        println!("        position: {} x {}", o.x, o.y);
+        println!("        logical size: {} x {}", o.width, o.height);
+        if let Some(mode) = &o.current_mode {
+            print!("        mode: ");
+            self.print_mode(mode, false);
+        }
+        if let Some(format) = &o.format {
+            if format != XRGB8888.name {
+                println!("        format: {format}");
+            }
+        }
+        if o.scale != 1.0 {
+            println!("        scale: {}", o.scale);
+        }
+        if let Some(v) = &o.scaling_filter {
+            println!("        scaling filter: {}", v.text());
+        }
+        if o.transform != Transform::None {
+            println!("        transform: {}", o.transform.text());
+        }
+        if let Some(flip_margin_ns) = o.flip_margin_ns {
+            println!(
+                "        flip margin: {:?}",
+                Duration::from_nanos(flip_margin_ns)
+            );
+        }
+        if o.supported_color_spaces.is_not_empty() {
+            println!("        color spaces:");
+            let handle_cs = |cs: &str| {
+                let current = match Some(cs) == o.current_color_space.as_deref() {
+                    false => "",
+                    true => " (current)",
+                };
+                println!("          {cs}{current}");
+            };
+            handle_cs("default");
+            o.supported_color_spaces.iter().for_each(|cs| handle_cs(cs));
+        }
+        if o.supported_eotfs.is_not_empty() {
+            println!("        eotfs:");
+            let handle_tf = |tf: &str| {
+                let current = match Some(tf) == o.current_eotf.as_deref() {
+                    false => "",
+                    true => " (current)",
+                };
+                println!("          {tf}{current}");
+            };
+            handle_tf("default");
+            o.supported_eotfs.iter().for_each(|tf| handle_tf(tf));
+        }
+        if let Some((min, max)) = o.brightness_range {
+            println!("        min brightness: {:>10.4} cd/m^2", min);
+            println!("        max brightness: {:>10.4} cd/m^2", max);
+        } else {
+            println!("        max brightness: {:>10.4} cd/m^2 (implied)", 80.0);
+        }
+        if let Some(lux) = o.brightness {
+            println!("        brightness:     {:>10.4} cd/m^2", lux);
+        }
+        if let Some(bs) = &o.blend_space {
+            println!("        blend space: {bs}");
+        }
+        if let Some(p) = &o.native_gamut {
+            println!(
+                "        native gamut:{}",
+                fmt::from_fn(|f| {
+                    if o.use_native_gamut {
+                        f.write_str(" (used for default color space)")?;
+                    }
+                    Ok(())
+                }),
+            );
+            println!(
+                "          red:  {:.6} {:.6} green: {:.6} {:.6}",
+                p.r.0.0, p.r.1.0, p.g.0.0, p.g.1.0
+            );
+            println!(
+                "          blue: {:.6} {:.6} white: {:.6} {:.6}",
+                p.b.0.0, p.b.1.0, p.wp.0.0, p.wp.1.0
+            );
+        }
+        if o.arbitrary_modes {
+            println!("        supports arbitrary modes");
+        }
+        if o.modes.is_not_empty() && modes {
+            println!("        modes:");
+            for mode in &o.modes {
+                print!("          ");
+                self.print_mode(mode, true);
+            }
+        }
+        if o.formats.is_not_empty() && formats {
+            println!("        formats:");
+            for format in &o.formats {
+                println!("          {format}");
+            }
+        }
+    }
+
+    fn print_mode(&self, m: &Mode, print_current: bool) {
+        print!("{}", m);
+        if print_current && m.current {
+            print!(" (current)");
+        }
+        println!();
+    }
+
+    async fn get(self: &Rc<Self>, randr: JayRandrId) -> Data {
+        let tc = &self.tc;
+        tc.send(jay_randr::Get { self_id: randr });
+        let data = Rc::new(RefCell::new(Data::default()));
+        jay_randr::Global::handle(tc, randr, data.clone(), |data, msg| {
+            let mut data = data.borrow_mut();
+            data.default_api = msg.default_gfx_api.to_string();
+        });
+        jay_randr::DrmDevice::handle(tc, randr, data.clone(), |data, msg| {
+            data.borrow_mut().drm_devices.push(Device {
+                id: msg.id,
+                syspath: msg.syspath.to_string(),
+                devnode: msg.devnode.to_string(),
+                vendor: msg.vendor,
+                vendor_name: msg.vendor_name.to_string(),
+                model: msg.model,
+                model_name: msg.model_name.to_string(),
+                gfx_api: msg.gfx_api.to_string(),
+                render_device: msg.render_device != 0,
+            });
+        });
+        jay_randr::Connector::handle(tc, randr, data.clone(), |data, msg| {
+            let mut data = data.borrow_mut();
+            data.connectors.push(Connector {
+                _id: msg.id,
+                drm_device: (msg.drm_device != 0).then_some(msg.drm_device),
+                name: msg.name.to_string(),
+                enabled: msg.enabled != 0,
+                output: None,
+            });
+        });
+        jay_randr::Output::handle(tc, randr, data.clone(), |data, msg| {
+            let mut data = data.borrow_mut();
+            let c = data.connectors.last_mut().unwrap();
+            c.output = Some(Output {
+                scale: Scale::from_wl(msg.scale).to_f64(),
+                width: msg.width,
+                height: msg.height,
+                x: msg.x,
+                y: msg.y,
+                transform: Transform::from_wl(msg.transform).unwrap(),
+                manufacturer: msg.manufacturer.to_string(),
+                product: msg.product.to_string(),
+                serial_number: msg.serial_number.to_string(),
+                width_mm: msg.width_mm,
+                height_mm: msg.height_mm,
+                ..Default::default()
+            });
+        });
+        jay_randr::NonDesktopOutput::handle(tc, randr, data.clone(), |data, msg| {
+            let mut data = data.borrow_mut();
+            let c = data.connectors.last_mut().unwrap();
+            c.output = Some(Output {
+                scale: 1.0,
+                manufacturer: msg.manufacturer.to_string(),
+                product: msg.product.to_string(),
+                serial_number: msg.serial_number.to_string(),
+                width_mm: msg.width_mm,
+                height_mm: msg.height_mm,
+                non_desktop: true,
+                ..Default::default()
+            });
+        });
+        jay_randr::VrrState::handle(tc, randr, data.clone(), |data, msg| {
+            let mut data = data.borrow_mut();
+            let c = data.connectors.last_mut().unwrap();
+            let output = c.output.as_mut().unwrap();
+            output.vrr_capable = msg.capable != 0;
+            output.vrr_enabled = msg.enabled != 0;
+            output.vrr_mode = VrrMode(msg.mode);
+        });
+        jay_randr::VrrCursorHz::handle(tc, randr, data.clone(), move |data, msg| {
+            let mut data = data.borrow_mut();
+            let c = data.connectors.last_mut().unwrap();
+            let output = c.output.as_mut().unwrap();
+            output.vrr_cursor_hz = Some(msg.hz);
+        });
+        jay_randr::TearingState::handle(tc, randr, data.clone(), |data, msg| {
+            let mut data = data.borrow_mut();
+            let c = data.connectors.last_mut().unwrap();
+            let output = c.output.as_mut().unwrap();
+            output.tearing_mode = TearingMode(msg.mode);
+        });
+        jay_randr::FbFormat::handle(tc, randr, data.clone(), |data, msg| {
+            let mut data = data.borrow_mut();
+            let c = data.connectors.last_mut().unwrap();
+            let output = c.output.as_mut().unwrap();
+            output.formats.push(msg.name.to_string());
+            if msg.current != 0 {
+                output.format = Some(msg.name.to_string());
+            }
+        });
+        jay_randr::FlipMargin::handle(tc, randr, data.clone(), |data, msg| {
+            let mut data = data.borrow_mut();
+            let c = data.connectors.last_mut().unwrap();
+            let output = c.output.as_mut().unwrap();
+            output.flip_margin_ns = Some(msg.margin_ns);
+        });
+        jay_randr::Mode::handle(tc, randr, data.clone(), |data, msg| {
+            let mut data = data.borrow_mut();
+            let c = data.connectors.last_mut().unwrap();
+            let o = c.output.as_mut().unwrap();
+            let mode = Mode {
+                width: msg.width,
+                height: msg.height,
+                refresh_rate_millihz: msg.refresh_rate_millihz,
+                current: msg.current != 0,
+            };
+            if mode.current {
+                o.current_mode = Some(mode);
+            }
+            o.modes.push(mode);
+        });
+        jay_randr::SupportedColorSpace::handle(tc, randr, data.clone(), |data, msg| {
+            let mut data = data.borrow_mut();
+            let c = data.connectors.last_mut().unwrap();
+            let output = c.output.as_mut().unwrap();
+            output
+                .supported_color_spaces
+                .push(msg.color_space.to_string());
+        });
+        jay_randr::CurrentColorSpace::handle(tc, randr, data.clone(), |data, msg| {
+            let mut data = data.borrow_mut();
+            let c = data.connectors.last_mut().unwrap();
+            let output = c.output.as_mut().unwrap();
+            output.current_color_space = Some(msg.color_space.to_string());
+        });
+        jay_randr::SupportedEotf::handle(tc, randr, data.clone(), |data, msg| {
+            let mut data = data.borrow_mut();
+            let c = data.connectors.last_mut().unwrap();
+            let output = c.output.as_mut().unwrap();
+            output.supported_eotfs.push(msg.eotf.to_string());
+        });
+        jay_randr::CurrentEotf::handle(tc, randr, data.clone(), |data, msg| {
+            let mut data = data.borrow_mut();
+            let c = data.connectors.last_mut().unwrap();
+            let output = c.output.as_mut().unwrap();
+            output.current_eotf = Some(msg.eotf.to_string());
+        });
+        jay_randr::BrightnessRange::handle(tc, randr, data.clone(), |data, msg| {
+            let mut data = data.borrow_mut();
+            let c = data.connectors.last_mut().unwrap();
+            let output = c.output.as_mut().unwrap();
+            output.brightness_range = Some((msg.min, msg.max));
+        });
+        jay_randr::Brightness::handle(tc, randr, data.clone(), |data, msg| {
+            let mut data = data.borrow_mut();
+            let c = data.connectors.last_mut().unwrap();
+            let output = c.output.as_mut().unwrap();
+            output.brightness = Some(msg.lux);
+        });
+        jay_randr::BlendSpace::handle(tc, randr, data.clone(), |data, msg| {
+            let mut data = data.borrow_mut();
+            let c = data.connectors.last_mut().unwrap();
+            let output = c.output.as_mut().unwrap();
+            output.blend_space = Some(msg.blend_space.to_string());
+        });
+        jay_randr::NativeGamut::handle(tc, randr, data.clone(), |data, msg| {
+            let mut data = data.borrow_mut();
+            let c = data.connectors.last_mut().unwrap();
+            let output = c.output.as_mut().unwrap();
+            let primaries = Primaries {
+                r: (F64(msg.r_x), F64(msg.r_y)),
+                g: (F64(msg.g_x), F64(msg.g_y)),
+                b: (F64(msg.b_x), F64(msg.b_y)),
+                wp: (F64(msg.w_x), F64(msg.w_y)),
+            };
+            output.native_gamut = Some(primaries);
+        });
+        jay_randr::UseNativeGamut::handle(tc, randr, data.clone(), |data, _| {
+            let mut data = data.borrow_mut();
+            let c = data.connectors.last_mut().unwrap();
+            let output = c.output.as_mut().unwrap();
+            output.use_native_gamut = true;
+        });
+        jay_randr::ArbitraryModes::handle(tc, randr, data.clone(), |data, _| {
+            let mut data = data.borrow_mut();
+            let c = data.connectors.last_mut().unwrap();
+            let output = c.output.as_mut().unwrap();
+            output.arbitrary_modes = true;
+        });
+        jay_randr::ScalingFilter::handle(tc, randr, data.clone(), |data, msg| {
+            let mut data = data.borrow_mut();
+            let c = data.connectors.last_mut().unwrap();
+            let output = c.output.as_mut().unwrap();
+            output.scaling_filter =
+                ScalingFilter::from_config(ConfigScalingFilter(msg.scaling_filter));
+        });
+        tc.round_trip().await;
+        data.borrow_mut().clone()
+    }
+}
+
+fn make_json_connector(c: &Connector) -> JsonConnector<'_> {
+    let output = c.output.as_ref().map(|o| {
+        let modes = o
+            .modes
+            .iter()
+            .map(|m| JsonMode {
+                width: m.width,
+                height: m.height,
+                refresh_rate_millihz: m.refresh_rate_millihz,
+                current: m.current,
+            })
+            .collect();
+        let formats = o.formats.iter().map(|f| f.as_str()).collect();
+        JsonOutput {
+            product: &o.product,
+            manufacturer: &o.manufacturer,
+            serial_number: &o.serial_number,
+            width_mm: o.width_mm,
+            height_mm: o.height_mm,
+            non_desktop: o.non_desktop,
+            scale: o.scale,
+            scaling_filter: o.scaling_filter.map(|f| f.text()),
+            x: o.x,
+            y: o.y,
+            width: o.width,
+            height: o.height,
+            transform: o.transform.text(),
+            mode: o.current_mode.map(|m| JsonMode {
+                width: m.width,
+                height: m.height,
+                refresh_rate_millihz: m.refresh_rate_millihz,
+                current: m.current,
+            }),
+            format: o.format.as_deref(),
+            vrr_capable: o.vrr_capable,
+            vrr_enabled: o.vrr_enabled,
+            vrr_mode: JsonVrrMode(o.vrr_mode),
+            vrr_cursor_hz: o.vrr_cursor_hz,
+            tearing_mode: JsonTearingMode(o.tearing_mode),
+            flip_margin_ns: o.flip_margin_ns,
+            supported_color_spaces: o
+                .supported_color_spaces
+                .iter()
+                .map(|s| s.as_str())
+                .collect(),
+            current_color_space: o.current_color_space.as_deref(),
+            supported_eotfs: o.supported_eotfs.iter().map(|s| s.as_str()).collect(),
+            current_eotf: o.current_eotf.as_deref(),
+            min_brightness: o.brightness_range.map(|(min, _)| min),
+            max_brightness: o.brightness_range.map(|(_, max)| max),
+            brightness: o.brightness,
+            blend_space: o.blend_space.as_deref(),
+            native_gamut: o.native_gamut.as_ref().map(|p| JsonPrimaries {
+                r_x: p.r.0.0,
+                r_y: p.r.1.0,
+                g_x: p.g.0.0,
+                g_y: p.g.1.0,
+                b_x: p.b.0.0,
+                b_y: p.b.1.0,
+                w_x: p.wp.0.0,
+                w_y: p.wp.1.0,
+            }),
+            use_native_gamut: o.use_native_gamut,
+            arbitrary_modes: o.arbitrary_modes,
+            modes,
+            formats,
+        }
+    });
+    JsonConnector {
+        name: &c.name,
+        enabled: c.enabled,
+        output,
+    }
+}

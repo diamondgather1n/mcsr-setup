@@ -1,0 +1,17 @@
+request destroy (destructor) {
+}
+
+event locked {
+}
+
+event finished {
+}
+
+request get_lock_surface {
+    id: id(ext_session_lock_surface_v1) (new),
+    surface: id(wl_surface),
+    output: id(wl_output),
+}
+
+request unlock_and_destroy (destructor) {
+}

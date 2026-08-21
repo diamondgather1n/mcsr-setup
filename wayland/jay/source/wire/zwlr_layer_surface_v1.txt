@@ -1,0 +1,53 @@
+# requests
+
+request set_size {
+    width: u32,
+    height: u32,
+}
+
+request set_anchor {
+    anchor: u32,
+}
+
+request set_exclusive_zone {
+    zone: i32,
+}
+
+request set_margin {
+    top: i32,
+    right: i32,
+    bottom: i32,
+    left: i32,
+}
+
+request set_keyboard_interactivity {
+    keyboard_interactivity: u32,
+}
+
+request get_popup {
+    popup: id(xdg_popup),
+}
+
+request ack_configure {
+    serial: u32,
+}
+
+request destroy { }
+
+request set_layer (since = 2) {
+    layer: u32,
+}
+
+request set_exclusive_edge (since = 5) {
+    edge: u32,
+}
+
+# events
+
+event configure {
+    serial: u32,
+    width: u32,
+    height: u32,
+}
+
+event closed { }

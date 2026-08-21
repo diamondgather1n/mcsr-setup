@@ -1,0 +1,43 @@
+request destroy (destructor) {
+}
+
+request set_size {
+    width: i32,
+    height: i32,
+}
+
+request set_anchor_rect {
+    x: i32,
+    y: i32,
+    width: i32,
+    height: i32,
+}
+
+request set_anchor {
+    anchor: u32,
+}
+
+request set_gravity {
+    gravity: u32,
+}
+
+request set_constraint_adjustment {
+    constraint_adjustment: u32,
+}
+
+request set_offset {
+    x: i32,
+    y: i32,
+}
+
+request set_reactive (since = 3) {
+}
+
+request set_parent_size (since = 3) {
+    parent_width: i32,
+    parent_height: i32,
+}
+
+request set_parent_configure (since = 3) {
+    serial: u32,
+}

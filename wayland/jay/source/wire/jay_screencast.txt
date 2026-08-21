@@ -1,0 +1,115 @@
+# requests
+
+request destroy {
+
+}
+
+request set_output {
+    output: id(jay_output),
+}
+
+request set_allow_all_workspaces {
+    allow_all: u32,
+}
+
+request allow_workspace {
+    workspace: id(jay_workspace),
+}
+
+request touch_allowed_workspaces {
+}
+
+request set_use_linear_buffers {
+    use_linear: u32,
+}
+
+request set_running {
+    running: u32,
+}
+
+request configure {
+
+}
+
+request ack_buffers {
+    serial: u32,
+}
+
+request ack_config {
+    serial: u32,
+}
+
+request release_buffer {
+    idx: u32,
+}
+
+request set_toplevel {
+    id: id(jay_toplevel),
+}
+
+request clear_buffers (since = 7) {
+}
+
+request add_buffer (since = 7) {
+    buffer: id(wl_buffer),
+}
+
+# events
+
+event plane {
+    fd: fd,
+    offset: u32,
+    stride: u32,
+}
+
+event buffer {
+    format: u32,
+    modifier: pod(u64),
+    width: i32,
+    height: i32,
+}
+
+event buffers_done {
+    serial: u32,
+}
+
+event ready {
+    idx: u32,
+}
+
+event destroyed {
+
+}
+
+event missed_frame {
+
+}
+
+event config_output {
+    linear_id: u32,
+}
+
+event config_allow_all_workspaces {
+    allow_all: u32,
+}
+
+event config_allow_workspace {
+    linear_id: u32,
+}
+
+event config_use_linear_buffers {
+    use_linear: u32,
+}
+
+event config_running {
+    running: u32,
+}
+
+event config_done {
+    serial: u32,
+}
+
+event config_size (since = 7) {
+    width: i32,
+    height: i32,
+}

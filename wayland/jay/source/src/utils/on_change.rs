@@ -1,0 +1,38 @@
+use {
+    crate::utils::{clonecell::CloneCell, syncqueue::SyncQueue},
+    derivative::Derivative,
+    std::{
+        fmt::{Debug, Formatter},
+        rc::Rc,
+    },
+};
+
+#[derive(Derivative)]
+#[derivative(Default(bound = ""))]
+pub struct OnChange<T> {
+    pub on_change: CloneCell<Option<Rc<dyn Fn()>>>,
+    pub events: SyncQueue<T>,
+}
+
+impl<T> OnChange<T> {
+    pub fn clear(&self) {
+        self.on_change.take();
+        self.events.take();
+    }
+
+    pub fn send_event(&self, event: T) {
+        self.events.push(event);
+        if let Some(cb) = self.on_change.get() {
+            cb();
+        }
+    }
+}
+
+impl<T> Debug for OnChange<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self.on_change.get() {
+            None => f.write_str("None"),
+            Some(_) => f.write_str("Some"),
+        }
+    }
+}

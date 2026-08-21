@@ -1,0 +1,595 @@
+use {
+    crate::{
+        cpu_worker::CpuWorker,
+        format::Format,
+        gfx_api::FdSync,
+        gfx_apis::vulkan::{
+            VulkanError, VulkanSync,
+            allocator::VulkanAllocation,
+            command::VulkanCommandBuffer,
+            format::RW_USAGE,
+            image::{QueueFamily, QueueState, VulkanImage, VulkanImageMemory},
+            renderer::{VulkanRenderer, image_barrier},
+            staging::VulkanStagingBuffer,
+            transfer::{TransferType, VulkanShmImageAsyncData},
+        },
+        rect::Rect,
+        utils::errorfmt::ErrorFmt,
+        vulkan_core::sync::VulkanDeviceSyncExt,
+    },
+    ash::vk::{
+        AccessFlags2, Buffer, BufferImageCopy2, BufferMemoryBarrier2, CommandBufferBeginInfo,
+        CommandBufferSubmitInfo, CommandBufferUsageFlags, CopyBufferToImageInfo2,
+        CopyImageToBufferInfo2, DependencyInfoKHR, DeviceSize, Extent3D, ImageAspectFlags,
+        ImageCreateInfo, ImageLayout, ImageSubresourceLayers, ImageSubresourceRange, ImageTiling,
+        ImageType, ImageUsageFlags, ImageViewCreateInfo, ImageViewType, Offset3D,
+        PipelineStageFlags2, QUEUE_FAMILY_FOREIGN_EXT, SampleCountFlags, SemaphoreSubmitInfo,
+        SharingMode, SubmitInfo2,
+    },
+    gpu_alloc::UsageFlags,
+    isnt::std_1::primitive::IsntSliceExt,
+    run_on_drop::on_drop,
+    std::{cell::Cell, mem, ptr, rc::Rc, slice},
+};
+
+pub struct VulkanShmImage {
+    pub(super) size: DeviceSize,
+    pub(super) stride: u32,
+    pub(super) _allocation: VulkanAllocation,
+    pub(super) async_data: Option<VulkanShmImageAsyncData>,
+}
+
+impl VulkanShmImage {
+    pub fn upload(
+        &self,
+        img: &Rc<VulkanImage>,
+        buffer: &[Cell<u8>],
+        damage: Option<&[Rect]>,
+    ) -> Result<(), VulkanError> {
+        img.renderer.check_defunct()?;
+        if let Some(damage) = damage
+            && damage.is_empty()
+        {
+            return Ok(());
+        }
+        let copy = |full: bool, off, x, y, width, height| {
+            let mut builder = BufferImageCopy2::default()
+                .buffer_offset(off)
+                .image_offset(Offset3D { x, y, z: 0 })
+                .image_extent(Extent3D {
+                    width,
+                    height,
+                    depth: 1,
+                })
+                .image_subresource(ImageSubresourceLayers {
+                    aspect_mask: ImageAspectFlags::COLOR,
+                    mip_level: 0,
+                    base_array_layer: 0,
+                    layer_count: 1,
+                });
+            if full {
+                builder = builder
+                    .buffer_image_height(img.height)
+                    .buffer_row_length(img.stride / img.format.bpp);
+            }
+            builder
+        };
+        let mut total_size;
+        let cpy_one;
+        let mut cpy_many;
+        let cpy;
+        if let Some(damage) = damage {
+            total_size = 0;
+            cpy_many = Vec::with_capacity(damage.len());
+            for damage in damage {
+                let Some(damage) = Rect::new(
+                    damage.x1().max(0),
+                    damage.y1().max(0),
+                    damage.x2().min(img.width as i32),
+                    damage.y2().min(img.height as i32),
+                ) else {
+                    continue;
+                };
+                if damage.is_empty() {
+                    continue;
+                }
+                cpy_many.push(copy(
+                    false,
+                    total_size as DeviceSize,
+                    damage.x1(),
+                    damage.y1(),
+                    damage.width() as u32,
+                    damage.height() as u32,
+                ));
+                total_size += damage.width() as u32 * damage.height() as u32 * img.format.bpp;
+            }
+            cpy = &cpy_many[..];
+        } else {
+            cpy_one = copy(true, 0, 0, 0, img.width, img.height);
+            cpy = slice::from_ref(&cpy_one);
+            total_size = img.height * img.stride;
+        }
+        let staging = img.renderer.device.create_staging_buffer(
+            &img.renderer.allocator,
+            total_size as u64,
+            true,
+            false,
+            true,
+        )?;
+        staging.upload(|mem, _| unsafe {
+            let buf = buffer.as_ptr() as *const u8;
+            if damage.is_some() {
+                let mut off = 0;
+                for cpy in cpy {
+                    let x = cpy.image_offset.x as usize;
+                    let y = cpy.image_offset.y as usize;
+                    let width = cpy.image_extent.width as usize;
+                    let height = cpy.image_extent.height as usize;
+                    let stride = self.stride as usize;
+                    let bpp = img.format.bpp as usize;
+                    for dy in 0..height {
+                        let lo = (y + dy) * stride + x * bpp;
+                        let len = width * bpp;
+                        ptr::copy_nonoverlapping(buf.add(lo), mem.add(off), len);
+                        off += len;
+                    }
+                }
+            } else {
+                ptr::copy_nonoverlapping(buf, mem, total_size as usize);
+            }
+        })?;
+        let (cmd, vulkan_sync, sync, point) = self.submit_buffer_image_copy(
+            img,
+            staging.buffer,
+            staging.size,
+            cpy,
+            false,
+            TransferType::Upload,
+            false,
+        )?;
+        let future = img.renderer.eng.spawn(
+            "await upload",
+            await_upload(point, img.clone(), cmd, sync, vulkan_sync, staging),
+        );
+        img.renderer.pending_submits.set(point, future);
+        Ok(())
+    }
+
+    pub(super) fn submit_buffer_image_copy(
+        &self,
+        img: &Rc<VulkanImage>,
+        buffer: Buffer,
+        size: DeviceSize,
+        regions: &[BufferImageCopy2],
+        use_transfer_queue: bool,
+        tt: TransferType,
+        foreign_buffer: bool,
+    ) -> Result<(Rc<VulkanCommandBuffer>, VulkanSync, Option<FdSync>, u64), VulkanError> {
+        let mut transfer_queue_family_idx = img.renderer.device.graphics_queue_idx;
+        if use_transfer_queue
+            && let Some(idx) = img.renderer.device.distinct_transfer_queue_family_idx
+        {
+            transfer_queue_family_idx = idx;
+        }
+        let memory_barrier = |release| {
+            let mut sq;
+            let mut sam;
+            let mut ssm;
+            if foreign_buffer {
+                sq = QUEUE_FAMILY_FOREIGN_EXT;
+                sam = AccessFlags2::NONE;
+                ssm = PipelineStageFlags2::NONE;
+            } else {
+                sq = transfer_queue_family_idx;
+                sam = match tt {
+                    TransferType::Upload => AccessFlags2::HOST_WRITE,
+                    TransferType::Download => AccessFlags2::HOST_READ,
+                };
+                ssm = PipelineStageFlags2::HOST;
+            }
+            let mut dq = transfer_queue_family_idx;
+            let mut dam = match tt {
+                TransferType::Upload => AccessFlags2::TRANSFER_READ,
+                TransferType::Download => AccessFlags2::TRANSFER_WRITE,
+            };
+            let mut dsm = PipelineStageFlags2::TRANSFER;
+            if release {
+                mem::swap(&mut sq, &mut dq);
+                mem::swap(&mut sam, &mut dam);
+                mem::swap(&mut ssm, &mut dsm);
+            }
+            BufferMemoryBarrier2::default()
+                .buffer(buffer)
+                .offset(0)
+                .size(size)
+                .src_queue_family_index(sq)
+                .src_access_mask(sam)
+                .src_stage_mask(ssm)
+                .dst_queue_family_index(dq)
+                .dst_access_mask(dam)
+                .dst_stage_mask(dsm)
+        };
+        let mut initial_image_barrier = image_barrier()
+            .image(img.image)
+            .src_queue_family_index(img.renderer.device.graphics_queue_idx)
+            .dst_queue_family_index(transfer_queue_family_idx)
+            .dst_access_mask(AccessFlags2::TRANSFER_WRITE)
+            .dst_stage_mask(PipelineStageFlags2::TRANSFER)
+            .old_layout(if img.is_undefined.get() {
+                ImageLayout::UNDEFINED
+            } else {
+                match tt {
+                    TransferType::Upload => ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+                    TransferType::Download => ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
+                }
+            })
+            .new_layout(match tt {
+                TransferType::Upload => ImageLayout::TRANSFER_DST_OPTIMAL,
+                TransferType::Download => ImageLayout::TRANSFER_SRC_OPTIMAL,
+            });
+        if transfer_queue_family_idx == img.renderer.device.graphics_queue_idx {
+            initial_image_barrier = initial_image_barrier
+                .src_access_mask(AccessFlags2::SHADER_SAMPLED_READ)
+                .src_stage_mask(PipelineStageFlags2::FRAGMENT_SHADER)
+        }
+        let initial_buffer_barrier = memory_barrier(false);
+        let initial_dep_info = DependencyInfoKHR::default()
+            .buffer_memory_barriers(slice::from_ref(&initial_buffer_barrier))
+            .image_memory_barriers(slice::from_ref(&initial_image_barrier));
+        let mut final_image_barrier = image_barrier()
+            .image(img.image)
+            .src_queue_family_index(transfer_queue_family_idx)
+            .dst_queue_family_index(img.renderer.device.graphics_queue_idx)
+            .src_access_mask(match tt {
+                TransferType::Upload => AccessFlags2::TRANSFER_WRITE,
+                TransferType::Download => AccessFlags2::TRANSFER_READ,
+            })
+            .src_stage_mask(PipelineStageFlags2::TRANSFER)
+            .old_layout(match tt {
+                TransferType::Upload => ImageLayout::TRANSFER_DST_OPTIMAL,
+                TransferType::Download => ImageLayout::TRANSFER_SRC_OPTIMAL,
+            })
+            .new_layout(match tt {
+                TransferType::Upload => ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+                TransferType::Download => ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
+            });
+        if transfer_queue_family_idx == img.renderer.device.graphics_queue_idx {
+            final_image_barrier = final_image_barrier
+                .dst_access_mask(match tt {
+                    TransferType::Upload => AccessFlags2::SHADER_SAMPLED_READ,
+                    TransferType::Download => AccessFlags2::COLOR_ATTACHMENT_WRITE,
+                })
+                .dst_stage_mask(match tt {
+                    TransferType::Upload => PipelineStageFlags2::FRAGMENT_SHADER,
+                    TransferType::Download => PipelineStageFlags2::COLOR_ATTACHMENT_OUTPUT,
+                });
+        }
+        let final_buffer_barrier = memory_barrier(true);
+        let final_dep_info = DependencyInfoKHR::default()
+            .buffer_memory_barriers(slice::from_ref(&final_buffer_barrier))
+            .image_memory_barriers(slice::from_ref(&final_image_barrier));
+        let cmd = match &img.renderer.transfer_command_buffers {
+            Some(b) if use_transfer_queue => b.allocate()?,
+            _ => img.renderer.gfx_command_buffers.allocate()?,
+        };
+        let dev = &img.renderer.device.device;
+        let command_buffer_info = CommandBufferSubmitInfo::default().command_buffer(cmd.buffer);
+        let mut semaphore_submit_info = SemaphoreSubmitInfo::default();
+        let mut submit_info =
+            SubmitInfo2::default().command_buffer_infos(slice::from_ref(&command_buffer_info));
+        let begin_info =
+            CommandBufferBeginInfo::default().flags(CommandBufferUsageFlags::ONE_TIME_SUBMIT);
+        let tls = match use_transfer_queue {
+            true => &img.renderer.transfer_tls,
+            false => &img.renderer.render_tls,
+        };
+        let vulkan_sync = img.renderer.device.create_sync(
+            tls.as_ref(),
+            &mut semaphore_submit_info,
+            &mut submit_info,
+        )?;
+        unsafe {
+            dev.begin_command_buffer(cmd.buffer, &begin_info)
+                .map_err(VulkanError::BeginCommandBuffer)?;
+            dev.cmd_pipeline_barrier2(cmd.buffer, &initial_dep_info);
+            match tt {
+                TransferType::Upload => {
+                    let cpy_info = CopyBufferToImageInfo2::default()
+                        .src_buffer(buffer)
+                        .dst_image(img.image)
+                        .dst_image_layout(ImageLayout::TRANSFER_DST_OPTIMAL)
+                        .regions(regions);
+                    dev.cmd_copy_buffer_to_image2(cmd.buffer, &cpy_info);
+                }
+                TransferType::Download => {
+                    let cpy_info = CopyImageToBufferInfo2::default()
+                        .dst_buffer(buffer)
+                        .src_image(img.image)
+                        .src_image_layout(ImageLayout::TRANSFER_SRC_OPTIMAL)
+                        .regions(regions);
+                    dev.cmd_copy_image_to_buffer2(cmd.buffer, &cpy_info);
+                }
+            }
+            dev.cmd_pipeline_barrier2(cmd.buffer, &final_dep_info);
+            dev.end_command_buffer(cmd.buffer)
+                .map_err(VulkanError::EndCommandBuffer)?;
+            dev.queue_submit2(
+                match img.renderer.device.transfer_queue {
+                    Some(q) if use_transfer_queue => q,
+                    _ => img.renderer.device.graphics_queue,
+                },
+                slice::from_ref(&submit_info),
+                vulkan_sync.fence(),
+            )
+            .inspect_err(img.renderer.device.idl())
+            .map_err(VulkanError::Submit)?;
+        }
+        if tt == TransferType::Upload {
+            img.is_undefined.set(false);
+            img.contents_are_undefined.set(false);
+        }
+        let release_sync = vulkan_sync.to_sync(|| img.renderer.block());
+        let point = img.renderer.allocate_point();
+        Ok((cmd, vulkan_sync, release_sync, point))
+    }
+}
+
+async fn await_upload(
+    id: u64,
+    img: Rc<VulkanImage>,
+    buf: Rc<VulkanCommandBuffer>,
+    sync: Option<FdSync>,
+    vulkan_sync: VulkanSync,
+    _staging: VulkanStagingBuffer,
+) {
+    let renderer = &img.renderer;
+    if let Some(sync) = &sync
+        && let Err(e) = sync.try_signaled(&renderer.ring).await
+    {
+        log::error!(
+            "Could not wait for sync file to become readable: {}",
+            ErrorFmt(e)
+        );
+        renderer.block();
+    }
+    vulkan_sync.handle_validation();
+    renderer.gfx_command_buffers.release(buf);
+    renderer.pending_submits.remove(&id);
+}
+
+impl VulkanRenderer {
+    pub fn create_shm_texture(
+        self: &Rc<Self>,
+        format: &'static Format,
+        width: i32,
+        height: i32,
+        stride: i32,
+        data: &[Cell<u8>],
+        for_download: bool,
+        cpu_worker: Option<&Rc<CpuWorker>>,
+    ) -> Result<Rc<VulkanImage>, VulkanError> {
+        if width <= 0 || height <= 0 || stride <= 0 {
+            return Err(VulkanError::NonPositiveImageSize);
+        }
+        let width = width as u32;
+        let height = height as u32;
+        let stride = stride as u32;
+        if stride % format.bpp != 0 || stride / format.bpp < width {
+            return Err(VulkanError::InvalidStride);
+        }
+        let vk_format = self
+            .device
+            .formats
+            .get(&format.drm)
+            .ok_or(VulkanError::FormatNotSupported)?;
+        let shm = vk_format.shm.as_ref().ok_or(VulkanError::ShmNotSupported)?;
+        if width > shm.limits.max_width || height > shm.limits.max_height {
+            return Err(VulkanError::ImageTooLarge);
+        }
+        let size = stride.checked_mul(height).ok_or(VulkanError::ShmOverflow)? as u64;
+        let usage = ImageUsageFlags::TRANSFER_SRC
+            | match for_download {
+                true => ImageUsageFlags::COLOR_ATTACHMENT,
+                false => ImageUsageFlags::SAMPLED | ImageUsageFlags::TRANSFER_DST,
+            };
+        let create_info = ImageCreateInfo::default()
+            .image_type(ImageType::TYPE_2D)
+            .format(format.vk_format)
+            .mip_levels(1)
+            .array_layers(1)
+            .tiling(ImageTiling::OPTIMAL)
+            .samples(SampleCountFlags::TYPE_1)
+            .sharing_mode(SharingMode::EXCLUSIVE)
+            .initial_layout(ImageLayout::UNDEFINED)
+            .extent(Extent3D {
+                width,
+                height,
+                depth: 1,
+            })
+            .usage(usage);
+        let image = unsafe { self.device.device.create_image(&create_info, None) };
+        let image = image.map_err(VulkanError::CreateImage)?;
+        let destroy_image = on_drop(|| unsafe { self.device.device.destroy_image(image, None) });
+        let memory_requirements =
+            unsafe { self.device.device.get_image_memory_requirements(image) };
+        let allocation =
+            self.allocator
+                .alloc(&memory_requirements, UsageFlags::FAST_DEVICE_ACCESS, false)?;
+        let res = unsafe {
+            self.device
+                .device
+                .bind_image_memory(image, allocation.memory, allocation.offset)
+        };
+        res.map_err(VulkanError::BindImageMemory)?;
+        let image_view_create_info = ImageViewCreateInfo::default()
+            .image(image)
+            .format(format.vk_format)
+            .view_type(ImageViewType::TYPE_2D)
+            .subresource_range(ImageSubresourceRange {
+                aspect_mask: ImageAspectFlags::COLOR,
+                base_mip_level: 0,
+                level_count: 1,
+                base_array_layer: 0,
+                layer_count: 1,
+            });
+        let view = unsafe {
+            self.device
+                .device
+                .create_image_view(&image_view_create_info, None)
+        };
+        let view = view.map_err(VulkanError::CreateImageView)?;
+        let destroy_image_view =
+            on_drop(|| unsafe { self.device.device.destroy_image_view(view, None) });
+        let mut async_data = None;
+        if let Some(cpu) = cpu_worker {
+            async_data = Some(VulkanShmImageAsyncData {
+                busy: Cell::new(false),
+                io_job: Default::default(),
+                copy_job: Default::default(),
+                staging: Default::default(),
+                buffer: Default::default(),
+                client_mem: Default::default(),
+                callback: Default::default(),
+                callback_id: Cell::new(0),
+                regions: Default::default(),
+                cpu: cpu.clone(),
+                last_gfx_use: Default::default(),
+                data_copied: Default::default(),
+            });
+        }
+        let shm = VulkanShmImage {
+            size,
+            stride,
+            _allocation: allocation,
+            async_data,
+        };
+        let descriptor_heap = self.descriptor_heap_image(usage, &image_view_create_info)?;
+        destroy_image_view.forget();
+        destroy_image.forget();
+        let img = Rc::new(VulkanImage {
+            renderer: self.clone(),
+            format,
+            width,
+            height,
+            stride,
+            texture_view: Some(view),
+            render_view: None,
+            image,
+            is_undefined: Cell::new(true),
+            contents_are_undefined: Cell::new(true),
+            queue_state: Cell::new(QueueState::Acquired {
+                family: QueueFamily::Gfx,
+            }),
+            ty: VulkanImageMemory::Internal(shm),
+            bridge: None,
+            execution_version: Cell::new(0),
+            descriptor_buffer: self.descriptor_buffer_image(usage, view),
+            descriptor_heap,
+        });
+        let shm = match &img.ty {
+            VulkanImageMemory::DmaBuf(_) => unreachable!(),
+            VulkanImageMemory::Blend(_) => unreachable!(),
+            VulkanImageMemory::Rw(_) => unreachable!(),
+            VulkanImageMemory::Internal(s) => s,
+        };
+        if data.is_not_empty() {
+            shm.upload(&img, data, None)?;
+        }
+        Ok(img)
+    }
+
+    pub fn create_rw_image(
+        self: &Rc<Self>,
+        format: &'static Format,
+        width: i32,
+        height: i32,
+    ) -> Result<Rc<VulkanImage>, VulkanError> {
+        if width <= 0 || height <= 0 {
+            return Err(VulkanError::NonPositiveImageSize);
+        }
+        let width = width as u32;
+        let height = height as u32;
+        let vk_format = self
+            .device
+            .formats
+            .get(&format.drm)
+            .ok_or(VulkanError::FormatNotSupported)?;
+        let rw = vk_format.rw.as_ref().ok_or(VulkanError::RwNotSupported)?;
+        if width > rw.limits.max_width || height > rw.limits.max_height {
+            return Err(VulkanError::ImageTooLarge);
+        }
+        let usage = RW_USAGE;
+        let create_info = ImageCreateInfo::default()
+            .image_type(ImageType::TYPE_2D)
+            .format(format.vk_format)
+            .mip_levels(1)
+            .array_layers(1)
+            .tiling(ImageTiling::OPTIMAL)
+            .samples(SampleCountFlags::TYPE_1)
+            .sharing_mode(SharingMode::EXCLUSIVE)
+            .initial_layout(ImageLayout::UNDEFINED)
+            .extent(Extent3D {
+                width,
+                height,
+                depth: 1,
+            })
+            .usage(usage);
+        let image = unsafe { self.device.device.create_image(&create_info, None) };
+        let image = image.map_err(VulkanError::CreateImage)?;
+        let destroy_image = on_drop(|| unsafe { self.device.device.destroy_image(image, None) });
+        let memory_requirements =
+            unsafe { self.device.device.get_image_memory_requirements(image) };
+        let allocation =
+            self.allocator
+                .alloc(&memory_requirements, UsageFlags::FAST_DEVICE_ACCESS, false)?;
+        let res = unsafe {
+            self.device
+                .device
+                .bind_image_memory(image, allocation.memory, allocation.offset)
+        };
+        res.map_err(VulkanError::BindImageMemory)?;
+        let image_view_create_info = ImageViewCreateInfo::default()
+            .image(image)
+            .format(format.vk_format)
+            .view_type(ImageViewType::TYPE_2D)
+            .subresource_range(ImageSubresourceRange {
+                aspect_mask: ImageAspectFlags::COLOR,
+                base_mip_level: 0,
+                level_count: 1,
+                base_array_layer: 0,
+                layer_count: 1,
+            });
+        let view = unsafe {
+            self.device
+                .device
+                .create_image_view(&image_view_create_info, None)
+        };
+        let view = view.map_err(VulkanError::CreateImageView)?;
+        let destroy_image_view =
+            on_drop(|| unsafe { self.device.device.destroy_image_view(view, None) });
+        let descriptor_heap = self.descriptor_heap_image(usage, &image_view_create_info)?;
+        destroy_image_view.forget();
+        destroy_image.forget();
+        let img = Rc::new(VulkanImage {
+            renderer: self.clone(),
+            format,
+            width,
+            height,
+            stride: 0,
+            texture_view: Some(view),
+            render_view: None,
+            image,
+            is_undefined: Cell::new(true),
+            contents_are_undefined: Cell::new(true),
+            queue_state: Cell::new(QueueState::Acquired {
+                family: QueueFamily::Gfx,
+            }),
+            ty: VulkanImageMemory::Rw(allocation),
+            bridge: None,
+            execution_version: Cell::new(0),
+            descriptor_buffer: self.descriptor_buffer_image(usage, view),
+            descriptor_heap,
+        });
+        Ok(img)
+    }
+}

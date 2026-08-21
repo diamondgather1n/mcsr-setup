@@ -1,0 +1,191 @@
+use {
+    crate::{
+        async_engine::SpawnedFuture,
+        client::ClientCaps,
+        security_context_acceptor::AcceptorMetadata,
+        state::State,
+        utils::{
+            errorfmt::ErrorFmt,
+            oserror::{OsError, OsErrorExt, OsErrorExt2},
+            xrd::xrd,
+        },
+    },
+    std::rc::Rc,
+    thiserror::Error,
+    uapi::{OwnedFd, Ustr, Ustring, c, format_ustr},
+};
+
+#[derive(Debug, Error)]
+pub enum AcceptorError {
+    #[error("XDG_RUNTIME_DIR is not set")]
+    XrdNotSet,
+    #[error("XDG_RUNTIME_DIR ({0:?}) is too long to form a unix socket address")]
+    XrdTooLong(String),
+    #[error("Could not create a wayland socket")]
+    SocketFailed(#[source] OsError),
+    #[error("Could not stat the existing socket")]
+    SocketStat(#[source] OsError),
+    #[error("Could not start listening for incoming connections")]
+    ListenFailed(#[source] OsError),
+    #[error("Could not open the lock file")]
+    OpenLockFile(#[source] OsError),
+    #[error("Could not lock the lock file")]
+    LockLockFile(#[source] OsError),
+    #[error("Could not bind the socket to an address")]
+    BindFailed(#[source] OsError),
+    #[error("All wayland addresses in the range 0..1000 are already in use")]
+    AddressesInUse,
+}
+
+pub struct Acceptor {
+    socket: AllocatedSocket,
+}
+
+struct AllocatedSocket {
+    // wayland-x
+    name: String,
+    // /run/user/1000/wayland-x
+    path: Ustring,
+    insecure: Rc<OwnedFd>,
+    // /run/user/1000/wayland-x.lock
+    lock_path: Ustring,
+    _lock_fd: OwnedFd,
+    // /run/user/1000/wayland-x.jay
+    secure_path: Ustring,
+    secure: Rc<OwnedFd>,
+}
+
+impl Drop for AllocatedSocket {
+    fn drop(&mut self) {
+        let _ = uapi::unlink(&self.path);
+        let _ = uapi::unlink(&self.lock_path);
+        let _ = uapi::unlink(&self.secure_path);
+    }
+}
+
+fn bind_socket(
+    insecure: &Rc<OwnedFd>,
+    secure: &Rc<OwnedFd>,
+    xrd: &str,
+    id: u32,
+) -> Result<AllocatedSocket, AcceptorError> {
+    let mut addr: c::sockaddr_un = uapi::pod_zeroed();
+    addr.sun_family = c::AF_UNIX as _;
+    let name = format!("wayland-{}", id);
+    let path = format_ustr!("{}/{}", xrd, name);
+    let jay_path = format_ustr!("{}.jay", path.display());
+    let lock_path = format_ustr!("{}.lock", path.display());
+    if jay_path.len() + 1 > addr.sun_path.len() {
+        return Err(AcceptorError::XrdTooLong(xrd.to_string()));
+    }
+    let lock_fd = uapi::open(&*lock_path, c::O_CREAT | c::O_CLOEXEC | c::O_RDWR, 0o644)
+        .map_os_err(AcceptorError::OpenLockFile)?;
+    uapi::flock(lock_fd.raw(), c::LOCK_EX | c::LOCK_NB).map_os_err(AcceptorError::LockLockFile)?;
+    for (name, fd) in [(&path, insecure), (&jay_path, secure)] {
+        match uapi::lstat(name).to_os_error() {
+            Ok(_) => {
+                log::info!("Unlinking {}", name.display());
+                let _ = uapi::unlink(name);
+            }
+            Err(OsError(c::ENOENT)) => {}
+            Err(e) => return Err(AcceptorError::SocketStat(e)),
+        }
+        let sun_path = uapi::as_bytes_mut(&mut addr.sun_path[..]);
+        sun_path[..name.len()].copy_from_slice(name.as_bytes());
+        sun_path[name.len()] = 0;
+        uapi::bind(fd.raw(), &addr).map_os_err(AcceptorError::BindFailed)?;
+    }
+    Ok(AllocatedSocket {
+        name,
+        path,
+        insecure: insecure.clone(),
+        lock_path,
+        _lock_fd: lock_fd,
+        secure_path: jay_path,
+        secure: secure.clone(),
+    })
+}
+
+fn allocate_socket() -> Result<AllocatedSocket, AcceptorError> {
+    let xrd = match xrd() {
+        Some(d) => d,
+        _ => return Err(AcceptorError::XrdNotSet),
+    };
+    let mut fds = [None, None];
+    for fd in &mut fds {
+        let socket = uapi::socket(c::AF_UNIX, c::SOCK_STREAM | c::SOCK_CLOEXEC, 0)
+            .map(Rc::new)
+            .map_os_err(AcceptorError::SocketFailed)?;
+        *fd = Some(socket);
+    }
+    let unsecure = fds[0].take().unwrap();
+    let secure = fds[1].take().unwrap();
+    for i in 1..1000 {
+        match bind_socket(&unsecure, &secure, &xrd, i) {
+            Ok(s) => return Ok(s),
+            Err(e) => {
+                log::warn!("Cannot use the wayland-{} socket: {}", i, ErrorFmt(e));
+            }
+        }
+    }
+    Err(AcceptorError::AddressesInUse)
+}
+
+impl Acceptor {
+    pub fn install(
+        state: &Rc<State>,
+    ) -> Result<(Rc<Acceptor>, Vec<SpawnedFuture<()>>), AcceptorError> {
+        let socket = allocate_socket()?;
+        log::info!("bound to socket {}", socket.path.display());
+        for fd in [&socket.secure, &socket.insecure] {
+            uapi::listen(fd.raw(), 4096).map_os_err(AcceptorError::ListenFailed)?;
+        }
+        let acc = Rc::new(Acceptor { socket });
+        let futures = vec![
+            state.eng.spawn(
+                "secure acceptor",
+                accept(acc.socket.secure.clone(), state.clone(), true),
+            ),
+            state.eng.spawn(
+                "insecure acceptor",
+                accept(acc.socket.insecure.clone(), state.clone(), false),
+            ),
+        ];
+        state.acceptor.set(Some(acc.clone()));
+        Ok((acc, futures))
+    }
+
+    pub fn socket_name(&self) -> &str {
+        &self.socket.name
+    }
+
+    #[cfg_attr(not(feature = "it"), expect(dead_code))]
+    pub fn secure_path(&self) -> &Ustr {
+        self.socket.secure_path.as_ustr()
+    }
+}
+
+async fn accept(fd: Rc<OwnedFd>, state: Rc<State>, secure: bool) {
+    let metadata = Rc::new(AcceptorMetadata {
+        secure,
+        ..Default::default()
+    });
+    loop {
+        let fd = match state.ring.accept(&fd, c::SOCK_CLOEXEC).await {
+            Ok(fd) => fd,
+            Err(e) => {
+                log::error!("Could not accept a client: {}", ErrorFmt(e));
+                break;
+            }
+        };
+        let id = state.clients.id();
+        if let Err(e) = state
+            .clients
+            .spawn(id, &state, fd, ClientCaps::all(), false, &metadata)
+        {
+            log::error!("Could not spawn a client: {}", ErrorFmt(e));
+            break;
+        }
+    }
+    state.ring.stop();
+}

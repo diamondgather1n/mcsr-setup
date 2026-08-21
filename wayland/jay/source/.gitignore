@@ -1,0 +1,10 @@
+.*
+!.gitignore
+!.gitmodules
+!/.cargo
+!/.builds
+!/.github
+/target
+/testruns
+/result
+/flake.lock

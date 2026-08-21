@@ -1,0 +1,20 @@
+request destroy (destructor) {
+}
+
+event closed {
+}
+
+event done {
+}
+
+event title {
+    title: str,
+}
+
+event app_id {
+    app_id: str,
+}
+
+event identifier {
+    identifier: str,
+}

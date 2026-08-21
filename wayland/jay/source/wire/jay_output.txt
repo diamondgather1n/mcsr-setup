@@ -1,0 +1,19 @@
+# requests
+
+request destroy {
+
+}
+
+# events
+
+event linear_id {
+    linear_id: u32,
+}
+
+event unused {
+
+}
+
+event destroyed {
+
+}

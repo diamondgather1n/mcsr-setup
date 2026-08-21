@@ -1,0 +1,11 @@
+request create_data_source {
+    id: id(ext_data_control_source_v1) (new),
+}
+
+request get_data_device {
+    id: id(ext_data_control_device_v1) (new),
+    seat: id(wl_seat),
+}
+
+request destroy (destructor) {
+}

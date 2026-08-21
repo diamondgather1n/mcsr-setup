@@ -1,0 +1,3708 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-10-07 20:58+0100\n"
+"PO-Revision-Date: 2021-07-21 12:41+0100\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: en_US\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Source-Language: en_GB\n"
+"X-Generator: Poedit 3.0\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Language: en_US\n"
+
+#: about.ui.h:1
+msgid "About the Application"
+msgstr "About the Application"
+
+#: about.ui.h:2 device-info.ui.h:7 inspect-matrix.ui.h:3 procviewer.ui.h:12
+#: troubleshooter.ui.h:9
+msgid "Close"
+msgstr "Close"
+
+#. Column header to view the application's version information
+#: about.ui.h:4
+msgid "Version"
+msgstr "Version"
+
+#: about.ui.h:5
+msgid "Component"
+msgstr "Component"
+
+#. Column header to view the application's license information
+#: about.ui.h:7
+msgid "License"
+msgstr "Licence"
+
+#. Column header to view links for an application or backend
+#: about.ui.h:9
+msgid "Links"
+msgstr "Links"
+
+#: colour-picker.ui.h:1
+msgid "Select a Colour"
+msgstr "Select a Color"
+
+#. The currently selected colour in the Colour Picker dialog box
+#: colour-picker.ui.h:3
+msgid "Current"
+msgstr "Current"
+
+#. Colour Picker: Tooltip informing the user what the \"Change...\" button will do
+#: colour-picker.ui.h:5
+msgid "Opens the system's colour picker"
+msgstr "Opens the system's color picker"
+
+#: colour-picker.ui.h:6 polychromatic/controller/devices.py:1330
+#: polychromatic/controller/editor.py:1407
+#: polychromatic/controller/effects.py:229
+msgid "Edit"
+msgstr "Edit"
+
+#. Colour Picker: Tooltip informing the user what the Save colour button does
+#: colour-picker.ui.h:8
+msgid "Save this colour to the saved colour list"
+msgstr "Save this color to the saved color list"
+
+#: colour-picker.ui.h:9 custom-dpi.ui.h:10
+msgid "Add"
+msgstr "Add"
+
+#: colour-picker.ui.h:10 editor.ui.h:83
+#: polychromatic/controller/editor.py:1562
+#: polychromatic/controller/preferences.py:257 preferences.ui.h:55
+msgid "Saved Colours"
+msgstr "Saved Colors"
+
+#: colour-picker.ui.h:11
+msgid "Add the current colour to your saved colours list by giving it a name"
+msgstr "Add the current color to your saved colors list by giving it a name"
+
+#. Colour Picker: Tooltip informing the user what the Save icon does
+#: colour-picker.ui.h:13
+msgid "Save the current colour to the saved list"
+msgstr "Save the current color to the saved list"
+
+#. Colour Picker: Tooltip informing the user what the Cancel icon does
+#: colour-picker.ui.h:15
+msgid "Cancel saving this colour"
+msgstr "Cancel saving this color"
+
+#. Colour Picker: Tooltip informing the user what the Rename icon does
+#: colour-picker.ui.h:17
+msgid "Rename selected colour"
+msgstr "Rename selected color"
+
+#. Colour Picker: Tooltip informing the user what the Delete icon does
+#: colour-picker.ui.h:19
+msgid "Forget selected colour"
+msgstr "Forget selected color"
+
+#: custom-dpi.ui.h:1 polychromatic/controller/devices.py:1331
+msgid "Edit DPI Stages"
+msgstr "Edit DPI Stages"
+
+#: custom-dpi.ui.h:2
+msgid "0 - 8200 dpi"
+msgstr "0 - 8200 dpi"
+
+#: custom-dpi.ui.h:3
+msgid "Enable custom stages"
+msgstr "Enable custom stages"
+
+#. Tooltip when hovering over DPI stage input
+#: custom-dpi.ui.h:5
+msgid "Enter a DPI number or comma separated X,Y numbers"
+msgstr "Enter a DPI number or comma separated X,Y numbers"
+
+#. #-#-#-#-#  device-info.ui.pot (PACKAGE VERSION)  #-#-#-#-#Second column header for Device Info
+#: custom-dpi.ui.h:6 device-info.ui.h:5
+msgid "Value"
+msgstr "Value"
+
+#: custom-dpi.ui.h:7
+msgid "Remove last DPI stage"
+msgstr "Remove last DPI stage"
+
+#: custom-dpi.ui.h:8
+msgid "Remove"
+msgstr "Remove"
+
+#: custom-dpi.ui.h:9
+msgid "Add DPI stage"
+msgstr "Add DPI stage"
+
+#: custom-dpi.ui.h:11
+msgid "Sync"
+msgstr "Sync"
+
+#: custom-dpi.ui.h:12
+msgid ""
+"Apply these DPI stages to the hardware, so they can be changed using "
+"hardware buttons."
+msgstr ""
+"Apply these DPI stages to the hardware, so they can be changed using "
+"hardware buttons."
+
+#: custom-dpi.ui.h:13
+msgid "This device does not support synchronisation to hardware DPI buttons."
+msgstr "This device does not support synchronization to hardware DPI buttons."
+
+#: device-info.ui.h:1 polychromatic/controller/devices.py:1077
+msgid "Device Information"
+msgstr "Device Information"
+
+#. First column header for Device Info
+#: device-info.ui.h:3
+msgid "Data"
+msgstr "Data"
+
+#: device-info.ui.h:6 polychromatic/controller/devices.py:1145
+msgid "Inspect Matrix"
+msgstr "Inspect Matrix"
+
+#: dpi-control.ui.h:1
+msgid "DPI Control"
+msgstr "DPI Control"
+
+#: dpi-control.ui.h:2
+msgid "Lock X/Y axis"
+msgstr "Lock X/Y axis"
+
+#: dpi-control.ui.h:3
+msgid "Lock"
+msgstr "Lock"
+
+#: editor.ui.h:1 polychromatic/controller/editor.py:795
+msgid "Effect Editor"
+msgstr "Effect Editor"
+
+#. The & character is for keyboard navigation (when holding the ALT key)
+#: editor.ui.h:3 main.ui.h:12
+msgid "&File"
+msgstr "&File"
+
+#. The & character is for keyboard navigation (when holding the ALT key)
+#: editor.ui.h:5 main.ui.h:21
+msgid "&Edit"
+msgstr "&Edit"
+
+#. Menu bar item: To move LEDs in a specific direction
+#: editor.ui.h:7
+msgid "Shift LEDs"
+msgstr "Shift LEDs"
+
+#. The & character is for keyboard navigation (when holding the ALT key)
+#: editor.ui.h:9 main.ui.h:14
+msgid "&View"
+msgstr "&View"
+
+#. The & character is for keyboard navigation (when holding the ALT key)
+#: editor.ui.h:11 main.ui.h:16
+msgid "&Help"
+msgstr "&Help"
+
+#. The & character is for keyboard navigation (when holding the ALT key)
+#: editor.ui.h:13
+msgid "&Tool"
+msgstr "&Tool"
+
+#: editor.ui.h:14
+msgid "Playback"
+msgstr "Playback"
+
+#: editor.ui.h:15 polychromatic-cli:426
+#: polychromatic/controller/devices.py:893
+#: polychromatic/controller/devices.py:1018
+msgid "Colours"
+msgstr "Colors"
+
+#: editor.ui.h:16
+msgid "Layers"
+msgstr "Layers"
+
+#. Column title in effect editor
+#: editor.ui.h:18
+msgid "Layer"
+msgstr "Layer"
+
+#. #-#-#-#-#  editor.ui.pot (PACKAGE VERSION)  #-#-#-#-#Column title in effect editor
+#: editor.ui.h:20 polychromatic/controller/devices.py:546
+#: polychromatic/controller/devices.py:1036
+msgid "Effect"
+msgstr "Effect"
+
+#. Appears as a tooltip or in the status bar when hovered
+#: editor.ui.h:22
+msgid "Raise the layer in the stack"
+msgstr "Raise the layer in the stack"
+
+#. Appears as a tooltip or in the status bar when hovered
+#: editor.ui.h:24
+msgid "Lower the layer in the stack"
+msgstr "Lower the layer in the stack"
+
+#. Appears as a tooltip or in the status bar when hovered
+#: editor.ui.h:26
+msgid "Create a new layer in the stack"
+msgstr "Create a new layer in the stack"
+
+#. Appears as a tooltip or in the status bar when hovered
+#: editor.ui.h:28
+msgid "Delete the selected layer"
+msgstr "Delete the selected layer"
+
+#. Appears as a tooltip or in the status bar when hovered
+#: editor.ui.h:30
+msgid "Duplicate the selected layer"
+msgstr "Duplicate the selected layer"
+
+#: editor.ui.h:31
+msgid "Properties"
+msgstr "Properties"
+
+#: editor.ui.h:32
+msgid "Main Toolbar"
+msgstr "Main Toolbar"
+
+#: editor.ui.h:33
+msgid "Frames"
+msgstr "Frames"
+
+#. Appears as a tooltip or in the status bar when hovered
+#: editor.ui.h:35
+msgid "Create a blank frame after the current position"
+msgstr "Create a blank frame after the current position"
+
+#: editor.ui.h:36
+msgid "New"
+msgstr "New"
+
+#. Appears as a tooltip or in the status bar when hovered
+#: editor.ui.h:38
+msgid "Permanently delete this frame"
+msgstr "Permanently delete this frame"
+
+#: editor.ui.h:39 main.ui.h:41 polychromatic/controller/effects.py:243
+msgid "Delete"
+msgstr "Delete"
+
+#. Appears as a tooltip or in the status bar when hovered
+#: editor.ui.h:41
+msgid "Create a copy of the current frame after this position"
+msgstr "Create a copy of the current frame after this position"
+
+#: editor.ui.h:42 polychromatic/controller/effects.py:236
+msgid "Clone"
+msgstr "Clone"
+
+#. Appears as a tooltip or in the status bar when hovered
+#: editor.ui.h:44
+msgid "Place this frame a step before the current position"
+msgstr "Place this frame a step before the current position"
+
+#: editor.ui.h:45
+msgid "Move Left"
+msgstr "Move Left"
+
+#. Appears as a tooltip or in the status bar when hovered
+#: editor.ui.h:47
+msgid "Place this frame a step after the current position"
+msgstr "Place this frame a step after the current position"
+
+#: editor.ui.h:48
+msgid "Move Right"
+msgstr "Move Right"
+
+#: editor.ui.h:49
+msgid "Jump to the start of the sequence"
+msgstr "Jump to the start of the sequence"
+
+#: editor.ui.h:50
+msgid "Jump to Start"
+msgstr "Jump to Start"
+
+#: editor.ui.h:51
+msgid "Step backward one frame"
+msgstr "Step backward one frame"
+
+#: editor.ui.h:52
+msgid "Previous Frame"
+msgstr "Previous Frame"
+
+#: editor.ui.h:53
+msgid "Preview the effect from the beginning"
+msgstr "Preview the effect from the beginning"
+
+#: editor.ui.h:54 polychromatic/controller/effects.py:222
+msgid "Play"
+msgstr "Play"
+
+#: editor.ui.h:55
+msgid "Stop playback"
+msgstr "Stop playback"
+
+#: editor.ui.h:56
+msgid "Pause"
+msgstr "Pause"
+
+#: editor.ui.h:57
+msgid "Step forward one frame"
+msgstr "Step forward one frame"
+
+#: editor.ui.h:58
+msgid "Next Frame"
+msgstr "Next Frame"
+
+#: editor.ui.h:59
+msgid "Jump to the last frame of the sequence"
+msgstr "Jump to the last frame of the sequence"
+
+#: editor.ui.h:60
+msgid "Jump to End"
+msgstr "Jump to End"
+
+#: editor.ui.h:61
+msgid "Toggle whether this effect should loop"
+msgstr "Toggle whether this effect should loop"
+
+#: editor.ui.h:62
+msgid "Loop"
+msgstr "Loop"
+
+#: editor.ui.h:63
+msgid ""
+"Frames per second to play the sequence.\n"
+"\n"
+"Note that frame rates that are too high may not\n"
+"play properly due to bottlenecks with the driver, \n"
+"lighting firmware or software. This may potentially\n"
+"shorten the LED's lifespan."
+msgstr ""
+"Frames per second to play the sequence.\n"
+"\n"
+"Note that frame rates that are too high may not\n"
+"play properly due to bottlenecks with the driver, \n"
+"lighting firmware or software. This may potentially\n"
+"shorten the LED's lifespan."
+
+#: editor.ui.h:69
+msgid "Frames per second to play the sequence"
+msgstr "Frames per second to play the sequence"
+
+#: editor.ui.h:70
+msgid "fps"
+msgstr "fps"
+
+#: editor.ui.h:71
+msgid "Current Colour"
+msgstr "Current Color"
+
+#. Tooltip when hovering over the \"custom\" button
+#: editor.ui.h:73
+msgid "Open System Colour Picker"
+msgstr "Open System Color Picker"
+
+#. Status bar hint when hovering over the \"custom\" button
+#: editor.ui.h:75
+msgid "Choose a custom colour using the system's colour picker"
+msgstr "Choose a custom color using the system's color picker"
+
+#: editor.ui.h:76
+msgid "Increase the Hue"
+msgstr "Increase the Hue"
+
+#: editor.ui.h:77
+msgid "Hue"
+msgstr "Hue"
+
+#: editor.ui.h:78
+msgid "Saturation"
+msgstr "Saturation"
+
+#: editor.ui.h:79
+msgid "Decrease"
+msgstr "Decrease"
+
+#: editor.ui.h:80
+msgid ""
+"Protip: You can scroll over these buttons to quickly change the "
+"corresponding HSL attribute!"
+msgstr ""
+"Protip: You can scroll over these buttons to quickly change the "
+"corresponding HSL attribute!"
+
+#: editor.ui.h:81
+msgid "Increase"
+msgstr "Increase"
+
+#: editor.ui.h:82
+msgid "Lightness"
+msgstr "Lightness"
+
+#. Menu bar item
+#: editor.ui.h:85
+msgid "Save and Close"
+msgstr "Save and Close"
+
+#. Appears as a tooltip or in the status bar when hovered
+#: editor.ui.h:87
+msgid "Save the effect to disk, and close the editor"
+msgstr "Save the effect to disk, and close the editor"
+
+#. Menu bar item or dialog button
+#: editor.ui.h:89
+msgid "Save"
+msgstr "Save"
+
+#. Appears as a tooltip or in the status bar when hovered
+#: editor.ui.h:91
+msgid "Save any unsaved data to disk, just in case!"
+msgstr "Save any unsaved data to disk, just in case!"
+
+#. #-#-#-#-#  editor.ui.pot (PACKAGE VERSION)  #-#-#-#-#Menu bar item - User wishes to discard their changes
+#: editor.ui.h:93 polychromatic/controller/editor.py:862
+msgid "Revert"
+msgstr "Revert"
+
+#: editor.ui.h:94
+msgid "Undo any changes and reload from disk"
+msgstr "Undo any changes and reload from disk"
+
+#. Menu bar item
+#: editor.ui.h:96
+msgid "Close and Discard Changes"
+msgstr "Close and Discard Changes"
+
+#: editor.ui.h:97
+msgid "Close the editor and discard any unsaved changes"
+msgstr "Close the editor and discard any unsaved changes"
+
+#. Menu bar item
+#: editor.ui.h:99
+msgid "Draw"
+msgstr "Draw"
+
+#. Appears as a tooltip or in the status bar when hovered
+#: editor.ui.h:101
+msgid "Draw the selected colour to LEDs by clicking or dragging over them"
+msgstr "Draw the selected color to LEDs by clicking or dragging over them"
+
+#. Menu bar item
+#: editor.ui.h:103
+msgid "Picker"
+msgstr "Picker"
+
+#. Appears as a tooltip or in the status bar when hovered
+#: editor.ui.h:105
+msgid "Take an existing colour from an LED to draw with"
+msgstr "Take an existing color from an LED to draw with"
+
+#. Menu bar item
+#: editor.ui.h:107
+msgid "Eraser"
+msgstr "Eraser"
+
+#. Appears as a tooltip or in the status bar when hovered
+#: editor.ui.h:109
+msgid "Erase the colour from an LED by clicking or dragging over them"
+msgstr "Erase the color from an LED by clicking or dragging over them"
+
+#. Menu bar toggle
+#: editor.ui.h:111
+msgid "Device Graphic"
+msgstr "Device Graphic"
+
+#. Appears in the status bar when hovered
+#: editor.ui.h:113
+msgid ""
+"Present the LEDs as a graphical represention of the actual hardware (where "
+"available)"
+msgstr ""
+"Present the LEDs as a graphical represention of the actual hardware (where "
+"available)"
+
+#. Menu bar toggle
+#: editor.ui.h:115
+msgid "Grid"
+msgstr "Grid"
+
+#: editor.ui.h:116
+msgid "Present the LEDs in a grid"
+msgstr "Present the LEDs in a grid"
+
+#: editor.ui.h:117
+msgid "Edit Metadata..."
+msgstr "Edit Metadata..."
+
+#. Appears as a tooltip or in the status bar when hovered
+#: editor.ui.h:119
+msgid "Edit the name, icon and other related data for this effect"
+msgstr "Edit the name, icon and other related data for this effect"
+
+#: editor.ui.h:120
+msgid "Duplicate Layer"
+msgstr "Duplicate Layer"
+
+#: editor.ui.h:121
+msgid "Delete Layer"
+msgstr "Delete Layer"
+
+#. Appears as a tooltip or in the status bar when hovered
+#: editor.ui.h:123
+msgid "Permanently delete the selected layer"
+msgstr "Permanently delete the selected layer"
+
+#. Keyboard Shortcut
+#: editor.ui.h:125
+msgid "Del"
+msgstr "Del"
+
+#: editor.ui.h:126
+msgid "Raise Layer"
+msgstr "Raise Layer"
+
+#. Keyboard Shortcut
+#: editor.ui.h:128
+msgid "Alt+Up"
+msgstr "Alt+Up"
+
+#: editor.ui.h:129
+msgid "Lower Layer"
+msgstr "Lower Layer"
+
+#. Keyboard Shortcut
+#: editor.ui.h:131
+msgid "Alt+Down"
+msgstr "Alt+Down"
+
+#. Menu bar item: To move LEDs in a specific direction
+#: editor.ui.h:133
+msgid "Shift Left"
+msgstr "Shift Left"
+
+#. Appears in the status bar when hovered
+#: editor.ui.h:135
+msgid "Push all LEDs on this layer/frame by one column to the left"
+msgstr "Push all LEDs on this layer/frame by one column to the left"
+
+#. Keyboard Shortcut
+#: editor.ui.h:137
+msgid "Ctrl+Shift+Left"
+msgstr "Ctrl+Shift+Left"
+
+#. Menu bar item: To move LEDs in a specific direction
+#: editor.ui.h:139
+msgid "Shift Right"
+msgstr "Shift Right"
+
+#. Appears in the status bar when hovered
+#: editor.ui.h:141
+msgid "Push all LEDs on this layer/frame by one column to the right"
+msgstr "Push all LEDs on this layer/frame by one column to the right"
+
+#. Keyboard Shortcut
+#: editor.ui.h:143
+msgid "Ctrl+Shift+Right"
+msgstr "Ctrl+Shift+Right"
+
+#. Menu bar item: To move LEDs in a specific direction
+#: editor.ui.h:145
+msgid "Shift Up"
+msgstr "Shift Up"
+
+#. Appears in the status bar when hovered
+#: editor.ui.h:147
+msgid "Push all LEDs on this layer/frame by one row upwards"
+msgstr "Push all LEDs on this layer/frame by one row upwards"
+
+#. Keyboard Shortcut
+#: editor.ui.h:149
+msgid "Ctrl+Shift+Up"
+msgstr "Ctrl+Shift+Up"
+
+#. Menu bar item: To move LEDs in a specific direction
+#: editor.ui.h:151
+msgid "Shift Down"
+msgstr "Shift Down"
+
+#. Appears in the status bar when hovered
+#: editor.ui.h:153
+msgid "Push all LEDs on this layer/frame by one row downwards"
+msgstr "Push all LEDs on this layer/frame by one row downwards"
+
+#. Keyboard Shortcut
+#: editor.ui.h:155
+msgid "Ctrl+Shift+Down"
+msgstr "Ctrl+Shift+Down"
+
+#: editor.ui.h:156
+msgid "New Layer..."
+msgstr "New Layer..."
+
+#: editor.ui.h:157
+msgid "Zoom In"
+msgstr "Zoom In"
+
+#. Appears in the status bar when hovered
+#: editor.ui.h:159
+msgid "Enlarge the graphic or grid in the viewport"
+msgstr "Enlarge the graphic or grid in the viewport"
+
+#: editor.ui.h:160
+msgid "Zoom Out"
+msgstr "Zoom Out"
+
+#. Appears in the status bar when hovered
+#: editor.ui.h:162
+msgid "Shrink the graphic or grid in the viewport"
+msgstr "Shrink the graphic or grid in the viewport"
+
+#: editor.ui.h:163
+msgid "Reset Zoom"
+msgstr "Reset Zoom"
+
+#. Appears in the status bar when hovered
+#: editor.ui.h:165
+msgid "Reset the size of the graphic or grid in the viewport"
+msgstr "Reset the size of the graphic or grid in the viewport"
+
+#: editor.ui.h:166
+msgid "Move Frame Left"
+msgstr "Move Frame Left"
+
+#. Keyboard Shortcut
+#: editor.ui.h:168
+msgid "Alt+Left"
+msgstr "Alt+Left"
+
+#: editor.ui.h:169
+msgid "Move Frame Right"
+msgstr "Move Frame Right"
+
+#. Keyboard Shortcut
+#: editor.ui.h:171
+msgid "Alt+Right"
+msgstr "Alt+Right"
+
+#: editor.ui.h:172 main.ui.h:23 polychromatic/controller/devices.py:685
+#: polychromatic/controller/devices.py:742
+#: polychromatic/controller/devices.py:746
+#: polychromatic/controller/devices.py:750
+#: polychromatic/controller/devices.py:800
+#: polychromatic/controller/devices.py:817
+#: polychromatic/controller/menubar.py:207
+msgid "Online Help"
+msgstr "Online Help"
+
+#: editor.ui.h:173 main.ui.h:27 polychromatic/controller/menubar.py:225
+#: polychromatic/controller/menubar.py:465
+msgid "Website"
+msgstr "Website"
+
+#: editor.ui.h:174 main.ui.h:30 polychromatic/controller/menubar.py:229
+msgid "What's New?"
+msgstr "What's New?"
+
+#: editor.ui.h:175 main.ui.h:24
+msgid "Report a Bug"
+msgstr "Report a Bug"
+
+#: editor.ui.h:176 main.ui.h:26 polychromatic/controller/menubar.py:241
+#: polychromatic/controller/menubar.py:339
+msgid "Donate"
+msgstr "Donate"
+
+#: editor.ui.h:177 main.ui.h:28
+msgid "About"
+msgstr "About"
+
+#: editor.ui.h:178
+msgid "Edit Triggers..."
+msgstr "Edit Triggers..."
+
+#. Appears as a tooltip or in the status bar when hovered
+#: editor.ui.h:180
+msgid ""
+"Configure automation for this effect, such as time of day, or when a process "
+"is running"
+msgstr ""
+"Configure automation for this effect, such as time of day, or when a process "
+"is running"
+
+#: editor.ui.h:181
+msgid "New Frame"
+msgstr "New Frame"
+
+#: editor.ui.h:182 polychromatic/controller/editor.py:1465
+msgid "Delete Frame"
+msgstr "Delete Frame"
+
+#: editor.ui.h:183
+msgid "Clone Frame"
+msgstr "Clone Frame"
+
+#: editor.ui.h:184
+msgid "Start playback"
+msgstr "Start playback"
+
+#. #-#-#-#-#  procviewer.ui.pot (PACKAGE VERSION)  #-#-#-#-#Button to stop all background tasks
+#: editor.ui.h:185 procviewer.ui.h:11
+msgid "Stop"
+msgstr "Stop"
+
+#: editor.ui.h:186
+msgid "Pause playback"
+msgstr "Pause playback"
+
+#. #-#-#-#-#  editor.ui.pot (PACKAGE VERSION)  #-#-#-#-#Keyboard Shortcut
+#: editor.ui.h:188 polychromatic/backends/openrazer.py:511
+#: polychromatic/backends/openrazer.py:860
+msgid "Left"
+msgstr "Left"
+
+#. #-#-#-#-#  editor.ui.pot (PACKAGE VERSION)  #-#-#-#-#Keyboard Shortcut
+#: editor.ui.h:190 polychromatic/backends/openrazer.py:513
+#: polychromatic/backends/openrazer.py:858
+msgid "Right"
+msgstr "Right"
+
+#. Keyboard Shortcut
+#: editor.ui.h:192
+msgid "Home"
+msgstr "Home"
+
+#. Keyboard Shortcut
+#: editor.ui.h:194
+msgid "End"
+msgstr "End"
+
+#: editor.ui.h:195
+msgid "Show Key Labels"
+msgstr "Show Key Labels"
+
+#: editor.ui.h:196
+msgid "Show or hide the labels and symbols on keys"
+msgstr "Show or hide the labels and symbols on keys"
+
+#: editor.ui.h:197
+msgid "Open Colour Picker"
+msgstr "Open Color Picker"
+
+#: editor.ui.h:198
+msgid "Increase Hue"
+msgstr "Increase Hue"
+
+#: editor.ui.h:199
+msgid ""
+"Changes the HSL attribute for the current colour. Useful for blending "
+"colours!"
+msgstr ""
+"Changes the HSL attribute for the current color. Useful for blending colors!"
+
+#: editor.ui.h:200
+msgid "Decrease Hue"
+msgstr "Decrease Hue"
+
+#: editor.ui.h:201
+msgid "Increase Saturation"
+msgstr "Increase Saturation"
+
+#: editor.ui.h:202
+msgid "Decrease Saturation"
+msgstr "Decrease Saturation"
+
+#: editor.ui.h:203
+msgid "Increase Lightness"
+msgstr "Increase Lightness"
+
+#: editor.ui.h:204
+msgid "Decrease Lightness"
+msgstr "Decrease Lightness"
+
+#: editor.ui.h:205
+msgid "Edit Saved Colours"
+msgstr "Edit Saved Colors"
+
+#: editor.ui.h:206 polychromatic/controller/editor.py:1408
+msgid "Modify or reorder your saved colours"
+msgstr "Modify or reorder your saved colors"
+
+#: effect-metadata-editor.ui.h:1 polychromatic/controller/effects.py:312
+msgid "Edit Metadata"
+msgstr "Edit Metadata"
+
+#: effect-metadata-editor.ui.h:2
+msgid "Effect Details"
+msgstr "Effect Details"
+
+#: effect-metadata-editor.ui.h:3 polychromatic-cli:339
+#: polychromatic/controller/devices.py:956
+msgid "Name"
+msgstr "Name"
+
+#: effect-metadata-editor.ui.h:4
+msgid "Author"
+msgstr "Author"
+
+#: effect-metadata-editor.ui.h:5 preferences.ui.h:45
+msgid "Icon"
+msgstr "Icon"
+
+#: effect-metadata-editor.ui.h:6 polychromatic/controller/effects.py:290
+msgid "Summary"
+msgstr "Summary"
+
+#: effect-metadata-editor.ui.h:7 polychromatic/controller/devices.py:955
+msgid "Hardware"
+msgstr "Hardware"
+
+#: effect-metadata-editor.ui.h:8 procviewer.ui.h:6
+msgid "Device"
+msgstr "Device"
+
+#: effect-metadata-editor.ui.h:9
+msgid "Mapping"
+msgstr "Mapping"
+
+#: effect-metadata-editor.ui.h:10
+msgid "Use a graphic resembling this device:"
+msgstr "Use a graphic resembling this device:"
+
+#: effect-metadata-editor.ui.h:11
+msgid "Use a grid"
+msgstr "Use a grid"
+
+#: effect-metadata-editor.ui.h:12
+msgid "Preview"
+msgstr "Preview"
+
+#. Appears at the top of the icon picker when the user selects a GIF as their tray icon
+#: icon-picker.ui.h:2
+msgid "Heads up! Animated GIFs are not supported by all desktop environments."
+msgstr "Heads up! Animated GIFs are not supported by all desktop environments."
+
+#: icon-picker.ui.h:3 polychromatic/controller/procviewer.py:158
+#: preferences.ui.h:37
+msgid "Tray Applet"
+msgstr "Tray Applet"
+
+#. Icon Picker: Tab name for built-in graphics
+#: icon-picker.ui.h:5
+msgid "Emblems"
+msgstr "Emblems"
+
+#. Icon Picker: Tab name for software installed on the user's system
+#: icon-picker.ui.h:7
+msgid "Applications"
+msgstr "Applications"
+
+#. Icon Picker: Tab name for the user to store their own icons
+#: icon-picker.ui.h:9
+msgid "Custom"
+msgstr "Custom"
+
+#. Tooltip hovering over the icon picker's browse button
+#: icon-picker.ui.h:11
+msgid "Browse for an icon to import"
+msgstr "Browse for an icon to import"
+
+#. Tooltip hovering over the icon picker's delete button
+#: icon-picker.ui.h:13
+msgid "Delete this custom icon from your list"
+msgstr "Delete this custom icon from your list"
+
+#. Help text when inspecting a device's matrix
+#: inspect-matrix.ui.h:2
+msgid ""
+"Use the arrow keys, click or drag on the table below to light up that LED on "
+"the physical device."
+msgstr ""
+"Use the arrow keys, click or drag on the table below to light up that LED on "
+"the physical device."
+
+#. #-#-#-#-#  loading.ui.pot (PACKAGE VERSION)  #-#-#-#-#Generic loading text
+#: loading.ui.h:2 polychromatic/controller/procviewer.py:133
+msgid "Please wait..."
+msgstr "Please wait..."
+
+#: main.ui.h:1
+msgid "Polychromatic"
+msgstr "Polychromatic"
+
+#: main.ui.h:2 polychromatic/controller/devices.py:65 preferences.ui.h:13
+msgid "Devices"
+msgstr "Devices"
+
+#: main.ui.h:3 polychromatic/controller/devices.py:885
+#: polychromatic/controller/effects.py:25 polychromatic-tray-applet:472
+#: polychromatic-tray-applet:588 preferences.ui.h:25
+msgid "Effects"
+msgstr "Effects"
+
+#: main.ui.h:4 preferences.ui.h:26
+msgid "Presets"
+msgstr "Presets"
+
+#: main.ui.h:5 preferences.ui.h:27
+msgid "Triggers"
+msgstr "Triggers"
+
+#. Heading containing buttons for the specific feature
+#: main.ui.h:7
+msgid "Tasks"
+msgstr "Tasks"
+
+#. #-#-#-#-#  main.ui.pot (PACKAGE VERSION)  #-#-#-#-#Button to a section for activating settings to all devices
+#: main.ui.h:9 polychromatic-tray-applet:357
+msgid "Apply to All"
+msgstr "Apply to All"
+
+#: main.ui.h:10
+msgid "Close Application"
+msgstr "Close Application"
+
+#. The & character is for keyboard navigation (when holding the ALT key)
+#: main.ui.h:18
+msgid "&Tools"
+msgstr "&Tools"
+
+#: main.ui.h:19
+msgid "OpenRazer"
+msgstr "OpenRazer"
+
+#: main.ui.h:22
+msgid "New Effect..."
+msgstr "New Effect..."
+
+#: main.ui.h:25 polychromatic/controller/menubar.py:152
+msgid "Hide Menu Bar"
+msgstr "Hide Menu Bar"
+
+#: main.ui.h:29 polychromatic-tray-applet:320 polychromatic-tray-applet:389
+msgid "Quit"
+msgstr "Quit"
+
+#: main.ui.h:31
+msgid "Restart Daemon"
+msgstr "Restart Daemon"
+
+#: main.ui.h:32
+msgid "Open Log..."
+msgstr "Open Log..."
+
+#: main.ui.h:33
+msgid "Configure..."
+msgstr "Configure..."
+
+#: main.ui.h:34
+msgid "About OpenRazer"
+msgstr "About OpenRazer"
+
+#: main.ui.h:35
+msgid "New Preset..."
+msgstr "New Preset..."
+
+#: main.ui.h:36
+msgid "New Preset from Current Devices..."
+msgstr "New Preset from Current Devices..."
+
+#: main.ui.h:37
+msgid "Restart Tray Applet"
+msgstr "Restart Tray Applet"
+
+#: main.ui.h:38
+msgid "View Background Tasks"
+msgstr "View Background Tasks"
+
+#: main.ui.h:39
+msgid "Keep the Menu Bar"
+msgstr "Keep the Menu Bar"
+
+#: main.ui.h:40
+msgid "Duplicate"
+msgstr "Duplicate"
+
+#: main.ui.h:42 preferences.ui.h:1
+msgid "Preferences"
+msgstr "Preferences"
+
+#: main.ui.h:43 polychromatic/controller/devices.py:677
+#: polychromatic/controller/devices.py:691
+#: polychromatic/controller/devices.py:785
+#: polychromatic/controller/devices.py:811 polychromatic-tray-applet:317
+#: polychromatic-tray-applet:353
+msgid "Troubleshoot"
+msgstr "Troubleshoot"
+
+#: main.ui.h:44 polychromatic-tray-applet:316 polychromatic-tray-applet:352
+#: procviewer.ui.h:7
+msgid "Refresh"
+msgstr "Refresh"
+
+#: main.ui.h:45
+msgid "Import Effect..."
+msgstr "Import Effect..."
+
+#: main.ui.h:46 polychromatic/controller/menubar.py:180
+msgid "Force Refresh"
+msgstr "Force Refresh"
+
+#: main.ui.h:47 polychromatic/controller/menubar.py:237
+#: polychromatic/controller/menubar.py:338
+msgid "Translate"
+msgstr "Translate"
+
+#: new-effect.ui.h:1 polychromatic/controller/effects.py:33
+#: polychromatic/controller/effects.py:68
+#: polychromatic/controller/effects.py:96
+#: polychromatic/controller/effects.py:494
+#: polychromatic/controller/effects.py:510
+msgid "New Effect"
+msgstr "New Effect"
+
+#. Shown when creating a new effect
+#: new-effect.ui.h:3
+msgid "Please choose the type of effect to create."
+msgstr "Please choose the type of effect to create."
+
+#: new-effect.ui.h:4
+msgid "Create simple effects using a layer-based system"
+msgstr "Create simple effects using a layer-based system"
+
+#. #-#-#-#-#  new-effect.ui.pot (PACKAGE VERSION)  #-#-#-#-#Button when creating a new effect
+#: new-effect.ui.h:6 polychromatic/controller/effects.py:259
+msgid "Layered"
+msgstr "Layered"
+
+#: new-effect.ui.h:7
+msgid "Create an animated (or static) using frames and pixels"
+msgstr "Create an animated (or static) using frames and pixels"
+
+#. #-#-#-#-#  new-effect.ui.pot (PACKAGE VERSION)  #-#-#-#-#Button when creating a new effect
+#: new-effect.ui.h:9 polychromatic/controller/effects.py:261
+msgid "Sequence"
+msgstr "Sequence"
+
+#: new-effect.ui.h:10
+msgid "Write the effect using the Python programming language"
+msgstr "Write the effect using the Python programming language"
+
+#. #-#-#-#-#  new-effect.ui.pot (PACKAGE VERSION)  #-#-#-#-#Button when creating a new effect
+#: new-effect.ui.h:12 polychromatic/controller/effects.py:260
+msgid "Script"
+msgstr "Script"
+
+#. Shown when creating a new effect
+#: new-effect.ui.h:14
+msgid "Hover for more details"
+msgstr "Hover for more details"
+
+#: openrazer-config.ui.h:1
+msgid "OpenRazer Configuration"
+msgstr "OpenRazer Configuration"
+
+#. Tab button for configuring OpenRazer
+#: openrazer-config.ui.h:3
+msgid "Daemon"
+msgstr "Daemon"
+
+#: openrazer-config.ui.h:4
+msgid ""
+"These settings only apply to the OpenRazer daemon. They are not supported by "
+"this application."
+msgstr ""
+"These settings only apply to the OpenRazer daemon. They are not supported by "
+"this application."
+
+#. Checkbox for configuring OpenRazer
+#: openrazer-config.ui.h:6
+msgid "Enable verbose logging"
+msgstr "Enable verbose logging"
+
+#. Checkbox for configuring OpenRazer
+#: openrazer-config.ui.h:8
+msgid "Turn off brightness when screen saver or lock screen is activated"
+msgstr "Turn off brightness when screen saver or lock screen is activated"
+
+#. Checkbox for configuring OpenRazer
+#: openrazer-config.ui.h:10
+msgid "Show battery notifications"
+msgstr "Show battery notifications"
+
+#: openrazer-config.ui.h:12
+#, no-c-format
+msgid "Only notify when device % reaches"
+msgstr "Only notify when device % reaches"
+
+#. Label for configuring OpenRazer
+#: openrazer-config.ui.h:14
+msgid "Reminder frequency"
+msgstr "Reminder frequency"
+
+#. Suffix for a spinner control
+#: openrazer-config.ui.h:16
+msgid "minute(s)"
+msgstr "minute(s)"
+
+#: openrazer-config.ui.h:17
+msgid "Restore software settings on device connect"
+msgstr "Restore software settings on device connect"
+
+#: openrazer-config.ui.h:18
+msgid ""
+"Enabling this ensures the last used settings are set on the hardware. When "
+"disabled, the device is responsible to retain settings across power cycles."
+msgstr ""
+"Enabling this ensures the last used settings are set on the hardware. When "
+"disabled, the device is responsible to retain settings across power cycles."
+
+#: openrazer-config.ui.h:19
+msgid "My device doesn't restore effects properly"
+msgstr "My device doesn't restore effects properly"
+
+#: openrazer-config.ui.h:20
+msgid ""
+"If your device doesn't restore the last selected effect in Linux after using "
+"the official Razer Synapse driver in Windows, try this option."
+msgstr ""
+"If your device doesn't restore the last selected effect in Linux after using "
+"the official Razer Synapse driver in Windows, try this option."
+
+#. Tab button for configuring OpenRazer
+#: openrazer-config.ui.h:22
+msgid "Client"
+msgstr "Client"
+
+#: openrazer-config.ui.h:23
+msgid ""
+"These settings will be used by Polychromatic when interfacing with the "
+"OpenRazer daemon."
+msgstr ""
+"These settings will be used by Polychromatic when interfacing with the "
+"OpenRazer daemon."
+
+#. Label for configuring OpenRazer
+#: openrazer-config.ui.h:25
+msgid "Ripple Refresh Rate"
+msgstr "Ripple Refresh Rate"
+
+#. Suffix for a spinner control
+#: openrazer-config.ui.h:27
+msgid "seconds"
+msgstr "seconds"
+
+#: polychromatic/backends/openrazer.py:413
+#: polychromatic/controller/devices.py:999
+#: polychromatic/controller/devices.py:1339 polychromatic-tray-applet:438
+msgid "DPI"
+msgstr "DPI"
+
+#: polychromatic/backends/openrazer.py:491
+msgid "Scroll Wheel"
+msgstr "Scroll Wheel"
+
+#: polychromatic/backends/openrazer.py:497
+msgid "Logo"
+msgstr "Logo"
+
+#: polychromatic/backends/openrazer.py:501
+msgid "Hex Ring"
+msgstr "Hex Ring"
+
+#: polychromatic/backends/openrazer.py:505
+msgid "Laptop Lid"
+msgstr "Laptop Lid"
+
+#: polychromatic/backends/openrazer.py:515
+msgid "Backlight"
+msgstr "Backlight"
+
+#: polychromatic/backends/openrazer.py:517
+msgid "Charging"
+msgstr "Charging"
+
+#: polychromatic/backends/openrazer.py:519
+msgid "Fast Charging"
+msgstr "Fast Charging"
+
+#: polychromatic/backends/openrazer.py:521
+msgid "Fully Charging"
+msgstr "Fully Charging"
+
+#: polychromatic/backends/openrazer.py:693
+#: polychromatic/backends/openrazer.py:712
+#: polychromatic/controller/devices.py:884 polychromatic-tray-applet:587
+msgid "Brightness"
+msgstr "Brightness"
+
+#: polychromatic/backends/openrazer.py:716
+#: polychromatic/backends/openrazer.py:790 polychromatic-tray-applet:556
+msgid "On"
+msgstr "On"
+
+#: polychromatic/backends/openrazer.py:717
+#: polychromatic/backends/openrazer.py:766 polychromatic-tray-applet:557
+msgid "Off"
+msgstr "Off"
+
+#. #-#-#-#-#  preferences.ui.pot (PACKAGE VERSION)  #-#-#-#-#Preferences Label
+#: polychromatic/backends/openrazer.py:718 preferences.ui.h:39
+msgid "Enabled"
+msgstr "Enabled"
+
+#: polychromatic/backends/openrazer.py:810
+#: polychromatic/controller/editor.py:806
+msgid "Spectrum"
+msgstr "Spectrum"
+
+#: polychromatic/backends/openrazer.py:834
+#: polychromatic/controller/editor.py:805
+msgid "Wave"
+msgstr "Wave"
+
+#: polychromatic/backends/openrazer.py:846
+msgid "Up"
+msgstr "Up"
+
+#: polychromatic/backends/openrazer.py:848
+msgid "Down"
+msgstr "Down"
+
+#: polychromatic/backends/openrazer.py:852
+#: polychromatic/backends/openrazer.py:891
+msgid "Clockwise"
+msgstr "Clockwise"
+
+#: polychromatic/backends/openrazer.py:854
+#: polychromatic/backends/openrazer.py:897
+msgid "Anti-clockwise"
+msgstr "Anti-clockwise"
+
+#: polychromatic/backends/openrazer.py:886
+msgid "Wheel"
+msgstr "Wheel"
+
+#: polychromatic/backends/openrazer.py:933
+msgid "Ripple"
+msgstr "Ripple"
+
+#: polychromatic/backends/openrazer.py:939
+#: polychromatic/backends/openrazer.py:1121
+#: polychromatic/backends/openrazer.py:1225
+msgid "Random"
+msgstr "Random"
+
+#: polychromatic/backends/openrazer.py:946
+#: polychromatic/backends/openrazer.py:1135
+#: polychromatic/backends/openrazer.py:1234
+msgid "Single"
+msgstr "Single"
+
+#: polychromatic/backends/openrazer.py:978
+msgid "Reactive"
+msgstr "Reactive"
+
+#: polychromatic/backends/openrazer.py:983
+msgid "Fast (0.5s)"
+msgstr "Fast (0.5s)"
+
+#: polychromatic/backends/openrazer.py:989
+msgid "Medium (1s)"
+msgstr "Medium (1s)"
+
+#: polychromatic/backends/openrazer.py:995
+msgid "Slow (1.5s)"
+msgstr "Slow (1.5s)"
+
+#: polychromatic/backends/openrazer.py:1000
+msgid "Very Slow (2s)"
+msgstr "Very Slow (2s)"
+
+#: polychromatic/backends/openrazer.py:1033
+msgid "Blinking"
+msgstr "Blinking"
+
+#: polychromatic/backends/openrazer.py:1058
+#: polychromatic/backends/openrazer.py:1313
+#: polychromatic/controller/editor.py:802
+msgid "Static"
+msgstr "Static"
+
+#: polychromatic/backends/openrazer.py:1115 tests/internals.py:38
+msgid "Breath"
+msgstr "Breath"
+
+#: polychromatic/backends/openrazer.py:1128
+msgid "Mono"
+msgstr "Mono"
+
+#: polychromatic/backends/openrazer.py:1144
+#: polychromatic/backends/openrazer.py:1245
+msgid "Dual"
+msgstr "Dual"
+
+#: polychromatic/backends/openrazer.py:1152
+msgid "Triple"
+msgstr "Triple"
+
+#: polychromatic/backends/openrazer.py:1211
+msgid "Starlight"
+msgstr "Starlight"
+
+#: polychromatic/backends/openrazer.py:1215
+msgid "Fast"
+msgstr "Fast"
+
+#: polychromatic/backends/openrazer.py:1216
+msgid "Medium"
+msgstr "Medium"
+
+#: polychromatic/backends/openrazer.py:1217
+msgid "Slow"
+msgstr "Slow"
+
+#: polychromatic/backends/openrazer.py:1309
+msgid "Pulsate"
+msgstr "Pulsate"
+
+#: polychromatic/backends/openrazer.py:1347
+msgid "X Hz (Y msec latency)"
+msgstr "X Hz (Y msec latency)"
+
+#: polychromatic/backends/openrazer.py:1376
+msgid "Poll Rate"
+msgstr "Poll Rate"
+
+#: polychromatic/backends/openrazer.py:1397
+msgid "Game Mode"
+msgstr "Game Mode"
+
+#: polychromatic/backends/openrazer.py:1398
+msgid "Disable Alt+Tab, Alt+F4 and Win keys"
+msgstr "Disable Alt+Tab, Alt+F4 and Win keys"
+
+#: polychromatic/backends/openrazer.py:1441
+msgid "Sleep mode after"
+msgstr "Sleep mode after"
+
+#: polychromatic/backends/openrazer.py:1443
+msgid "minute"
+msgstr "minute"
+
+#: polychromatic/backends/openrazer.py:1444
+msgid "minutes"
+msgstr "minutes"
+
+#: polychromatic/backends/openrazer.py:1476
+msgid "Enter low power at"
+msgstr "Enter low power at"
+
+#: polychromatic/backends/openrazer.py:1491
+msgid "Tactile"
+msgstr "Tactile"
+
+#: polychromatic/backends/openrazer.py:1496
+msgid "Free Spin"
+msgstr "Free Spin"
+
+#: polychromatic/backends/openrazer.py:1512
+msgid "Scroll Mode"
+msgstr "Scroll Mode"
+
+#: polychromatic/backends/openrazer.py:1532
+msgid "Scroll Acceleration"
+msgstr "Scroll Acceleration"
+
+#: polychromatic/backends/openrazer.py:1534
+msgid "Enable scroll acceleration"
+msgstr "Enable scroll acceleration"
+
+#: polychromatic/backends/openrazer.py:1552
+msgid "Smart Reel"
+msgstr "Smart Reel"
+
+#: polychromatic/backends/openrazer.py:1554
+msgid "Enable smart reel"
+msgstr "Enable smart reel"
+
+#: polychromatic/backends/openrazer.py:1566
+msgid "Typing (Increased debounce delay)"
+msgstr "Typing (Increased debounce delay)"
+
+#: polychromatic/backends/openrazer.py:1571
+msgid "Gaming (Faster triggering)"
+msgstr "Gaming (Faster triggering)"
+
+#: polychromatic/backends/openrazer.py:1587
+msgid "Optimise for"
+msgstr "Optimize for"
+
+#: polychromatic-cli:50
+msgid ""
+"polychromatic-cli is deprecated and will be removed in a future release."
+msgstr ""
+"polychromatic-cli is deprecated and will be removed in a future release."
+
+#: polychromatic-cli:51
+msgid "For more details:"
+msgstr "For more details:"
+
+#: polychromatic-cli:131
+msgid "These arguments can be specified"
+msgstr "These arguments can be specified"
+
+#: polychromatic-cli:166
+msgid "No arguments passed."
+msgstr "No arguments passed."
+
+#: polychromatic-cli:167
+msgid "Type polychromatic-cli --help to see possible combinations."
+msgstr "Type polychromatic-cli --help to see possible combinations."
+
+#: polychromatic-cli:186
+msgid "Select the device by form factor. If omitted, use all devices"
+msgstr "Select the device by form factor. If omitted, use all devices"
+
+#: polychromatic-cli:194
+msgid "Select a device by name"
+msgstr "Select a device by name"
+
+#: polychromatic-cli:198
+msgid "Select a device by serial number"
+msgstr "Select a device by serial number"
+
+#: polychromatic-cli:203
+msgid "List connected device(s) and their zone(s)"
+msgstr "List connected device(s) and their zone(s)"
+
+#: polychromatic-cli:207
+msgid "List all possible combinations for selected device(s)"
+msgstr "List all possible combinations for selected device(s)"
+
+#: polychromatic-cli:212
+msgid ""
+"Make change to specified zone(s). Comma separated. If omitted, use all "
+"available zones"
+msgstr ""
+"Make change to specified zone(s). Comma separated. If omitted, use all "
+"available zones"
+
+#: polychromatic-cli:216
+msgid "Set option on the device"
+msgstr "Set option on the device"
+
+#: polychromatic-cli:220
+msgid "Set parameter for the option (if applicable)"
+msgstr "Set parameter for the option (if applicable)"
+
+#: polychromatic-cli:224
+msgid "Set colours in hex format (#RRGGBB). Comma separated"
+msgstr "Set colours in hex format (#RRGGBB). Comma separated"
+
+#: polychromatic-cli:228
+msgid "Set custom (software) effect by name or path"
+msgstr "Set custom (software) effect by name or path"
+
+#: polychromatic-cli:232
+msgid "To set hardware effects, use --option (-o) instead"
+msgstr "To set hardware effects, use --option (-o) instead"
+
+#: polychromatic-cli:236
+msgid "Set dots per inch."
+msgstr "Set dots per inch."
+
+#: polychromatic-cli:241 polychromatic-controller:482
+#: polychromatic-tray-applet:777
+msgid "Print program version and exit"
+msgstr "Print program version and exit"
+
+#: polychromatic-cli:245 polychromatic-controller:481
+#: polychromatic-tray-applet:775
+msgid "Show this help message and exit"
+msgstr "Show this help message and exit"
+
+#: polychromatic-cli:249
+msgid "Do not print with pretty columns"
+msgstr "Do not print with pretty columns"
+
+#: polychromatic-cli:253 polychromatic-controller:484
+msgid "Force a specific language, e.g. de_DE"
+msgstr "Force a specific language, e.g. de_DE"
+
+#: polychromatic-cli:257
+msgid "Output additional data and debug messages"
+msgstr "Output additional data and debug messages"
+
+#: polychromatic-cli:262
+msgid "Available Options"
+msgstr "Available Options"
+
+#: polychromatic-cli:294
+msgid "No backends available."
+msgstr "No backends available."
+
+#: polychromatic-cli:305
+msgid "Could not find a device with this name:"
+msgstr "Could not find a device with this name:"
+
+#: polychromatic-cli:313
+msgid "Could not find a device with this serial:"
+msgstr "Could not find a device with this serial:"
+
+#: polychromatic-cli:319
+msgid "No devices found that match this form factor:"
+msgstr "No devices found that match this form factor:"
+
+#: polychromatic-cli:320
+msgid "Avaliable form factors:"
+msgstr "Avaliable form factors:"
+
+#: polychromatic-cli:330
+msgid "No devices connected."
+msgstr "No devices connected."
+
+#: polychromatic-cli:340 polychromatic/controller/devices.py:962
+msgid "Form Factor"
+msgstr "Form Factor"
+
+#: polychromatic-cli:341 polychromatic-cli:379
+#: polychromatic/controller/devices.py:963
+msgid "Serial"
+msgstr "Serial"
+
+#: polychromatic-cli:342 polychromatic/controller/devices.py:1025
+msgid "Zones"
+msgstr "Zones"
+
+#: polychromatic-cli:355 polychromatic-tray-applet:348
+msgid "Unrecognised:"
+msgstr "Unrecognized:"
+
+#: polychromatic-cli:382 polychromatic/controller/devices.py:965
+msgid "Firmware Version"
+msgstr "Firmware Version"
+
+#: polychromatic-cli:385 polychromatic/controller/devices.py:967
+msgid "Keyboard Layout"
+msgstr "Keyboard Layout"
+
+#: polychromatic-cli:388
+msgid "row"
+msgstr "row"
+
+#: polychromatic-cli:388
+msgid "rows"
+msgstr "rows"
+
+#: polychromatic-cli:389
+msgid "column"
+msgstr "column"
+
+#: polychromatic-cli:389
+msgid "columns"
+msgstr "columns"
+
+#: polychromatic-cli:392 polychromatic-cli:395 polychromatic-cli:398
+#: polychromatic/controller/devices.py:971
+msgid "Custom Effects"
+msgstr "Custom Effects"
+
+#: polychromatic-cli:392
+msgid "Unsupported"
+msgstr "Unsupported"
+
+#: polychromatic-cli:395 polychromatic/controller/devices.py:943
+msgid "Yes"
+msgstr "Yes"
+
+#: polychromatic-cli:398
+msgid "Yes, Limited RGB"
+msgstr "Yes, Limited RGB"
+
+#: polychromatic-cli:411 polychromatic/controller/devices.py:988
+msgid "Battery"
+msgstr "Battery"
+
+#: polychromatic-cli:419
+msgid "Supports DPI (--dpi) between 1 and 2"
+msgstr "Supports DPI (--dpi) between 1 and 2"
+
+#: polychromatic-cli:423
+msgid "Zone"
+msgstr "Zone"
+
+#: polychromatic-cli:424
+msgid "Option"
+msgstr "Option"
+
+#: polychromatic-cli:425 polychromatic/controller/devices.py:1049
+msgid "Parameters"
+msgstr "Parameters"
+
+#: polychromatic-cli:469
+msgid "DPI is not supported. Or, it may need to be set using -o/--option."
+msgstr "DPI is not supported. Or, it may need to be set using -o/--option."
+
+#: polychromatic-cli:475
+msgid "DPI too high:"
+msgstr "DPI too high:"
+
+#: polychromatic-cli:475 polychromatic/controller/devices.py:1014
+#: polychromatic/controller/devices.py:1062
+msgid "Maximum"
+msgstr "Maximum"
+
+#: polychromatic-cli:479
+msgid "DPI too low:"
+msgstr "DPI too low:"
+
+#: polychromatic-cli:479 polychromatic/controller/devices.py:1013
+#: polychromatic/controller/devices.py:1061
+msgid "Minimum"
+msgstr "Minimum"
+
+#: polychromatic-cli:494
+msgid "Failed to set DPI due to an error:"
+msgstr "Failed to set DPI due to an error:"
+
+#: polychromatic-cli:520
+msgid "Unable to locate the effect '[]'"
+msgstr "Unable to locate the effect '[]'"
+
+#: polychromatic-cli:552
+msgid "3 byte hexadecimal values are unsupported."
+msgstr "3 byte hexadecimal values are unsupported."
+
+#: polychromatic-cli:555
+msgid "Colour [] is not a valid hex value."
+msgstr "Colour [] is not a valid hex value."
+
+#: polychromatic-cli:562
+msgid ""
+"Please specify --option (-o). Use --list-options (-k) to view available "
+"combinations."
+msgstr ""
+"Please specify --option (-o). Use --list-options (-k) to view available "
+"combinations."
+
+#: polychromatic-cli:600
+msgid "Failed to set option"
+msgstr "Failed to set option"
+
+#: polychromatic-cli:617
+msgid "No such zone"
+msgstr "No such zone"
+
+#: polychromatic-cli:623
+msgid "No such option"
+msgstr "No such option"
+
+#: polychromatic-cli:629
+msgid "Missing --colours (-c) for option"
+msgstr "Missing --colours (-c) for option"
+
+#: polychromatic-cli:633 polychromatic-cli:662
+msgid "Too many colours specified. Ignoring excess."
+msgstr "Too many colours specified. Ignoring excess."
+
+#: polychromatic-cli:636
+msgid "Insufficient --colours (-c) for option"
+msgstr "Insufficient --colours (-c) for option"
+
+#: polychromatic-cli:637 polychromatic-cli:666
+msgid "Required colours:"
+msgstr "Required colours:"
+
+#: polychromatic-cli:647 polychromatic-cli:674 polychromatic-cli:689
+msgid "Missing --parameter (-p) for option"
+msgstr "Missing --parameter (-p) for option"
+
+#: polychromatic-cli:648 polychromatic-cli:653 polychromatic-cli:675
+#: polychromatic-cli:684 polychromatic-cli:690
+msgid "Available parameters:"
+msgstr "Available parameters:"
+
+#: polychromatic-cli:652
+msgid "Unsupported parameter"
+msgstr "Unsupported parameter"
+
+#: polychromatic-cli:658
+msgid "Missing --colours (-c) for parameter"
+msgstr "Missing --colours (-c) for parameter"
+
+#: polychromatic-cli:665
+msgid "Insufficient --colours (-c) for parameter"
+msgstr "Insufficient --colours (-c) for parameter"
+
+#: polychromatic-cli:683
+msgid "Invalid parameter"
+msgstr "Invalid parameter"
+
+#: polychromatic/common.py:126
+msgid "USB Accessory"
+msgstr "USB Accessory"
+
+#: polychromatic/common.py:127
+msgid "Display"
+msgstr "Display"
+
+#: polychromatic/common.py:128
+msgid "Fan"
+msgstr "Fan"
+
+#: polychromatic/common.py:129
+msgid "Graphics Card"
+msgstr "Graphics Card"
+
+#: polychromatic/common.py:130
+msgid "Headset"
+msgstr "Headset"
+
+#: polychromatic/common.py:131
+msgid "Keyboard"
+msgstr "Keyboard"
+
+#: polychromatic/common.py:132
+msgid "Keypad"
+msgstr "Keypad"
+
+#: polychromatic/common.py:133
+msgid "Laptop"
+msgstr "Laptop"
+
+#: polychromatic/common.py:134
+msgid "Mousemat"
+msgstr "Mousemat"
+
+#: polychromatic/common.py:135
+msgid "Mouse"
+msgstr "Mouse"
+
+#: polychromatic/common.py:136
+msgid "Memory"
+msgstr "Memory"
+
+#: polychromatic/common.py:137
+msgid "Speaker"
+msgstr "Speaker"
+
+#: polychromatic/common.py:138
+msgid "Stand"
+msgstr "Stand"
+
+#: polychromatic/common.py:139
+msgid "Unrecognised"
+msgstr "Unrecognized"
+
+#: polychromatic/common.py:159 polychromatic/preferences.py:449
+msgid "Green"
+msgstr "Green"
+
+#: polychromatic/controller/devices.py:206
+#: polychromatic/controller/devices.py:225
+msgid "(Varies)"
+msgstr "(Varies)"
+
+#: polychromatic/controller/devices.py:274
+msgid "Device Info"
+msgstr "Device Info"
+
+#: polychromatic/controller/devices.py:590
+msgid "Effect Mode"
+msgstr "Effect Mode"
+
+#: polychromatic/controller/devices.py:598 polychromatic-tray-applet:487
+#: polychromatic-tray-applet:589
+msgid "Primary Colour"
+msgstr "Primary Color"
+
+#: polychromatic/controller/devices.py:599
+msgid "Secondary Colour"
+msgstr "Secondary Color"
+
+#: polychromatic/controller/devices.py:600
+msgid "Tertiary Colour"
+msgstr "Tertiary Color"
+
+#: polychromatic/controller/devices.py:606
+msgid "Colour 4"
+msgstr "Color 4"
+
+#: polychromatic/controller/devices.py:617
+msgid "Change []"
+msgstr "Change []"
+
+#: polychromatic/controller/devices.py:632 polychromatic-tray-applet:617
+msgid "Request Failed"
+msgstr "Request Failed"
+
+#: polychromatic/controller/devices.py:633 polychromatic-tray-applet:618
+msgid ""
+"There's a fault with Polychromatic's integration with [OpenRazer] for this "
+"device or option."
+msgstr ""
+"There's a fault with Polychromatic's integration with [OpenRazer] for this "
+"device or option."
+
+#: polychromatic/controller/devices.py:634
+msgid ""
+"To help fix this, please check Polychromatic's issue tracker and create a "
+"new issue if a similar one does not exist."
+msgstr ""
+"To help fix this, please check Polychromatic's issue tracker and create a "
+"new issue if a similar one does not exist."
+
+#: polychromatic/controller/devices.py:638 polychromatic-tray-applet:621
+msgid "Communication Error"
+msgstr "Communication Error"
+
+#: polychromatic/controller/devices.py:639
+msgid ""
+"An error occurred outside of Polychromatic's control when this command was "
+"sent to [OpenRazer]."
+msgstr ""
+"An error occurred outside of Polychromatic's control when this command was "
+"sent to [OpenRazer]."
+
+#: polychromatic/controller/devices.py:640
+msgid ""
+"Try restarting [OpenRazer] and Polychromatic and give it another go. If this "
+"error appears again, it might need fixing in [OpenRazer]."
+msgstr ""
+"Try restarting [OpenRazer] and Polychromatic and give it another go. If this "
+"error appears again, it might need fixing in [OpenRazer]."
+
+#: polychromatic/controller/devices.py:663
+msgid "No devices connected"
+msgstr "No devices connected"
+
+#: polychromatic/controller/devices.py:664
+msgid "No backends loaded"
+msgstr "No backends loaded"
+
+#: polychromatic/controller/devices.py:665
+msgid "No backends installed"
+msgstr "No backends installed"
+
+#: polychromatic/controller/devices.py:669
+msgid ""
+"Plug in a compatible device to control its lighting effects and features"
+msgstr ""
+"Plug in a compatible device to control its lighting effects and features"
+
+#: polychromatic/controller/devices.py:670
+msgid "Consult the logs and troubleshooter for hints on fixing this problem"
+msgstr "Consult the logs and troubleshooter for hints on fixing this problem"
+
+#: polychromatic/controller/devices.py:671
+msgid "Install a compatible backend to configure lighting effects"
+msgstr "Install a compatible backend to configure lighting effects"
+
+#: polychromatic/controller/devices.py:700
+msgid "Show Error Details"
+msgstr "Show Error Details"
+
+#: polychromatic/controller/devices.py:736
+msgid "Backend Error: []"
+msgstr "Backend Error: []"
+
+#: polychromatic/controller/devices.py:737
+msgid ""
+"An error occurred trying to load []. The error below may provide a clue to "
+"what happened."
+msgstr ""
+"An error occurred trying to load []. The error below may provide a clue to "
+"what happened."
+
+#: polychromatic/controller/devices.py:738
+msgid "The last line of the exception was:"
+msgstr "The last line of the exception was:"
+
+#: polychromatic/controller/devices.py:771
+msgid ""
+"Upgrade OpenRazer to use this device.\n"
+"\n"
+"This version of OpenRazer (v1.0.0) does not recognise this device."
+msgstr ""
+"Upgrade OpenRazer to use this device.\n"
+"\n"
+"This version of OpenRazer (v1.0.0) does not recognise this device."
+
+#: polychromatic/controller/devices.py:773
+msgid "Finish setting up OpenRazer (v1.0.0) to use this device."
+msgstr "Finish setting up OpenRazer (v1.0.0) to use this device."
+
+#: polychromatic/controller/devices.py:778
+msgid "Restart"
+msgstr "Restart"
+
+#: polychromatic/controller/devices.py:793
+msgid "Download Instructions"
+msgstr "Download Instructions"
+
+#: polychromatic/controller/devices.py:807
+msgid "Unsupported Device"
+msgstr "Unsupported Device"
+
+#: polychromatic/controller/devices.py:808
+msgid ""
+"This device needs support adding in OpenRazer before it can be used in "
+"Polychromatic."
+msgstr ""
+"This device needs support adding in OpenRazer before it can be used in "
+"Polychromatic."
+
+#: polychromatic/controller/devices.py:828
+msgid "Troubleshooting Guide"
+msgstr "Troubleshooting Guide"
+
+#: polychromatic/controller/devices.py:848
+msgid "Not available for all connected devices"
+msgstr "Not available for all connected devices"
+
+#: polychromatic/controller/devices.py:946
+msgid "No"
+msgstr "No"
+
+#: polychromatic/controller/devices.py:957
+msgid "Backend"
+msgstr "Backend"
+
+#: polychromatic/controller/devices.py:973
+msgid "Supported"
+msgstr "Supported"
+
+#: polychromatic/controller/devices.py:976
+#: polychromatic/controller/effects.py:543
+msgid "1 row"
+msgstr "1 row"
+
+#: polychromatic/controller/devices.py:976
+#: polychromatic/controller/effects.py:543
+msgid "2 rows"
+msgstr "2 rows"
+
+#: polychromatic/controller/devices.py:977
+#: polychromatic/controller/effects.py:544
+msgid "1 column"
+msgstr "1 column"
+
+#: polychromatic/controller/devices.py:977
+#: polychromatic/controller/effects.py:544
+msgid "2 columns"
+msgstr "2 columns"
+
+#: polychromatic/controller/devices.py:978
+msgid "Matrix Dimensions"
+msgstr "Matrix Dimensions"
+
+#: polychromatic/controller/devices.py:981
+#: polychromatic/controller/devices.py:983
+msgid "Colour Range"
+msgstr "Colour Range"
+
+#: polychromatic/controller/devices.py:981
+msgid "256 colours"
+msgstr "256 colours"
+
+#: polychromatic/controller/devices.py:983
+msgid "16 million colours"
+msgstr "16 million colours"
+
+#: polychromatic/controller/devices.py:991
+#: polychromatic/controller/devices.py:993
+msgid "Status"
+msgstr "Status"
+
+#: polychromatic/controller/devices.py:991
+msgid "Charging (0%)"
+msgstr "Charging (0%)"
+
+#: polychromatic/controller/devices.py:993
+msgid "Discharging (0%)"
+msgstr "Discharging (0%)"
+
+#: polychromatic/controller/devices.py:994
+#: polychromatic/controller/devices.py:1045
+msgid "Type"
+msgstr "Type"
+
+#: polychromatic/controller/devices.py:994
+msgid "Removable"
+msgstr "Removable"
+
+#: polychromatic/controller/devices.py:994
+msgid "Rechargable"
+msgstr "Rechargable"
+
+#: polychromatic/controller/devices.py:1000
+msgid "Current DPI"
+msgstr "Current DPI"
+
+#: polychromatic/controller/devices.py:1005
+msgid "Default Stages"
+msgstr "Default Stages"
+
+#: polychromatic/controller/devices.py:1009
+#: polychromatic/controller/devices.py:1011
+msgid "Custom Stages"
+msgstr "Custom Stages"
+
+#: polychromatic/controller/devices.py:1011
+msgid "(Not set)"
+msgstr "(Not set)"
+
+#: polychromatic/controller/devices.py:1012
+msgid "Supports Sync?"
+msgstr "Supports Sync?"
+
+#: polychromatic/controller/devices.py:1021
+msgid "Input 0"
+msgstr "Input 0"
+
+#: polychromatic/controller/devices.py:1038
+msgid "Toggle"
+msgstr "Toggle"
+
+#: polychromatic/controller/devices.py:1040
+msgid "Slider"
+msgstr "Slider"
+
+#: polychromatic/controller/devices.py:1042
+msgid "Dropdown"
+msgstr "Dropdown"
+
+#: polychromatic/controller/devices.py:1044
+msgid "Option ID"
+msgstr "Option ID"
+
+#: polychromatic/controller/devices.py:1046
+#: polychromatic/controller/devices.py:1053
+msgid "Active"
+msgstr "Active"
+
+#: polychromatic/controller/devices.py:1052
+msgid "Parameter ID"
+msgstr "Parameter ID"
+
+#: polychromatic/controller/devices.py:1060
+msgid "Current Value"
+msgstr "Current Value"
+
+#: polychromatic/controller/devices.py:1063
+msgid "Interval"
+msgstr "Interval"
+
+#: polychromatic/controller/devices.py:1133
+msgid "Coordinate: X,Y"
+msgstr "Coordinate: X,Y"
+
+#: polychromatic/controller/devices.py:1135
+msgid "Coordinate: (Multiple)"
+msgstr "Coordinate: (Multiple)"
+
+#: polychromatic/controller/devices.py:1350
+msgid "Open Input Remapper"
+msgstr "Open Input Remapper"
+
+#: polychromatic/controller/devices.py:1365
+msgid "About Macro Recording"
+msgstr "About Macro Recording"
+
+#: polychromatic/controller/devices.py:1366
+msgid ""
+"OpenRazer provides a simple on-the-fly macro recording feature.\n"
+"\n"
+"1. Press FN+[M] to enter macro mode.\n"
+"2. Press the macro key to assign to. Only M1-M5 are supported.\n"
+"3. Press the keys in sequence to record.\n"
+"4. Press FN+[M] to exit macro mode.\n"
+"\n"
+"Macros remain in memory until the openrazer-daemon process is stopped. The "
+"replay speed will be instantaneous, which can be problematic with some "
+"software/games."
+msgstr ""
+"OpenRazer provides a simple on-the-fly macro recording feature.\n"
+"\n"
+"1. Press FN+[M] to enter macro mode.\n"
+"2. Press the macro key to assign to. Only M1-M5 are supported.\n"
+"3. Press the keys in sequence to record.\n"
+"4. Press FN+[M] to exit macro mode.\n"
+"\n"
+"Macros remain in memory until the openrazer-daemon process is stopped. The "
+"replay speed will be instantaneous, which can be problematic with some "
+"software/games."
+
+#: polychromatic/controller/devices.py:1374
+msgid "Usage Instructions"
+msgstr "Usage Instructions"
+
+#: polychromatic/controller/devices.py:1380
+msgid "Macros"
+msgstr "Macros"
+
+#: polychromatic/controller/devices.py:1422
+msgid "Up to 123 DPI"
+msgstr "Up to 123 DPI"
+
+#: polychromatic/controller/devices.py:1549
+msgid "DPI stages were successfully synchronised to the hardware."
+msgstr "DPI stages were successfully synchronized to the hardware."
+
+#: polychromatic/controller/editor.py:570
+msgid "Columns: []"
+msgstr "Columns: []"
+
+#: polychromatic/controller/editor.py:571
+msgid "Rows: []"
+msgstr "Rows: []"
+
+#: polychromatic/controller/editor.py:574
+msgid "(Not Set)"
+msgstr "(Not Set)"
+
+#: polychromatic/controller/editor.py:619
+msgid "Missing Device"
+msgstr "Missing Device"
+
+#: polychromatic/controller/editor.py:620
+msgid ""
+"This effect is designed for a device named '[]', but it wasn't detected."
+msgstr ""
+"This effect is designed for a device named '[]', but it wasn't detected."
+
+#: polychromatic/controller/editor.py:621
+#: polychromatic/controller/editor.py:633
+#: polychromatic/controller/editor.py:1039
+msgid "Live preview has been disabled for this session."
+msgstr "Live preview has been disabled for this session."
+
+#: polychromatic/controller/editor.py:631
+#: polychromatic/controller/shared.py:1672
+#: polychromatic/controller/shared.py:1681
+msgid "File Error"
+msgstr "File Error"
+
+#: polychromatic/controller/editor.py:632
+msgid ""
+"The device '[]' is assigned to this effect, but does not support individual "
+"addressable LEDs."
+msgstr ""
+"The device '[]' is assigned to this effect, but does not support individual "
+"addressable LEDs."
+
+#: polychromatic/controller/editor.py:757
+msgid "Unsaved Changes"
+msgstr "Unsaved Changes"
+
+#: polychromatic/controller/editor.py:758
+msgid "This effect was modified. Would you like to save these changes?"
+msgstr "This effect was modified. Would you like to save these changes?"
+
+#: polychromatic/controller/editor.py:803
+msgid "Gradient"
+msgstr "Gradient"
+
+#: polychromatic/controller/editor.py:804
+msgid "Pulsing"
+msgstr "Pulsing"
+
+#: polychromatic/controller/editor.py:807
+msgid "Cycling"
+msgstr "Cycling"
+
+#: polychromatic/controller/editor.py:808
+msgid "Run Scripted Effect"
+msgstr "Run Scripted Effect"
+
+#: polychromatic/controller/editor.py:836
+#: polychromatic/controller/preferences.py:212
+msgid "Save Error"
+msgstr "Save Error"
+
+#: polychromatic/controller/editor.py:837
+#: polychromatic/controller/preferences.py:213
+msgid "Save failed. Please check the permissions and try again."
+msgstr "Save failed. Please check the permissions and try again."
+
+#: polychromatic/controller/editor.py:842
+msgid "Saved to: []"
+msgstr "Saved to: []"
+
+#: polychromatic/controller/editor.py:863
+msgid "Reload the effect from disk? Any unsaved data will be lost!"
+msgstr "Reload the effect from disk? Any unsaved data will be lost!"
+
+#: polychromatic/controller/editor.py:1037
+msgid "Backend Error"
+msgstr "Backend Error"
+
+#: polychromatic/controller/editor.py:1038
+msgid "An error occurred while sending the frame to the hardware."
+msgstr "An error occurred while sending the frame to the hardware."
+
+#: polychromatic/controller/editor.py:1136
+msgid "Temporarily changed the graphic. To make permanent, edit the metadata."
+msgstr "Temporarily changed the graphic. To make permanent, edit the metadata."
+
+#: polychromatic/controller/editor.py:1143
+#: polychromatic/controller/editor.py:1155
+msgid "Loading..."
+msgstr "Loading..."
+
+#: polychromatic/controller/editor.py:1169
+msgid ""
+"Temporarily changed the graphic. To make permanent, edit the application's "
+"preferences."
+msgstr ""
+"Temporarily changed the graphic. To make permanent, edit the application's "
+"preferences."
+
+#: polychromatic/controller/editor.py:1284
+msgid "Frame [1] of [10]"
+msgstr "Frame [1] of [10]"
+
+#: polychromatic/controller/editor.py:1466
+msgid "Permanently delete this frame? There is no undo."
+msgstr "Permanently delete this frame? There is no undo."
+
+#: polychromatic/controller/editor.py:1467
+msgid ""
+"Tip: This confirmation can be suppressed via the Editor tab under "
+"Preferences."
+msgstr ""
+"Tip: This confirmation can be suppressed via the Editor tab under "
+"Preferences."
+
+#: polychromatic/controller/editor.py:1548
+msgid "Choose Brush Colour"
+msgstr "Choose Brush Color"
+
+#: polychromatic/controller/editor.py:1579
+msgid "Out of Bounds"
+msgstr "Out of Bounds"
+
+#: polychromatic/controller/editor.py:1580
+msgid ""
+"There isn't a position for (X,Y) for this device. The graphic contains "
+"incorrect metadata or is incompatible for use with this device."
+msgstr ""
+"There isn't a position for (X,Y) for this device. The graphic contains "
+"incorrect metadata or is incompatible for use with this device."
+
+#: polychromatic/controller/editor.py:1602
+msgid "This LED is empty - nothing to erase here!"
+msgstr "This LED is empty - nothing to erase here!"
+
+#: polychromatic/controller/editor.py:1623
+msgid "This LED is empty - no colour to pick here!"
+msgstr "This LED is empty - no color to pick here!"
+
+#: polychromatic/controller/editor.py:1771
+msgid "Controller Error"
+msgstr "Controller Error"
+
+#: polychromatic/controller/editor.py:1772
+msgid ""
+"Failed to load the Qt Web Engine. Unfortunately, editing won't be possible."
+msgstr ""
+"Failed to load the Qt Web Engine. Unfortunately, editing won't be possible."
+
+#: polychromatic/controller/editor.py:1773
+msgid ""
+"Make sure the application (and its dependencies) are installed and "
+"configured correctly."
+msgstr ""
+"Make sure the application (and its dependencies) are installed and "
+"configured correctly."
+
+#: polychromatic/controller/editor.py:1811
+msgid "Missing File"
+msgstr "Missing File"
+
+#: polychromatic/controller/editor.py:1812
+msgid "This effect is mapped to a graphic named '[]', but it's not installed."
+msgstr "This effect is mapped to a graphic named '[]', but it's not installed."
+
+#: polychromatic/controller/editor.py:1813
+msgid ""
+"The grid will be used instead. A different graphic can be chosen by editing "
+"the metadata."
+msgstr ""
+"The grid will be used instead. A different graphic can be chosen by editing "
+"the metadata."
+
+#: polychromatic/controller/effects.py:51
+msgid "It's empty here!"
+msgstr "It's empty here!"
+
+#: polychromatic/controller/effects.py:52
+msgid "Error loading effect"
+msgstr "Error loading effect"
+
+#: polychromatic/controller/effects.py:56
+msgid "Your own software effects appear here. Try creating one!"
+msgstr "Your own software effects appear here. Try creating one!"
+
+#: polychromatic/controller/effects.py:57
+msgid "There's invalid data in this file. The file might be corrupt."
+msgstr "There's invalid data in this file. The file might be corrupt."
+
+#: polychromatic/controller/effects.py:97
+msgid ""
+"No devices found. New effects require a compatible device to be present."
+msgstr ""
+"No devices found. New effects require a compatible device to be present."
+
+#: polychromatic/controller/effects.py:98
+msgid "Make sure the device is connected and the backend is working."
+msgstr "Make sure the device is connected and the backend is working."
+
+#: polychromatic/controller/effects.py:298
+#: polychromatic/controller/effects.py:333
+msgid "File In Use"
+msgstr "File In Use"
+
+#: polychromatic/controller/effects.py:299
+msgid ""
+"This file is being edited in another window. Please switch to that window to "
+"make changes."
+msgstr ""
+"This file is being edited in another window. Please switch to that window to "
+"make changes."
+
+#: polychromatic/controller/effects.py:317
+msgid "Other Actions"
+msgstr "Other Actions"
+
+#: polychromatic/controller/effects.py:334
+msgid ""
+"This file is being edited in another window. Please close that editor first."
+msgstr ""
+"This file is being edited in another window. Please close that editor first."
+
+#: polychromatic/controller/effects.py:414
+msgid "Choose Effect Icon"
+msgstr "Choose Effect Icon"
+
+#: polychromatic/controller/effects.py:511
+msgid ""
+"No compatible devices found. Only individually addressable LED capable "
+"hardware can be used for effects."
+msgstr ""
+"No compatible devices found. Only individually addressable LED capable "
+"hardware can be used for effects."
+
+#: polychromatic/controller/menubar.py:153
+msgid "The menu bar is now hidden. To temporarily reveal, press Alt."
+msgstr "The menu bar is now hidden. To temporarily reveal, press Alt."
+
+#: polychromatic/controller/menubar.py:181
+msgid "Please close all editor windows before executing this action."
+msgstr "Please close all editor windows before executing this action."
+
+#: polychromatic/controller/menubar.py:204
+msgid ""
+"Polychromatic is about to open a web page for this resource. Unfortunately, "
+"it is only available in English at this time."
+msgstr ""
+"Polychromatic is about to open a web page for this resource. Unfortunately, "
+"it is only available in English at this time."
+
+#: polychromatic/controller/menubar.py:233
+msgid "Report Bug"
+msgstr "Report Bug"
+
+#: polychromatic/controller/menubar.py:322
+msgid "About []"
+msgstr "About []"
+
+#: polychromatic/controller/menubar.py:335
+msgid "Documentation"
+msgstr "Documentation"
+
+#: polychromatic/controller/menubar.py:336
+#: polychromatic/controller/menubar.py:466
+msgid "Source Code"
+msgstr "Source Code"
+
+#: polychromatic/controller/menubar.py:337
+#: polychromatic/controller/menubar.py:467
+msgid "Release Notes"
+msgstr "Release Notes"
+
+#: polychromatic/controller/menubar.py:409
+msgid "Restarting the backend/application..."
+msgstr "Restarting the backend/application..."
+
+#: polychromatic/controller/menubar.py:420
+msgid "Reload application?"
+msgstr "Reload application?"
+
+#: polychromatic/controller/menubar.py:421
+msgid ""
+"To apply these changes, a daemon process needs to restart. This will also "
+"restart Polychromatic. Any unsaved data will be lost."
+msgstr ""
+"To apply these changes, a daemon process needs to restart. This will also "
+"restart Polychromatic. Any unsaved data will be lost."
+
+#: polychromatic-controller:136 polychromatic/controller/preferences.py:148
+msgid "Not available under Flatpak"
+msgstr "Not available under Flatpak"
+
+#: polychromatic-controller:315
+msgid "Polychromatic Error"
+msgstr "Polychromatic Error"
+
+#: polychromatic-controller:316
+msgid "Unable to load the tab properly due to an error."
+msgstr "Unable to load the tab properly due to an error."
+
+#: polychromatic-controller:317
+msgid ""
+"See below for technical details. Consider reporting this as a bug on this "
+"project's issue tracker."
+msgstr ""
+"See below for technical details. Consider reporting this as a bug on this "
+"project's issue tracker."
+
+#: polychromatic-controller:412
+msgid "Save Data Version Mismatch"
+msgstr "Save Data Version Mismatch"
+
+#: polychromatic-controller:413
+msgid ""
+"Polychromatic's configuration (including your effects and presets) have been "
+"previously saved in a newer version of this software."
+msgstr ""
+"Polychromatic's configuration (including your effects) have been previously "
+"saved in a newer version of this software."
+
+#: polychromatic-controller:414
+msgid ""
+"While this older software version may run as expected, there is no guarantee "
+"everything will work as a result of this newer save data. This installation "
+"is unsupported."
+msgstr ""
+"While this older software version may run as expected, there is no guarantee "
+"everything will work as a result of this newer save data. This installation "
+"is unsupported."
+
+#: polychromatic-controller:415
+msgid ""
+"Consider updating the application, ignore this message or delete: "
+"~/.config/polychromatic"
+msgstr ""
+"Consider updating the application, ignore this message or delete: "
+"~/.config/polychromatic"
+
+#: polychromatic-controller:450
+msgid "Application"
+msgstr "Application"
+
+#: polychromatic-controller:480 polychromatic-tray-applet:774
+msgid "Optional arguments"
+msgstr "Optional arguments"
+
+#: polychromatic-controller:483 polychromatic-tray-applet:776
+msgid "Be verbose to stdout"
+msgstr "Be verbose to stdout"
+
+#: polychromatic-controller:485
+msgid "Open a specific tab or feature"
+msgstr "Open a specific tab or feature"
+
+#: polychromatic/controller/preferences.py:97
+msgid "Choose Tray Applet Icon"
+msgstr "Choose Tray Applet Icon"
+
+#: polychromatic/controller/preferences.py:237
+msgid "Restart Required"
+msgstr "Restart Required"
+
+#: polychromatic/controller/preferences.py:238
+msgid ""
+"To apply these changes, the application must be restarted. Any unsaved "
+"changes will be lost."
+msgstr ""
+"To apply these changes, the application must be restarted. Any unsaved "
+"changes will be lost."
+
+#. #-#-#-#-#  preferences.ui.pot (PACKAGE VERSION)  #-#-#-#-#Button
+#: polychromatic/controller/preferences.py:269 preferences.ui.h:58
+msgid "Reset to Default Colours"
+msgstr "Reset to Default Colors"
+
+#: polychromatic/controller/preferences.py:270
+msgid "All colours in the list will be reset. Continue?"
+msgstr "All colors in the list will be reset. Continue?"
+
+#. #-#-#-#-#  procviewer.ui.pot (PACKAGE VERSION)  #-#-#-#-#Button to restart all background tasks
+#: polychromatic/controller/procviewer.py:116 procviewer.ui.h:9
+msgid "Restart All"
+msgstr "Restart All"
+
+#: polychromatic/controller/procviewer.py:128
+msgid "Restarting..."
+msgstr "Restarting..."
+
+#: polychromatic/controller/procviewer.py:155
+msgid "Playing software effect"
+msgstr "Playing software effect"
+
+#: polychromatic/controller/procviewer.py:161
+msgid "No longer running"
+msgstr "No longer running"
+
+#: polychromatic/controller/shared.py:693
+#: polychromatic/controller/shared.py:749 preferences.ui.h:56
+msgid "Change..."
+msgstr "Change..."
+
+#: polychromatic/controller/shared.py:1133
+msgid "Image Files"
+msgstr "Image Files"
+
+#: polychromatic/controller/shared.py:1134
+msgid "PNG Image"
+msgstr "PNG Image"
+
+#: polychromatic/controller/shared.py:1135
+msgid "JPEG Image"
+msgstr "JPEG Image"
+
+#: polychromatic/controller/shared.py:1136
+msgid "GIF Image"
+msgstr "GIF Image"
+
+#: polychromatic/controller/shared.py:1137
+msgid "SVG Image"
+msgstr "SVG Image"
+
+#: polychromatic/controller/shared.py:1138
+msgid "All Files"
+msgstr "All Files"
+
+#: polychromatic/controller/shared.py:1307
+msgid "When Steam is installed, icons from your games will appear here."
+msgstr "When Steam is installed, icons from your games will appear here."
+
+#: polychromatic/controller/shared.py:1308
+msgid "Drag and drop icons here, or add them by pressing the Import button."
+msgstr "Drag and drop icons here, or add them by pressing the Import button."
+
+#: polychromatic/controller/shared.py:1314
+msgid "No icons found!"
+msgstr "No icons found!"
+
+#: polychromatic/controller/shared.py:1424
+msgid "Import Custom Icon"
+msgstr "Import Custom Icon"
+
+#: polychromatic/controller/shared.py:1661
+msgid "The file contains invalid data."
+msgstr "The file contains invalid data."
+
+#: polychromatic/controller/shared.py:1662
+msgid "The file no longer exists. Please refresh the page."
+msgstr "The file no longer exists. Please refresh the page."
+
+#: polychromatic/controller/shared.py:1663
+msgid "This file was saved in a newer version of this program."
+msgstr "This file was saved in a newer version of this program."
+
+#: polychromatic/controller/shared.py:1669
+msgid "Unspecified error: []"
+msgstr "Unspecified error: []"
+
+#: polychromatic/controller/shared.py:1673
+msgid "This file cannot be opened:"
+msgstr "This file cannot be opened:"
+
+#: polychromatic/controller/shared.py:1682
+msgid ""
+"The operation could not be completed due to an error processing this file."
+msgstr ""
+"The operation could not be completed due to an error processing this file."
+
+#: polychromatic/controller/shared.py:1683
+msgid "Please make sure the file permissions are recursively correct:"
+msgstr "Please make sure the file permissions are recursively correct:"
+
+#: polychromatic/controller/shared.py:1738
+msgid ""
+"Permanently delete this effect?\n"
+"'[]'\n"
+"\n"
+"Presets and triggers that use this effect will be unlinked."
+msgstr ""
+"Permanently delete this effect?\n"
+"'[]'\n"
+"\n"
+"Presets and triggers that use this effect will be unlinked."
+
+#: polychromatic/controller/shared.py:1739
+msgid ""
+"Permanently delete this preset?\n"
+"'[]'\n"
+"\n"
+"Triggers that use this preset will no longer function."
+msgstr ""
+"Permanently delete this preset?\n"
+"'[]'\n"
+"\n"
+"Triggers that use this preset will no longer function."
+
+#: polychromatic/controller/shared.py:1743
+msgid ""
+"Permanently delete this effect? \n"
+"'[]'"
+msgstr ""
+"Permanently delete this effect? \n"
+"'[]'"
+
+#: polychromatic/controller/shared.py:1744
+msgid ""
+"Permanently delete this preset? \n"
+"'[]'"
+msgstr ""
+"Permanently delete this preset? \n"
+"'[]'"
+
+#: polychromatic/controller/shared.py:1748
+msgid "Confirm Deletion"
+msgstr "Confirm Deletion"
+
+#: polychromatic/controller/shared.py:1770 polychromatic/fileman.py:322
+msgid "[] (Copy)"
+msgstr "[] (Copy)"
+
+#: polychromatic/controller/troubleshooter.py:74
+#: polychromatic/controller/troubleshooter.py:79
+msgid "Running troubleshooter..."
+msgstr "Running troubleshooter..."
+
+#: polychromatic/controller/troubleshooter.py:80
+msgid "Troubleshooting..."
+msgstr "Troubleshooting..."
+
+#: polychromatic/controller/troubleshooter.py:94
+#: polychromatic/controller/troubleshooter.py:99
+msgid "Troubleshooting Failed"
+msgstr "Troubleshooting Failed"
+
+#: polychromatic/controller/troubleshooter.py:95
+msgid ""
+"The troubleshooter for this backend is not available for this operating "
+"system."
+msgstr ""
+"The troubleshooter for this backend is not available for this operating "
+"system."
+
+#: polychromatic/controller/troubleshooter.py:100
+msgid ""
+"An exception was thrown while running the troubleshooter. This is probably a "
+"bug."
+msgstr ""
+"An exception was thrown while running the troubleshooter. This is probably a "
+"bug."
+
+#: polychromatic/controller/troubleshooter.py:108
+msgid "Passed"
+msgstr "Passed"
+
+#: polychromatic/controller/troubleshooter.py:111
+msgid "Failed"
+msgstr "Failed"
+
+#: polychromatic/controller/troubleshooter.py:114
+msgid "Unknown"
+msgstr "Unknown"
+
+#: polychromatic/controller/troubleshooter.py:145
+msgid "Troubleshooter for []"
+msgstr "Troubleshooter for []"
+
+#: polychromatic/controller/troubleshooter.py:147
+msgid "Everything appears to be in working order!"
+msgstr "Everything appears to be in working order!"
+
+#: polychromatic/effects.py:158
+msgid "Layer 1"
+msgstr "Layer 1"
+
+#: polychromatic/preferences.py:447
+msgid "White"
+msgstr "White"
+
+#: polychromatic/preferences.py:448
+msgid "Red"
+msgstr "Red"
+
+#: polychromatic/preferences.py:450
+msgid "Blue"
+msgstr "Blue"
+
+#: polychromatic/preferences.py:451
+msgid "Aqua"
+msgstr "Aqua"
+
+#: polychromatic/preferences.py:452
+msgid "Orange"
+msgstr "Orange"
+
+#: polychromatic/preferences.py:453
+msgid "Pink"
+msgstr "Pink"
+
+#: polychromatic/preferences.py:454
+msgid "Purple"
+msgstr "Purple"
+
+#: polychromatic/preferences.py:455
+msgid "Yellow"
+msgstr "Yellow"
+
+#: polychromatic/preferences.py:456
+msgid "Light Grey"
+msgstr "Light Grey"
+
+#: polychromatic/preferences.py:457
+msgid "Dark Grey"
+msgstr "Dark Grey"
+
+#: polychromatic/preferences.py:458
+msgid "Black"
+msgstr "Black"
+
+#: polychromatic-tray-applet:272
+msgid "No backends available"
+msgstr "No backends available"
+
+#: polychromatic-tray-applet:319 polychromatic-tray-applet:364
+msgid "Open Controller"
+msgstr "Open Controller"
+
+#: polychromatic-tray-applet:339
+msgid "No devices found"
+msgstr "No devices found"
+
+#: polychromatic-tray-applet:374
+msgid "Autostart"
+msgstr "Autostart"
+
+#: polychromatic-tray-applet:380
+msgid "Disable automatic start at login"
+msgstr "Disable automatic start at login"
+
+#: polychromatic-tray-applet:383
+msgid "Start automatically at login"
+msgstr "Start automatically at login"
+
+#: polychromatic-tray-applet:478
+msgid "No custom effects"
+msgstr "No custom effects"
+
+#: polychromatic-tray-applet:483
+msgid "Edit Effects..."
+msgstr "Edit Effects..."
+
+#: polychromatic-tray-applet:501
+msgid "Custom..."
+msgstr "Custom..."
+
+#: polychromatic-tray-applet:502
+msgid "Edit Colours..."
+msgstr "Edit Colors..."
+
+#: polychromatic-tray-applet:505
+msgid "All Zones"
+msgstr "All Zones"
+
+#: polychromatic-tray-applet:619
+msgid ""
+"Try restarting the tray applet. To see error details, run "
+"'polychromatic-tray-applet' in the terminal and repeat this action."
+msgstr ""
+"Try restarting the tray applet. To see error details, run "
+"'polychromatic-tray-applet' in the terminal and repeat this action."
+
+#: polychromatic-tray-applet:622
+msgid ""
+"While sending this command to [OpenRazer], an error occurred outside of "
+"Polychromatic's control."
+msgstr ""
+"While sending this command to [OpenRazer], an error occurred outside of "
+"Polychromatic's control."
+
+#: polychromatic-tray-applet:623
+msgid ""
+"Try restarting [OpenRazer] and Polychromatic and give it another go. If this "
+"error appears again, it's likely this needs fixing in [OpenRazer]."
+msgstr ""
+"Try restarting [OpenRazer] and Polychromatic and give it another go. If this "
+"error appears again, it's likely this needs fixing in [OpenRazer]."
+
+#: polychromatic-tray-applet:732
+msgid "Set Primary Colour"
+msgstr "Set Primary Color"
+
+#: polychromatic-tray-applet:778
+msgid "Force a specific locale, e.g. de_DE"
+msgstr "Force a specific locale, e.g. de_DE"
+
+#: polychromatic-tray-applet:779
+msgid "Render using AppIndicator3"
+msgstr "Render using AppIndicator3"
+
+#: polychromatic-tray-applet:780
+msgid "Render using Ayatana Indicators"
+msgstr "Render using Ayatana Indicators"
+
+#: polychromatic-tray-applet:781
+msgid "Render using GTK Status (legacy)"
+msgstr "Render using GTK Status (legacy)"
+
+#: polychromatic-tray-applet:796
+msgid "Verbose enabled"
+msgstr "Verbose enabled"
+
+#: polychromatic/troubleshoot/openrazer.py:56
+msgid "Daemon is installed"
+msgstr "Daemon is installed"
+
+#: polychromatic/troubleshoot/openrazer.py:58
+msgid "Install the 'openrazer-meta' package for your distribution."
+msgstr "Install the 'openrazer-meta' package for your distribution."
+
+#: polychromatic/troubleshoot/openrazer.py:78
+msgid "Daemon is running"
+msgstr "Daemon is running"
+
+#: polychromatic/troubleshoot/openrazer.py:80
+msgid ""
+"Start the daemon from the terminal. Run this command and look for errors:"
+msgstr ""
+"Start the daemon from the terminal. Run this command and look for errors:"
+
+#: polychromatic/troubleshoot/openrazer.py:92
+msgid "Python library is installed, but there is an import error."
+msgstr "Python library is installed, but there is an import error."
+
+#: polychromatic/troubleshoot/openrazer.py:94
+msgid ""
+"Python installation looks custom. Check your dependencies are installed "
+"correctly."
+msgstr ""
+"Python installation looks custom. Check your dependencies are installed "
+"correctly."
+
+#: polychromatic/troubleshoot/openrazer.py:96
+msgid ""
+"Check your system is fully up-to-date. Dependencies may be causing problems."
+msgstr ""
+"Check your system is fully up-to-date. Dependencies may be causing problems."
+
+#: polychromatic/troubleshoot/openrazer.py:97
+msgid "For full details on the error, type into a terminal:"
+msgstr "For full details on the error, type into a terminal:"
+
+#: polychromatic/troubleshoot/openrazer.py:101
+#: polychromatic/troubleshoot/openrazer.py:126
+msgid "Python library is installed"
+msgstr "Python library is installed"
+
+#: polychromatic/troubleshoot/openrazer.py:106
+msgid ""
+"Install 'python-openrazer' or 'python3-openrazer' for your distribution."
+msgstr ""
+"Install 'python-openrazer' or 'python3-openrazer' for your distribution."
+
+#: polychromatic/troubleshoot/openrazer.py:110
+msgid "Your Python installation looks custom. Check your PATH and PYTHONPATH."
+msgstr "Your Python installation looks custom. Check your PATH and PYTHONPATH."
+
+#: polychromatic/troubleshoot/openrazer.py:118
+msgid ""
+"Found library for an older Python version at /usr/lib. Try re-installing."
+msgstr ""
+"Found library for an older Python version at /usr/lib. Try re-installing."
+
+#: polychromatic/troubleshoot/openrazer.py:120
+msgid "Currently running Python 3.10.0 from /usr/bin/python3"
+msgstr "Currently running Python 3.10.0 from /usr/bin/python3"
+
+#: polychromatic/troubleshoot/openrazer.py:123
+msgid "Tried path:"
+msgstr "Tried path:"
+
+#: polychromatic/troubleshoot/openrazer.py:135
+#: polychromatic/troubleshoot/openrazer.py:144
+#: polychromatic/troubleshoot/openrazer.py:157
+msgid "Kernel module sources are installed for DKMS"
+msgstr "Kernel module sources are installed for DKMS"
+
+#: polychromatic/troubleshoot/openrazer.py:137
+#: polychromatic/troubleshoot/openrazer.py:466
+msgid "Unable to check because the Python library is not available."
+msgstr "Unable to check because the Python library is not available."
+
+#: polychromatic/troubleshoot/openrazer.py:146
+#: polychromatic/troubleshoot/openrazer.py:159
+msgid "OpenRazer is a kernel module, typically built using DKMS."
+msgstr "OpenRazer is a kernel module, typically built using DKMS."
+
+#: polychromatic/troubleshoot/openrazer.py:147
+#: polychromatic/troubleshoot/openrazer.py:160
+msgid "Install the 'openrazer-driver-dkms' package for your distribution."
+msgstr "Install the 'openrazer-driver-dkms' package for your distribution."
+
+#: polychromatic/troubleshoot/openrazer.py:148
+msgid "Some distributions (like Gentoo) may use an alternate system to DKMS."
+msgstr "Some distributions (like Gentoo) may use an alternate system to DKMS."
+
+#: polychromatic/troubleshoot/openrazer.py:178
+msgid "Kernel module has been built for this kernel"
+msgstr "Kernel module has been built for this kernel"
+
+#: polychromatic/troubleshoot/openrazer.py:180
+msgid ""
+"Ensure you have the correct Linux kernel headers package installed for your "
+"distribution."
+msgstr ""
+"Ensure you have the correct Linux kernel headers package installed for your "
+"distribution."
+
+#: polychromatic/troubleshoot/openrazer.py:181
+msgid ""
+"Your distro's package system might not have rebuilt the module for this "
+"kernel. Try running:"
+msgstr ""
+"Your distro's package system might not have rebuilt the module for this "
+"kernel. Try running:"
+
+#: polychromatic/troubleshoot/openrazer.py:197
+#: polychromatic/troubleshoot/openrazer.py:208
+msgid "Kernel module can be probed"
+msgstr "Kernel module can be probed"
+
+#: polychromatic/troubleshoot/openrazer.py:199
+#: polychromatic/troubleshoot/openrazer.py:211
+#: polychromatic/troubleshoot/openrazer.py:225
+#: polychromatic/troubleshoot/openrazer.py:234
+msgid "OpenRazer uses these modules:"
+msgstr "OpenRazer uses these modules:"
+
+#: polychromatic/troubleshoot/openrazer.py:200
+#: polychromatic/troubleshoot/openrazer.py:235
+msgid ""
+"For full error details, run this and substitute 'razerkbd' as necessary:"
+msgstr ""
+"For full error details, run this and substitute 'razerkbd' as necessary:"
+
+#: polychromatic/troubleshoot/openrazer.py:202
+#: polychromatic/troubleshoot/openrazer.py:237
+msgid "No output from this command indicates success."
+msgstr "No output from this command indicates success."
+
+#: polychromatic/troubleshoot/openrazer.py:210
+#: polychromatic/troubleshoot/openrazer.py:226
+msgid "Could not check as '[]' is not installed."
+msgstr "Could not check as '[]' is not installed."
+
+#: polychromatic/troubleshoot/openrazer.py:223
+#: polychromatic/troubleshoot/openrazer.py:232
+msgid "Kernel module is loaded"
+msgstr "Kernel module is loaded"
+
+#: polychromatic/troubleshoot/openrazer.py:238
+#: polychromatic/troubleshoot/openrazer.py:293
+msgid "If you've just installed, it is recommended to restart the computer."
+msgstr "If you've just installed, it is recommended to restart the computer."
+
+#: polychromatic/troubleshoot/openrazer.py:246
+msgid ""
+"Secure Boot prevents the driver from loading, as OpenRazer's kernel modules "
+"built by DKMS are usually unsigned."
+msgstr ""
+"Secure Boot prevents the driver from loading, as OpenRazer's kernel modules "
+"built by DKMS are usually unsigned."
+
+#: polychromatic/troubleshoot/openrazer.py:268
+#: polychromatic/troubleshoot/openrazer.py:278
+msgid "Check Secure Boot (EFI) status"
+msgstr "Check Secure Boot (EFI) status"
+
+#: polychromatic/troubleshoot/openrazer.py:270
+msgid ""
+"Secure boot is enabled. Turn it off in the system's EFI settings or sign the "
+"modules yourself."
+msgstr ""
+"Secure boot is enabled. Turn it off in the system's EFI settings or sign the "
+"modules yourself."
+
+#: polychromatic/troubleshoot/openrazer.py:280
+msgid ""
+"Unable to automatically check. If it's enabled, turn it off in the system's "
+"EFI settings or sign the modules yourself."
+msgstr ""
+"Unable to automatically check. If it's enabled, turn it off in the system's "
+"EFI settings or sign the modules yourself."
+
+#: polychromatic/troubleshoot/openrazer.py:289
+msgid "User account has been added to the 'plugdev' group"
+msgstr "User account has been added to the 'plugdev' group"
+
+#: polychromatic/troubleshoot/openrazer.py:291
+msgid "Run this command, log out, then log back in to the computer:"
+msgstr "Run this command, log out, then log back in to the computer:"
+
+#: polychromatic/troubleshoot/openrazer.py:294
+msgid ""
+"This is required so that your user account (and daemon) has permission to "
+"access the driver files in /sys/bus/hid/drivers"
+msgstr ""
+"This is required so that your user account (and daemon) has permission to "
+"access the driver files in /sys/bus/hid/drivers"
+
+#: polychromatic/troubleshoot/openrazer.py:303
+#: polychromatic/troubleshoot/openrazer.py:313
+#: polychromatic/troubleshoot/openrazer.py:334
+msgid "Device can be accessed using plugdev permissions"
+msgstr "Device can be accessed using plugdev permissions"
+
+#: polychromatic/troubleshoot/openrazer.py:305
+msgid ""
+"Unable to check as the drivers sysfs path for this Linux kernel is "
+"non-standard."
+msgstr ""
+"Unable to check as the drivers sysfs path for this Linux kernel is "
+"non-standard."
+
+#: polychromatic/troubleshoot/openrazer.py:315
+msgid "Unable to check because OpenRazer's modules are not loaded."
+msgstr "Unable to check because OpenRazer's modules are not loaded."
+
+#: polychromatic/troubleshoot/openrazer.py:336
+msgid ""
+"Permissions for OpenRazer's device files (/sys/bus/hid/drivers) are not set "
+"correctly. They should be owned as root:plugdev (owner/group)"
+msgstr ""
+"Permissions for OpenRazer's device files (/sys/bus/hid/drivers) are not set "
+"correctly. They should be owned as root:plugdev (owner/group)"
+
+#: polychromatic/troubleshoot/openrazer.py:337
+msgid ""
+"Replugging the hardware and then restarting the daemon usually fixes the "
+"problem."
+msgstr ""
+"Replugging the hardware and then restarting the daemon usually fixes the "
+"problem."
+
+#: polychromatic/troubleshoot/openrazer.py:338
+msgid ""
+"Alternately, improperly configured udev rules (such as a missing PID) may "
+"cause this to happen."
+msgstr ""
+"Alternately, improperly configured udev rules (such as a missing PID) may "
+"cause this to happen."
+
+#: polychromatic/troubleshoot/openrazer.py:348
+msgid "Razer hardware is present for kernel"
+msgstr "Razer hardware is present for kernel"
+
+#: polychromatic/troubleshoot/openrazer.py:350
+msgid "The Linux kernel does not see hardware with a VID of 1532."
+msgstr "The Linux kernel does not see hardware with a VID of 1532."
+
+#: polychromatic/troubleshoot/openrazer.py:351
+msgid "Check the device and USB port is working. Try a different port."
+msgstr "Check the device and USB port is working. Try a different port."
+
+#: polychromatic/troubleshoot/openrazer.py:371
+#: polychromatic/troubleshoot/openrazer.py:402
+msgid "Check device compatibility"
+msgstr "Check device compatibility"
+
+#: polychromatic/troubleshoot/openrazer.py:373
+#: polychromatic/troubleshoot/openrazer.py:456
+msgid "Unable to retrieve this data from OpenRazer's website."
+msgstr "Unable to retrieve this data from OpenRazer's website."
+
+#: polychromatic/troubleshoot/openrazer.py:374
+#: polychromatic/troubleshoot/openrazer.py:457
+msgid ""
+"Check the OpenRazer website to confirm your device is listed as supported."
+msgstr ""
+"Check the OpenRazer website to confirm your device is listed as supported."
+
+#: polychromatic/troubleshoot/openrazer.py:375
+#: polychromatic/troubleshoot/openrazer.py:458
+msgid ""
+"If you're checking OpenRazer's GitHub repository, check the 'stable' branch."
+msgstr ""
+"If you're checking OpenRazer's GitHub repository, check the 'stable' branch."
+
+#: polychromatic/troubleshoot/openrazer.py:404
+msgid ""
+"The following PIDs are not supported in the latest stable release of "
+"OpenRazer:"
+msgstr ""
+"The following PIDs are not supported in the latest stable release of "
+"OpenRazer:"
+
+#: polychromatic/troubleshoot/openrazer.py:406
+msgid ""
+"Check OpenRazer's issues and pull requests to see the status for your "
+"device. Create an issue if necessary."
+msgstr ""
+"Check OpenRazer's issues and pull requests to see the status for your "
+"device. Create an issue if necessary."
+
+#: polychromatic/troubleshoot/openrazer.py:443
+#: polychromatic/troubleshoot/openrazer.py:454
+#: polychromatic/troubleshoot/openrazer.py:464
+msgid "OpenRazer is the latest version"
+msgstr "OpenRazer is the latest version"
+
+#: polychromatic/troubleshoot/openrazer.py:445
+msgid "There is a new version of OpenRazer available."
+msgstr "There is a new version of OpenRazer available."
+
+#: polychromatic/troubleshoot/openrazer.py:446
+msgid ""
+"New versions add support for more devices and address device-specific issues."
+msgstr ""
+"New versions add support for more devices and address device-specific issues."
+
+#: polychromatic/troubleshoot/openrazer.py:447
+msgid "Your version: 0.0.0"
+msgstr "Your version: 0.0.0"
+
+#: polychromatic/troubleshoot/openrazer.py:448
+msgid "Latest version: 0.0.0"
+msgstr "Latest version: 0.0.0"
+
+#: preferences.ui.h:2
+msgid "Controller"
+msgstr "Controller"
+
+#. Preferences Label
+#: preferences.ui.h:4
+msgid "Appearance"
+msgstr "Appearance"
+
+#. Preferences Checkbox
+#: preferences.ui.h:6
+msgid "Use system theme"
+msgstr "Use system theme"
+
+#. Text appears underneath a checkbox in the preferences dialog
+#: preferences.ui.h:8
+msgid ""
+"Not all distros support this option out of the box. Additional steps may be "
+"required before your theme displays in Qt apps on a GTK desktop."
+msgstr ""
+"Not all distros support this option out of the box. Additional steps may be "
+"required before your theme displays in Qt apps on a GTK desktop."
+
+#. Preferences Checkbox
+#: preferences.ui.h:10
+msgid "Hide menu bar"
+msgstr "Hide menu bar"
+
+#. Text appears underneath a checkbox in the preferences dialog
+#: preferences.ui.h:12
+msgid "Press Alt to temporarily show the menu bar while it is hidden."
+msgstr "Press Alt to temporarily show the menu bar while it is hidden."
+
+#: preferences.ui.h:14
+msgid "Download device images"
+msgstr "Download device images"
+
+#. Text appears underneath a checkbox in the preferences dialog
+#: preferences.ui.h:16
+msgid "These images may be under a different copyright or license."
+msgstr "These images may be under a different copyright or license."
+
+#: preferences.ui.h:17
+msgid "Toolbar"
+msgstr "Toolbar"
+
+#: preferences.ui.h:18
+msgid "Follow System Style"
+msgstr "Follow System Style"
+
+#: preferences.ui.h:19
+msgid "Icons Only"
+msgstr "Icons Only"
+
+#: preferences.ui.h:20
+msgid "Text Only"
+msgstr "Text Only"
+
+#: preferences.ui.h:21
+msgid "Text Alongside Icons"
+msgstr "Text Alongside Icons"
+
+#: preferences.ui.h:22
+msgid "Text Under Icons"
+msgstr "Text Under Icons"
+
+#. Preferences Label
+#: preferences.ui.h:24
+msgid "Landing Tab"
+msgstr "Landing Tab"
+
+#. Preferences Label
+#: preferences.ui.h:29
+msgid "Window Behaviour"
+msgstr "Window Behavior"
+
+#. Preferences dropdown option
+#: preferences.ui.h:31
+msgid "Always open in the center"
+msgstr "Always open in the center"
+
+#. Preferences dropdown option
+#: preferences.ui.h:33
+msgid "Remember last position and size"
+msgstr "Remember last position and size"
+
+#. Preferences dropdown option
+#: preferences.ui.h:35
+msgid "Let the window manager decide"
+msgstr "Let the window manager decide"
+
+#: preferences.ui.h:36
+msgid "Maximized at start"
+msgstr "Maximized at start"
+
+#. Preferences Label
+#: preferences.ui.h:41
+msgid "Renderer"
+msgstr "Renderer"
+
+#: preferences.ui.h:42
+msgid "Automatic"
+msgstr "Automatic"
+
+#: preferences.ui.h:43
+msgid "GTK Status Icon (Legacy)"
+msgstr "GTK Status Icon (Legacy)"
+
+#: preferences.ui.h:44
+msgid "Ayatana Indicators"
+msgstr "Ayatana Indicators"
+
+#. Preferences Label
+#: preferences.ui.h:47
+msgid "Autostart Delay"
+msgstr "Autostart Delay"
+
+#. Suffix for a spinner control
+#: preferences.ui.h:49
+msgid "second(s)"
+msgstr "second(s)"
+
+#: preferences.ui.h:50
+msgid ""
+"On some desktop environments, due to race conditions, it may be necessary to "
+"wait so the applet's icon or device list is loaded properly."
+msgstr ""
+"On some desktop environments, due to race conditions, it may be necessary to "
+"wait so the applet's icon or device list is loaded properly."
+
+#: preferences.ui.h:51
+msgid "Start the tray applet when I log on"
+msgstr "Start the tray applet when I log on"
+
+#. Text appears underneath a checkbox in the preferences dialog
+#: preferences.ui.h:53
+msgid "Your desktop enviroment might not support this feature."
+msgstr "Your desktop enviroment might not support this feature."
+
+#: preferences.ui.h:54
+msgid "Customise"
+msgstr "Customize"
+
+#: preferences.ui.h:59
+msgid "DPI Stages"
+msgstr "DPI Stages"
+
+#: preferences.ui.h:60
+msgid "Now stored per-device: Click \"Edit\" for the DPI in the Devices tab."
+msgstr "Now stored per-device: Click \"Edit\" for the DPI in the Devices tab."
+
+#: preferences.ui.h:61
+msgid "Editor"
+msgstr "Editor"
+
+#: preferences.ui.h:62
+msgid "Use system cursors"
+msgstr "Use system cursors"
+
+#: preferences.ui.h:63
+msgid "Behaviour"
+msgstr "Behavior"
+
+#: preferences.ui.h:64
+msgid "Hide key labels"
+msgstr "Hide key labels"
+
+#: preferences.ui.h:65
+msgid "Show shades for my saved colours"
+msgstr "Show shades for my saved colors"
+
+#: preferences.ui.h:66
+msgid "Preview effect on the physical hardware"
+msgstr "Preview effect on the physical hardware"
+
+#: preferences.ui.h:67
+msgid "Suppress delete confirmation dialog box"
+msgstr "Suppress delete confirmation dialog box"
+
+#: procviewer.ui.h:1
+msgid "Background Tasks"
+msgstr "Background Tasks"
+
+#. Informative text in the Process Viewer window
+#: procviewer.ui.h:3
+msgid ""
+"To provide background features (like software effects and triggers), "
+"additional processes may be spawned."
+msgstr ""
+"To provide background features (like software effects and triggers), "
+"additional processes may be spawned."
+
+#. Column header for Process Viewer window
+#: procviewer.ui.h:5
+msgid "Task"
+msgstr "Task"
+
+#: troubleshooter.ui.h:1
+msgid "Troubleshooter"
+msgstr "Troubleshooter"
+
+#. Shown when the troubleshooter successfully
+#: troubleshooter.ui.h:3
+msgid "Troubleshooting complete!"
+msgstr "Troubleshooting complete!"
+
+#. Column header for the troubleshooting results
+#: troubleshooter.ui.h:5
+msgid "Result"
+msgstr "Result"
+
+#. Column header for the troubleshooting results
+#: troubleshooter.ui.h:7
+msgid "Check"
+msgstr "Check"
+
+#: troubleshooter.ui.h:8
+msgid "Copy to Clipboard"
+msgstr "Copy to Clipboard"
+
+#~ msgid ""
+#~ "This supported device wasn't detected by the OpenRazer daemon (v1.0.0)"
+#~ msgstr ""
+#~ "This supported device wasn't detected by the OpenRazer daemon (v1.0.0)"
+
+#~ msgid "Untitled Effect"
+#~ msgstr "Untitled Effect"
+
+#~ msgid "Author URL"
+#~ msgstr "Author URL"
+
+#~ msgid "Sync effects across devices"
+#~ msgstr "Sync effects across devices"
+
+#~ msgid ""
+#~ "This feature is incompatible. Use \"Apply to All\" from the Devices tab."
+#~ msgstr ""
+#~ "This feature is incompatible. Use \"Apply to All\" from the Devices tab."
+
+#~ msgid "Periodically notify battery status (for supported devices)"
+#~ msgstr "Periodically notify battery status (for supported devices)"
+
+#~ msgid "Notification Frequency"
+#~ msgstr "Notification Frequency"
+
+#~ msgid "Apply persistence settings on daemon start"
+#~ msgstr "Apply persistence settings on daemon start"
+
+#~ msgid ""
+#~ "If you have a Polychromatic trigger configured to run at start-up, it is "
+#~ "recommended to turn this option off."
+#~ msgstr ""
+#~ "If you have a Polychromatic trigger configured to run at start-up, it is "
+#~ "recommended to turn this option off."
+
+#~ msgid ""
+#~ "OpenRazer stores image URLs pointing to a CDN. These images may be "
+#~ "proprietary. This application retrieves images for your devices once and "
+#~ "caches them locally."
+#~ msgstr ""
+#~ "OpenRazer stores image URLs pointing to a CDN. These images may be "
+#~ "proprietary. This application retrieves images for your devices once and "
+#~ "caches them locally."
+
+#~ msgid "Automatically determine from hardware"
+#~ msgstr "Automatically determine from hardware"
+
+#~ msgid "Reset to defaults"
+#~ msgstr "Reset to defaults"
+
+#~ msgid "Reset"
+#~ msgstr "Reset"
+
+#~ msgid "Backends"
+#~ msgstr "Backends"
+
+#~ msgid "Configure"
+#~ msgstr "Configure"
+
+#~ msgid "View Log"
+#~ msgstr "View Log"
+
+#~ msgid "None"
+#~ msgstr "None"
+
+#~ msgid "DPI Buttons"
+#~ msgstr "DPI Buttons"
+
+#~ msgid "Sync DPI to Hardware"
+#~ msgstr "Sync DPI to Hardware"
+
+#~ msgid "Low Power Mode"
+#~ msgstr "Low Power Mode"
+
+#~ msgid "Key Mapping"
+#~ msgstr "Key Mapping"
+
+#~ msgid "About Key Mapping"
+#~ msgstr "About Key Mapping"
+
+#~ msgid ""
+#~ "Currently, OpenRazer and Polychromatic do not support a convenient key "
+#~ "rebinding feature. Polychromatic intends to integrate a key mapping "
+#~ "solution in a future version.\n"
+#~ "\n"
+#~ "In the meantime, there are third party projects which provide key "
+#~ "remapping agnostic to any input device.\n"
+#~ "\n"
+#~ "For more information, visit:\n"
+#~ "https://polychromatic.app/permalink/keymapping/"
+#~ msgstr ""
+#~ "Currently, OpenRazer and Polychromatic do not support a convenient key "
+#~ "rebinding feature. Polychromatic intends to integrate a key mapping "
+#~ "solution in a future version.\n"
+#~ "\n"
+#~ "In the meantime, there are third party projects which provide key "
+#~ "remapping agnostic to any input device.\n"
+#~ "\n"
+#~ "For more information, visit:\n"
+#~ "https://polychromatic.app/permalink/keymapping/"
+
+#~ msgid "(Multiple)"
+#~ msgstr "(Multiple)"
+
+#~ msgid ""
+#~ "Please set up the DPI stages in Polychromatic's preferences (under "
+#~ "Customise)."
+#~ msgstr ""
+#~ "Please set up the DPI stages in Polychromatic's preferences (under "
+#~ "Customize)."
+
+#~ msgid "When Fully Charged"
+#~ msgstr "When Fully Charged"
+
+#~ msgid ""
+#~ "An error occurred while reading this device. This could be a bug in "
+#~ "either Polychromatic or []."
+#~ msgstr ""
+#~ "An error occurred while reading this device. This could be a bug in "
+#~ "either Polychromatic or []."
+
+#~ msgid ""
+#~ "Try selecting this device again, or restart the backend and application. "
+#~ "If this keeps happening, take note of the details below and report as a "
+#~ "bug on the relevant project's issue tracker."
+#~ msgstr ""
+#~ "Try selecting this device again, or restart the backend and application. "
+#~ "If this keeps happening, take note of the details below and report as a "
+#~ "bug on the relevant project's issue tracker."
+
+#~ msgid "Preset:"
+#~ msgstr "Preset:"
+
+#~ msgid "Playing:"
+#~ msgstr "Playing:"
+
+#~ msgid ""
+#~ "[] deemed this request to be invalid or unsupported. This could be caused "
+#~ "by an implementation issue with Polychromatic's backend module for []."
+#~ msgstr ""
+#~ "[] deemed this request to be invalid or unsupported. This could be caused "
+#~ "by an implementation issue with Polychromatic's backend module for []."
+
+#~ msgid ""
+#~ "If this message appears again, try restarting the backend/application, "
+#~ "otherwise please report this as a bug."
+#~ msgstr ""
+#~ "If this message appears again, try restarting the backend/application, "
+#~ "otherwise please report this as a bug."
+
+#~ msgid "Device Unavailable"
+#~ msgstr "Device Unavailable"
+
+#~ msgid ""
+#~ "The request could not be completed due to devices being removed/inserted."
+#~ msgstr ""
+#~ "The request could not be completed due to devices being removed/inserted."
+
+#~ msgid "Please refresh and try again."
+#~ msgstr "Please refresh and try again."
+
+#~ msgid ""
+#~ "[] encountered an error processing this request. Try restarting the "
+#~ "backend/application. If this message keeps appearing, please report this "
+#~ "as a bug on []'s issue tracker."
+#~ msgstr ""
+#~ "[] encountered an error processing this request. Try restarting the "
+#~ "backend/application. If this message keeps appearing, please report this "
+#~ "as a bug on []'s issue tracker."
+
+#~ msgid "[] hasn't registered this device."
+#~ msgstr "[] hasn't registered this device."
+
+#~ msgid ""
+#~ "This could indicate an error initialising the backend or an installation "
+#~ "problem."
+#~ msgstr ""
+#~ "This could indicate an error initializing the backend or an installation "
+#~ "problem."
+
+#~ msgid ""
+#~ "Alternately, this may happen if this hardware is not yet supported under "
+#~ "this version of []."
+#~ msgstr ""
+#~ "Alternately, this may happen if this hardware is not yet supported under "
+#~ "this version of []."
+
+#~ msgid "Error Details"
+#~ msgstr "Error Details"
+
+#~ msgid "There was a problem opening this device"
+#~ msgstr "There was a problem opening this device"
+
+#~ msgid "View Details"
+#~ msgstr "View Details"
+
+#~ msgid "Internal Device ID"
+#~ msgstr "Internal Device ID"
+
+#~ msgid "Image"
+#~ msgstr "Image"
+
+#~ msgid "User DPI Stages"
+#~ msgstr "User DPI Stages"
+
+#~ msgid "(Not used)"
+#~ msgstr "(Not used)"
+
+#~ msgid "Internal ID"
+#~ msgstr "Internal ID"
+
+#~ msgid "Internal Data"
+#~ msgstr "Internal Data"
+
+#~ msgid "Colour Input []"
+#~ msgstr "Color Input []"
+
+#~ msgid "Mouse Acceleration"
+#~ msgstr "Mouse Acceleration"
+
+#~ msgid ""
+#~ "This feature is provided by your operating system. Polychromatic doesn't "
+#~ "recognise this desktop environment to automatically open the settings "
+#~ "window for you.\n"
+#~ "\n"
+#~ "Look for 'mouse', 'input' or 'hardware' in your System Settings."
+#~ msgstr ""
+#~ "This feature is provided by your operating system. Polychromatic doesn't "
+#~ "recognize this desktop environment to automatically open the settings "
+#~ "window for you.\n"
+#~ "\n"
+#~ "Look for 'mouse', 'input' or 'hardware' in your System Settings."
+
+#~ msgid "Open Mouse Settings"
+#~ msgstr "Open Mouse Settings"
+
+#~ msgid ""
+#~ "Live preview isn't possible yet as the backends haven't finished "
+#~ "initialising."
+#~ msgstr ""
+#~ "Live preview isn't possible yet as the backends haven't finished "
+#~ "initializing."
+
+#~ msgid ""
+#~ "They might be ready now, try again. Or, choose Ignore to continue without "
+#~ "a live preview on physical hardware."
+#~ msgstr ""
+#~ "They might be ready now, try again. Or, choose Ignore to continue without "
+#~ "a live preview on physical hardware."
+
+#~ msgid "An error occurred while initialising '[]' for live preview."
+#~ msgstr "An error occurred while initializing '[]' for live preview."
+
+#~ msgid "Backend Not Ready"
+#~ msgstr "Backend Not Ready"
+
+#~ msgid ""
+#~ "The application is still waiting for the backends to finish initialising "
+#~ "so you can pick a device to map your new effect."
+#~ msgstr ""
+#~ "The application is still waiting for the backends to finish initializing "
+#~ "so you can pick a device to map your new effect."
+
+#~ msgid "This might be ready in a few moments."
+#~ msgstr "This might be ready in a few moments."
+
+#~ msgid "Restart Backend?"
+#~ msgstr "Restart Backend?"
+
+#~ msgid "Not Installed"
+#~ msgstr "Not Installed"
+
+#~ msgid "Error loading the module"
+#~ msgstr "Error loading the module"
+
+#~ msgid "Waiting for backends to be ready..."
+#~ msgstr "Waiting for backends to be ready..."
+
+#~ msgid "Check the PYTHONPATH environment variable is correct."
+#~ msgstr "Check the PYTHONPATH environment variable is correct."
+
+#~ msgid "For full error details, run:"
+#~ msgstr "For full error details, run:"
+
+#~ msgid "If not, the udev rules for your distribution need investigating."
+#~ msgstr "If not, the udev rules for your distribution need investigating."
+
+#~ msgid "Restart the daemon to clear this message."
+#~ msgstr "Restart the daemon to clear this message."
+
+#~ msgid "The log does not exist. Start the daemon and try again."
+#~ msgstr "The log does not exist. Start the daemon and try again."

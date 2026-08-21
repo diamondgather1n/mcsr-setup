@@ -1,0 +1,6 @@
+request set_presentation_hint {
+    hint: u32,
+}
+
+request destroy (destructor) {
+}

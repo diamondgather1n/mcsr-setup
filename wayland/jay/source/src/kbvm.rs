@@ -1,0 +1,357 @@
+use {
+    crate::{
+        backend::KeyState,
+        ifs::wl_seat::WlSeatGlobal,
+        keyboard::{DynKeyboardState, KeyboardState, KeyboardStateId, KeymapFd},
+        utils::{
+            oserror::{OsError, OsErrorExt},
+            syncqueue::SyncQueue,
+            vecset::VecSet,
+        },
+    },
+    kbvm::{
+        GroupIndex, Keycode,
+        lookup::LookupTable,
+        state_machine::{self, Direction, Event, StateMachine},
+        xkb::{
+            self, Keymap,
+            diagnostic::{Diagnostic, WriteToLog},
+            keymap::{Indicator, IndicatorMatcher},
+            rmlvo::Group,
+        },
+    },
+    std::{
+        cell::{Cell, Ref, RefCell},
+        io::Write,
+        rc::Rc,
+    },
+    thiserror::Error,
+    uapi::c,
+};
+
+#[derive(Debug, Error)]
+pub enum KbvmError {
+    #[error("could not parse the keymap")]
+    CouldNotParseKeymap(#[source] Diagnostic),
+    #[error("Could not create a keymap memfd")]
+    KeymapMemfd(#[source] OsError),
+}
+
+pub struct KbvmContext {
+    pub ctx: xkb::Context,
+}
+
+impl Default for KbvmContext {
+    fn default() -> Self {
+        let mut ctx = xkb::Context::builder();
+        ctx.enable_environment(true);
+        Self { ctx: ctx.build() }
+    }
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+pub struct KbvmMapId([u8; 32]);
+
+pub struct KbvmMap {
+    pub id: KbvmMapId,
+    pub state_machine: StateMachine,
+    pub lookup_table: LookupTable,
+    pub map_text: String,
+    pub map: KeymapFd,
+    pub xwayland_map: KeymapFd,
+    pub has_indicators: bool,
+    pub num_lock: Option<IndicatorMatcher>,
+    pub caps_lock: Option<IndicatorMatcher>,
+    pub scroll_lock: Option<IndicatorMatcher>,
+    pub compose: Option<IndicatorMatcher>,
+    pub kana: Option<IndicatorMatcher>,
+    pub shortcuts_group: Option<GroupIndex>,
+}
+
+#[derive(Copy, Clone)]
+pub enum EventOrRepeat {
+    Event(Event),
+    Repeat(Keycode, bool),
+}
+
+pub struct KbvmState {
+    pub map: Rc<KbvmMap>,
+    pub state: state_machine::State,
+    pub kb_state: KeyboardState,
+}
+
+pub struct PhysicalKeyboardState {
+    state: Rc<RefCell<KbvmState>>,
+    inner: RefCell<PkInner>,
+    events: SyncQueue<EventOrRepeat>,
+    flushing: Cell<bool>,
+}
+
+#[derive(Default)]
+struct PkInner {
+    pressed_keys: VecSet<u32>,
+    event_stash: Vec<Event>,
+}
+
+impl DynKeyboardState for RefCell<KbvmState> {
+    fn borrow(&self) -> Ref<'_, KeyboardState> {
+        Ref::map(self.borrow(), |v| &v.kb_state)
+    }
+}
+
+impl KbvmContext {
+    pub fn parse_keymap(
+        &self,
+        keymap: &[u8],
+        shortcuts_group: Option<GroupIndex>,
+    ) -> Result<Rc<KbvmMap>, KbvmError> {
+        let map = self
+            .ctx
+            .keymap_from_bytes(WriteToLog, None, keymap)
+            .map_err(KbvmError::CouldNotParseKeymap)?;
+        let id = keymap_id(keymap, shortcuts_group);
+        self.create_keymap(id, map, shortcuts_group)
+    }
+
+    pub fn keymap_from_rmlvo(
+        &self,
+        rules: Option<&str>,
+        model: Option<&str>,
+        layout: Option<&str>,
+        variant: Option<&str>,
+        options: Option<&str>,
+        shortcuts_group: Option<GroupIndex>,
+    ) -> Result<Rc<KbvmMap>, KbvmError> {
+        let mut groups = None::<Vec<_>>;
+        if layout.is_some() || variant.is_some() {
+            groups = Some(
+                Group::from_layouts_and_variants(
+                    layout.unwrap_or_default(),
+                    variant.unwrap_or_default(),
+                )
+                .collect(),
+            );
+        }
+        let mut options_vec = None::<Vec<_>>;
+        if let Some(options) = options {
+            options_vec = Some(options.split(",").collect());
+        }
+        self.keymap_from_names(
+            rules,
+            model,
+            groups.as_deref(),
+            options_vec.as_deref(),
+            shortcuts_group,
+        )
+    }
+
+    pub fn keymap_from_names(
+        &self,
+        rules: Option<&str>,
+        model: Option<&str>,
+        groups: Option<&[Group<'_>]>,
+        options: Option<&[&str]>,
+        shortcuts_group: Option<GroupIndex>,
+    ) -> Result<Rc<KbvmMap>, KbvmError> {
+        let map = self
+            .ctx
+            .keymap_from_names(WriteToLog, rules, model, groups, options);
+        let id = keymap_id(map.format().to_string().as_bytes(), shortcuts_group);
+        self.create_keymap(id, map, shortcuts_group)
+    }
+
+    fn create_keymap(
+        &self,
+        id: KbvmMapId,
+        map: Keymap,
+        shortcuts_group: Option<GroupIndex>,
+    ) -> Result<Rc<KbvmMap>, KbvmError> {
+        let mut has_indicators = false;
+        let mut num_lock = None;
+        let mut caps_lock = None;
+        let mut scroll_lock = None;
+        let mut compose = None;
+        let mut kana = None;
+        for indicator in map.indicators() {
+            match indicator.name() {
+                Indicator::NUM_LOCK => num_lock = Some(indicator.matcher()),
+                Indicator::CAPS_LOCK => caps_lock = Some(indicator.matcher()),
+                Indicator::SCROLL_LOCK => scroll_lock = Some(indicator.matcher()),
+                Indicator::COMPOSE => compose = Some(indicator.matcher()),
+                Indicator::KANA => kana = Some(indicator.matcher()),
+                _ => continue,
+            }
+            has_indicators = true;
+        }
+        let builder = map.to_builder();
+        let (_, xwayland_map) = create_keymap_memfd(&map, true).map_err(KbvmError::KeymapMemfd)?;
+        let (map_text, map) = create_keymap_memfd(&map, false).map_err(KbvmError::KeymapMemfd)?;
+        Ok(Rc::new(KbvmMap {
+            id,
+            state_machine: builder.build_state_machine(),
+            map,
+            map_text,
+            xwayland_map,
+            lookup_table: builder.build_lookup_table(),
+            has_indicators,
+            num_lock,
+            caps_lock,
+            scroll_lock,
+            compose,
+            kana,
+            shortcuts_group,
+        }))
+    }
+}
+
+fn create_keymap_memfd(map: &Keymap, xwayland: bool) -> Result<(String, KeymapFd), OsError> {
+    let mut format = map.format();
+    if xwayland {
+        format = format.lookup_only(true).rename_long_keys(true);
+    }
+    let str = format!("{}\n", format);
+    let mut memfd =
+        uapi::memfd_create("keymap", c::MFD_CLOEXEC | c::MFD_ALLOW_SEALING).to_os_error()?;
+    memfd.write_all(str.as_bytes())?;
+    memfd.write_all(&[0])?;
+    uapi::lseek(memfd.raw(), 0, c::SEEK_SET).to_os_error()?;
+    uapi::fcntl_add_seals(
+        memfd.raw(),
+        c::F_SEAL_SEAL | c::F_SEAL_GROW | c::F_SEAL_SHRINK | c::F_SEAL_WRITE,
+    )
+    .to_os_error()?;
+    let fd = KeymapFd {
+        map: Rc::new(memfd),
+        len: str.len() + 1,
+    };
+    Ok((str, fd))
+}
+
+impl KbvmMap {
+    pub fn state(self: &Rc<Self>, id: KeyboardStateId) -> KbvmState {
+        KbvmState {
+            map: self.clone(),
+            state: self.state_machine.create_state(),
+            kb_state: KeyboardState {
+                id,
+                map: self.clone(),
+                pressed_keys: Default::default(),
+                mods: Default::default(),
+                leds: Default::default(),
+                leds_changed: Default::default(),
+            },
+        }
+    }
+}
+
+impl KbvmState {
+    pub fn apply_events(&mut self, events: &SyncQueue<EventOrRepeat>) {
+        let state = &mut self.kb_state;
+        while let Some(event) = events.pop() {
+            let EventOrRepeat::Event(event) = event else {
+                continue;
+            };
+            state.apply_event(event);
+            match event {
+                Event::KeyDown(kc) => {
+                    state.pressed_keys.insert(kc.to_evdev());
+                }
+                Event::KeyUp(kc) => {
+                    state.pressed_keys.remove(&kc.to_evdev());
+                }
+                _ => {}
+            }
+        }
+    }
+}
+
+impl PhysicalKeyboardState {
+    pub fn new(state: &Rc<RefCell<KbvmState>>) -> Self {
+        Self {
+            state: state.clone(),
+            inner: Default::default(),
+            events: Default::default(),
+            flushing: Cell::new(false),
+        }
+    }
+
+    fn flush(&self, time_usec: u64, seat: &Rc<WlSeatGlobal>) {
+        if self.flushing.replace(true) {
+            return;
+        }
+        seat.key_events(time_usec, &self.events, &self.state);
+        self.flushing.set(false);
+    }
+
+    pub fn update(&self, time_usec: u64, seat: &Rc<WlSeatGlobal>, key: u32, key_state: KeyState) {
+        {
+            let inner = &mut *self.inner.borrow_mut();
+            match key_state {
+                KeyState::Released => {
+                    if !inner.pressed_keys.remove(&key) {
+                        return;
+                    }
+                }
+                KeyState::Pressed => {
+                    if !inner.pressed_keys.insert(key) {
+                        return;
+                    }
+                }
+                KeyState::Repeated => {
+                    return;
+                }
+            }
+            let state = &mut *self.state.borrow_mut();
+            state.map.state_machine.handle_key(
+                &mut state.state,
+                &mut inner.event_stash,
+                Keycode::from_evdev(key),
+                match key_state {
+                    KeyState::Released => Direction::Up,
+                    KeyState::Pressed => Direction::Down,
+                    KeyState::Repeated => unreachable!(),
+                },
+            );
+            for event in inner.event_stash.drain(..) {
+                self.events.push(EventOrRepeat::Event(event));
+            }
+        }
+        self.flush(time_usec, seat);
+    }
+
+    pub fn destroy(&self, time_usec: u64, seat: &Rc<WlSeatGlobal>) {
+        {
+            let inner = &mut *self.inner.borrow_mut();
+            let state = &mut *self.state.borrow_mut();
+            let sm = &state.map.state_machine;
+            while let Some(key) = inner.pressed_keys.pop() {
+                sm.handle_key(
+                    &mut state.state,
+                    &mut inner.event_stash,
+                    Keycode::from_evdev(key),
+                    Direction::Up,
+                );
+            }
+            for event in inner.event_stash.drain(..) {
+                self.events.push(EventOrRepeat::Event(event));
+            }
+        }
+        self.flush(time_usec, seat);
+    }
+}
+
+fn keymap_id(map: &[u8], shortcuts_group: Option<GroupIndex>) -> KbvmMapId {
+    let mut hasher = blake3::Hasher::new();
+    hasher.update(&map.len().to_ne_bytes());
+    hasher.update(map);
+    match shortcuts_group {
+        None => {
+            hasher.update(&[0]);
+        }
+        Some(n) => {
+            hasher.update(&[1]);
+            hasher.update(&n.0.to_ne_bytes());
+        }
+    }
+    KbvmMapId(*hasher.finalize().as_bytes())
+}

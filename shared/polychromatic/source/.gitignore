@@ -1,0 +1,17 @@
+# Cache
+__pycache__
+*.pyc
+.sass-cache/
+
+# Temporary
+data/qt/*.h
+locale/tmp/
+
+# Compiled
+build/
+locale/*/LC_MESSAGES/
+*.mo
+
+# Development
+savedatadev/
+/venv/

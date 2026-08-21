@@ -1,0 +1,6 @@
+request destroy (destructor) {
+}
+
+request set_content_type {
+    content_type: u32,
+}

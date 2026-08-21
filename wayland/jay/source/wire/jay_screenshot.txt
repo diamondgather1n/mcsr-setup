@@ -1,0 +1,31 @@
+# events
+
+event dmabuf {
+    drm_dev: fd,
+    fd: fd,
+    width: u32,
+    height: u32,
+    offset: u32,
+    stride: u32,
+    modifier: u64_rev,
+}
+
+event error {
+    msg: str,
+}
+
+event drm_dev (since = 6) {
+    drm_dev: fd,
+}
+
+event plane (since = 6) {
+    fd: fd,
+    offset: u32,
+    stride: u32,
+}
+
+event dmabuf2 (since = 6) {
+    width: i32,
+    height: i32,
+    modifier: pod(u64),
+}

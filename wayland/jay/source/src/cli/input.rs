@@ -1,0 +1,1381 @@
+use {
+    crate::{
+        backend::{
+            InputDeviceAccelProfile, InputDeviceCapability, InputDeviceClickMethod,
+            InputDeviceScrollMethod,
+        },
+        cli::{
+            GlobalArgs,
+            json::{JsonInputData, JsonInputDevice, JsonSeat, jsonl},
+        },
+        clientmem::ClientMem,
+        evdev::input_event_codes::InputEventCode,
+        libinput::consts::{
+            ConfigClickMethod, ConfigScrollMethod, LIBINPUT_CONFIG_ACCEL_PROFILE_ADAPTIVE,
+            LIBINPUT_CONFIG_ACCEL_PROFILE_FLAT, LIBINPUT_CONFIG_CLICK_METHOD_BUTTON_AREAS,
+            LIBINPUT_CONFIG_CLICK_METHOD_CLICKFINGER, LIBINPUT_CONFIG_CLICK_METHOD_NONE,
+            LIBINPUT_CONFIG_SCROLL_2FG, LIBINPUT_CONFIG_SCROLL_EDGE,
+            LIBINPUT_CONFIG_SCROLL_NO_SCROLL, LIBINPUT_CONFIG_SCROLL_ON_BUTTON_DOWN,
+        },
+        object::Version,
+        tools::tool_client::{Handle, ToolClient, with_tool_client},
+        utils::{
+            bitflags::BitflagsExt, errorfmt::ErrorFmt, static_text::StaticText,
+            string_ext::StringExt,
+        },
+        wire::{
+            JayCompositorId, JayInputId, JayKeymapBuilderId, jay_compositor, jay_input,
+            jay_keymap_builder,
+        },
+    },
+    ahash::AHashMap,
+    clap::{Args, Subcommand, ValueEnum, ValueHint},
+    derivative::Derivative,
+    isnt::std_1::vec::IsntVecExt,
+    jay_toml_config::input_event_code_from_name,
+    std::{
+        cell::RefCell,
+        io::{Read, Write, stdin, stdout},
+        mem,
+        ops::{Deref, DerefMut},
+        rc::Rc,
+    },
+    thiserror::Error,
+    uapi::{OwnedFd, c},
+};
+
+#[derive(Args, Debug)]
+pub struct InputArgs {
+    #[clap(subcommand)]
+    pub command: Option<InputCmd>,
+}
+
+#[derive(Subcommand, Debug, Derivative)]
+#[derivative(Default)]
+pub enum InputCmd {
+    /// Show the current settings.
+    #[derivative(Default)]
+    Show(ShowArgs),
+    /// Modify the settings of a seat.
+    Seat(SeatArgs),
+    /// Modify the settings of a device.
+    Device(DeviceArgs),
+}
+
+#[derive(Args, Debug, Default)]
+pub struct ShowArgs {
+    /// Print more information about devices.
+    #[arg(short, long)]
+    pub verbose: bool,
+}
+
+#[derive(Args, Debug)]
+pub struct SeatArgs {
+    /// The seat to modify, e.g. default.
+    pub seat: String,
+    #[clap(subcommand)]
+    pub command: Option<SeatCommand>,
+}
+
+#[derive(Args, Debug)]
+pub struct DeviceArgs {
+    /// The ID of the device to modify.
+    pub device: u32,
+    #[clap(subcommand)]
+    pub command: Option<DeviceCommand>,
+}
+
+#[derive(Subcommand, Debug, Clone, Derivative)]
+#[derivative(Default)]
+pub enum SeatCommand {
+    /// Show information about this seat.
+    #[derivative(Default)]
+    Show(SeatShowArgs),
+    /// Set the repeat rate of the keyboard.
+    SetRepeatRate(SetRepeatRateArgs),
+    /// Set the keymap.
+    SetKeymap(SetKeymapArgs),
+    /// Set the keymap from RMLVO names.
+    SetKeymapFromNames(SetKeymapFromNamesArgs),
+    /// Retrieve the keymap.
+    Keymap,
+    /// Configure whether this seat uses the hardware cursor.
+    UseHardwareCursor(UseHardwareCursorArgs),
+    /// Set the size of the cursor.
+    SetCursorSize(SetCursorSizeArgs),
+    /// Configure the simple, XCompose based input method.
+    SimpleIm(SimpleImArgs),
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct SimpleImArgs {
+    #[clap(subcommand)]
+    pub command: SimpleImCommand,
+}
+
+#[derive(Subcommand, Debug, Clone)]
+pub enum SimpleImCommand {
+    /// Enable the simple IM.
+    ///
+    /// Even if the IM is enabled, it will not be used if an external IM is running.
+    Enable,
+    /// Disable the simple IM.
+    Disable,
+    /// Reload the simple IM.
+    ///
+    /// This is useful if you change the XCompose files after starting the compositor.
+    Reload,
+}
+
+#[derive(Args, Debug, Default, Clone)]
+pub struct SeatShowArgs {
+    /// Print more information about devices.
+    #[arg(short, long)]
+    pub verbose: bool,
+}
+
+#[derive(Subcommand, Debug, Clone, Default)]
+pub enum DeviceCommand {
+    /// Show information about this device.
+    #[default]
+    Show,
+    /// Set the acceleration profile.
+    SetAccelProfile(SetAccelProfileArgs),
+    /// Set the acceleration speed.
+    SetAccelSpeed(SetAccelSpeedArgs),
+    /// Set whether tap is enabled.
+    SetTapEnabled(SetTapEnabledArgs),
+    /// Set whether tap-drag is enabled.
+    SetTapDragEnabled(SetTapDragEnabledArgs),
+    /// Set whether tap-drag-lock is enabled.
+    SetTapDragLockEnabled(SetTapDragLockEnabledArgs),
+    /// Set whether the device is left-handed.
+    SetLeftHanded(SetLeftHandedArgs),
+    /// Set whether the device uses natural scrolling.
+    SetNaturalScrolling(SetNaturalScrollingArgs),
+    /// Set the pixels to scroll per scroll-wheel dedent.
+    SetPxPerWheelScroll(SetPxPerWheelScrollArgs),
+    /// Set the multiplier for non-scroll-wheel scroll events.
+    SetPxScrollMultiplier(SetPxScrollMultiplierArgs),
+    /// Set the transformation matrix.
+    SetTransformMatrix(SetTransformMatrixArgs),
+    /// Set the keymap of this device.
+    SetKeymap(SetKeymapArgs),
+    /// Set the keymap of this device from RMLVO names.
+    SetKeymapFromNames(SetKeymapFromNamesArgs),
+    /// Retrieve the keymap of this device.
+    Keymap,
+    /// Attach the device to a seat.
+    Attach(AttachArgs),
+    /// Detach the device from its seat.
+    Detach,
+    /// Maps this device to an output.
+    MapToOutput(MapToOutputArgs),
+    /// Removes the mapping from this device to an output.
+    RemoveMapping,
+    /// Set the calibration matrix.
+    SetCalibrationMatrix(SetCalibrationMatrixArgs),
+    /// Set the click method.
+    SetClickMethod(SetClickMethodArgs),
+    /// Set whether the device uses middle button emulation.
+    SetMiddleButtonEmulation(SetMiddleButtonEmulationArgs),
+    /// Set the scroll method.
+    SetScrollMethod(SetScrollMethodArgs),
+    /// Set the scroll button.
+    SetScrollButton(SetScrollButtonArgs),
+    /// Set the scroll button locking.
+    SetScrollButtonLock(SetScrollButtonLockArgs),
+}
+
+#[derive(ValueEnum, Debug, Clone)]
+pub enum AccelProfile {
+    Flat,
+    Adaptive,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct SetAccelProfileArgs {
+    /// The profile.
+    pub profile: AccelProfile,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct SetAccelSpeedArgs {
+    /// The speed. Must be in the range \[-1, 1].
+    pub speed: f64,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct SetTapEnabledArgs {
+    /// Whether tap is enabled.
+    #[arg(action = clap::ArgAction::Set)]
+    pub enabled: bool,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct SetTapDragEnabledArgs {
+    /// Whether tap-drag is enabled.
+    #[arg(action = clap::ArgAction::Set)]
+    pub enabled: bool,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct SetTapDragLockEnabledArgs {
+    /// Whether tap-drag-lock is enabled.
+    #[arg(action = clap::ArgAction::Set)]
+    pub enabled: bool,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct SetLeftHandedArgs {
+    /// Whether the device is left handed.
+    #[arg(action = clap::ArgAction::Set)]
+    pub left_handed: bool,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct SetNaturalScrollingArgs {
+    /// Whether natural scrolling is enabled.
+    #[arg(action = clap::ArgAction::Set)]
+    pub natural_scrolling: bool,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct SetPxPerWheelScrollArgs {
+    /// The number of pixels to scroll.
+    pub px: f64,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct SetPxScrollMultiplierArgs {
+    /// The multiplier.
+    pub mul: f64,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct SetTransformMatrixArgs {
+    pub m11: f64,
+    pub m12: f64,
+    pub m21: f64,
+    pub m22: f64,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct SetCalibrationMatrixArgs {
+    pub m00: f32,
+    pub m01: f32,
+    pub m02: f32,
+    pub m10: f32,
+    pub m11: f32,
+    pub m12: f32,
+}
+
+#[derive(ValueEnum, Debug, Clone)]
+pub enum ClickMethod {
+    None,
+    ButtonAreas,
+    Clickfinger,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct SetClickMethodArgs {
+    /// The method.
+    pub method: ClickMethod,
+}
+
+#[derive(ValueEnum, Debug, Clone)]
+pub enum ScrollMethod {
+    NoScroll,
+    TwoFingers,
+    Edge,
+    OnButtonDown,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct SetScrollMethodArgs {
+    /// The method.
+    pub method: ScrollMethod,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct SetScrollButtonArgs {
+    /// The name of a button from input-event-codes.h or `none` to unset the button.
+    #[clap(value_parser = parse_button)]
+    pub button: u32,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct SetScrollButtonLockArgs {
+    /// Whether scroll button locking is enabled.
+    #[arg(action = clap::ArgAction::Set)]
+    pub enabled: bool,
+}
+
+#[derive(Debug, Error)]
+#[error("Value is neither `none` nor the name of a known button")]
+struct ParseButtonError;
+
+fn parse_button(s: &str) -> Result<u32, ParseButtonError> {
+    if s == "none" {
+        return Ok(0);
+    }
+    input_event_code_from_name(s).ok_or(ParseButtonError)
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct SetMiddleButtonEmulationArgs {
+    /// Whether middle button emulation is enabled.
+    #[arg(action = clap::ArgAction::Set)]
+    pub middle_button_emulation: bool,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct MapToOutputArgs {
+    /// The output to map to.
+    pub output: String,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct AttachArgs {
+    /// The seat to attach to.
+    pub seat: String,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct SetRepeatRateArgs {
+    /// The number of repeats per second.
+    pub rate: i32,
+    /// The delay before the first repeat in milliseconds.
+    pub delay: i32,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct SetCursorSizeArgs {
+    /// The size of the cursor.
+    pub size: u32,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct SetKeymapArgs {
+    /// The keymap group to use for shortcuts.
+    #[clap(long)]
+    pub shortcuts_group: Option<u32>,
+    /// The file to read the keymap from. Omit for stdin.
+    #[clap(value_hint = ValueHint::FilePath)]
+    pub file: Option<String>,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct SetKeymapFromNamesArgs {
+    /// The keymap group to use for shortcuts.
+    #[clap(long)]
+    pub shortcuts_group: Option<u32>,
+    /// The rules file.
+    #[clap(short, long)]
+    pub rules: Option<String>,
+    /// The model name.
+    #[clap(short, long)]
+    pub model: Option<String>,
+    /// The comma-separated list of layouts.
+    #[clap(short, long)]
+    pub layout: Option<String>,
+    /// The comma-separated list of layout variants.
+    #[clap(short, long)]
+    pub variant: Option<String>,
+    /// The comma-separated list of options.
+    #[clap(short, long)]
+    pub options: Option<String>,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct UseHardwareCursorArgs {
+    /// Whether the seat uses the hardware cursor.
+    #[arg(action = clap::ArgAction::Set)]
+    pub enabled: bool,
+}
+
+pub fn main(global: GlobalArgs, args: InputArgs) {
+    with_tool_client(global.log_level, |tc| async move {
+        let comp = tc.jay_compositor().await;
+        let idle = Rc::new(Input {
+            tc: tc.clone(),
+            comp,
+        });
+        idle.run(&global, args).await;
+    });
+}
+
+#[derive(Clone, Debug)]
+struct Seat {
+    pub name: String,
+    pub repeat_rate: i32,
+    pub repeat_delay: i32,
+    pub hardware_cursor: bool,
+}
+
+#[derive(Clone, Debug)]
+struct InputDevice {
+    pub id: u32,
+    pub name: String,
+    pub seat: Option<String>,
+    pub syspath: Option<String>,
+    pub devnode: Option<String>,
+    pub capabilities: Vec<InputDeviceCapability>,
+    pub accel_profile: Option<InputDeviceAccelProfile>,
+    pub accel_speed: Option<f64>,
+    pub tap_enabled: Option<bool>,
+    pub tap_drag_enabled: Option<bool>,
+    pub tap_drag_lock_enabled: Option<bool>,
+    pub left_handed: Option<bool>,
+    pub natural_scrolling_enabled: Option<bool>,
+    pub px_per_wheel_scroll: Option<f64>,
+    pub transform_matrix: Option<[[f64; 2]; 2]>,
+    pub output: Option<String>,
+    pub calibration_matrix: Option<[[f32; 3]; 2]>,
+    pub click_method: Option<InputDeviceClickMethod>,
+    pub middle_button_emulation_enabled: Option<bool>,
+    pub scroll_methods: Option<u32>,
+    pub scroll_method: Option<InputDeviceScrollMethod>,
+    pub scroll_button: Option<Option<InputEventCode>>,
+    pub scroll_button_lock: Option<bool>,
+}
+
+#[derive(Clone, Debug, Default)]
+struct Data {
+    seats: Vec<Seat>,
+    input_device: Vec<InputDevice>,
+}
+
+struct Input {
+    tc: Rc<ToolClient>,
+    comp: JayCompositorId,
+}
+
+const KEYMAP_BUILDER_SINCE: Version = Version(32);
+
+impl Input {
+    async fn run(self: &Rc<Self>, global: &GlobalArgs, args: InputArgs) {
+        let tc = &self.tc;
+        let input = tc.id();
+        tc.send(jay_compositor::GetInput {
+            self_id: self.comp,
+            id: input,
+        });
+        match args.command.unwrap_or_default() {
+            InputCmd::Show(args) => self.show(global, input, args).await,
+            InputCmd::Seat(args) => self.seat(global, input, args).await,
+            InputCmd::Device(args) => self.device(global, input, args).await,
+        }
+    }
+
+    fn handle_error<F: Fn(&str) + 'static>(&self, input: JayInputId, f: F) {
+        jay_input::Error::handle(&self.tc, input, (), move |_, msg| {
+            f(msg.msg);
+            std::process::exit(1);
+        });
+    }
+
+    fn prepare_keymap(&self, a: &SetKeymapArgs) -> (Rc<OwnedFd>, usize) {
+        let map = match &a.file {
+            None => {
+                let mut map = vec![];
+                if let Err(e) = stdin().read_to_end(&mut map) {
+                    eprintln!("Could not read from stdin: {}", ErrorFmt(e));
+                    std::process::exit(1);
+                }
+                map
+            }
+            Some(f) => match std::fs::read(f) {
+                Ok(m) => m,
+                Err(e) => {
+                    eprintln!("Could not read {}: {}", f, ErrorFmt(e));
+                    std::process::exit(1);
+                }
+            },
+        };
+        let mut memfd =
+            uapi::memfd_create("keymap", c::MFD_CLOEXEC | c::MFD_ALLOW_SEALING).unwrap();
+        memfd.write_all(&map).unwrap();
+        uapi::lseek(memfd.raw(), 0, c::SEEK_SET).unwrap();
+        uapi::fcntl_add_seals(
+            memfd.raw(),
+            c::F_SEAL_SEAL | c::F_SEAL_GROW | c::F_SEAL_SHRINK | c::F_SEAL_WRITE,
+        )
+        .unwrap();
+        (Rc::new(memfd), map.len())
+    }
+
+    fn prepare_keymap_builder(
+        &self,
+        shortcuts_group: Option<u32>,
+        f: impl FnOnce(JayKeymapBuilderId),
+    ) -> JayKeymapBuilderId {
+        let id = self.tc.id();
+        self.tc.send(jay_compositor::CreateKeymapBuilder {
+            self_id: self.comp,
+            id,
+        });
+        f(id);
+        if let Some(g) = shortcuts_group {
+            self.tc.send(jay_keymap_builder::SetShortcutsGroup {
+                self_id: id,
+                group: g,
+            });
+        }
+        id
+    }
+
+    fn prepare_keymap_builder_from_map(&self, a: &SetKeymapArgs) -> JayKeymapBuilderId {
+        self.prepare_keymap_builder(a.shortcuts_group, |id| {
+            let (keymap, keymap_len) = self.prepare_keymap(a);
+            self.tc.send(jay_keymap_builder::SetMap {
+                self_id: id,
+                keymap,
+                keymap_len: keymap_len as _,
+            });
+        })
+    }
+
+    fn prepare_keymap_builder_from_names(&self, a: &SetKeymapFromNamesArgs) -> JayKeymapBuilderId {
+        self.prepare_keymap_builder(a.shortcuts_group, |id| {
+            self.tc.send(jay_keymap_builder::SetNames {
+                self_id: id,
+                rules: a.rules.as_deref(),
+                model: a.model.as_deref(),
+                layout: a.layout.as_deref(),
+                variant: a.variant.as_deref(),
+                options: a.options.as_deref(),
+            });
+        })
+    }
+
+    async fn handle_keymap(&self, input: JayInputId) -> Vec<u8> {
+        let data = Rc::new(RefCell::new(Vec::new()));
+        jay_input::Keymap::handle(&self.tc, input, data.clone(), |d, map| {
+            let len = map.keymap_len as _;
+            let mem = Rc::new(ClientMem::new_private(&map.keymap, len, true, None, None).unwrap())
+                .offset(0, len);
+            mem.read(d.borrow_mut().deref_mut()).unwrap();
+        });
+        self.tc.round_trip().await;
+        data.take()
+    }
+
+    async fn seat(self: &Rc<Self>, global: &GlobalArgs, input: JayInputId, args: SeatArgs) {
+        let tc = &self.tc;
+        match args.command.unwrap_or_default() {
+            SeatCommand::Show(a) => {
+                self.handle_error(input, |e| {
+                    eprintln!("Could not retrieve seat data: {}", e);
+                });
+                tc.send(jay_input::GetSeat {
+                    self_id: input,
+                    name: &args.seat,
+                });
+                let data = self.get(input).await;
+                if global.json {
+                    self.print_data_json(data);
+                } else {
+                    self.print_data(data, a.verbose);
+                }
+            }
+            SeatCommand::SetRepeatRate(a) => {
+                self.handle_error(input, |e| {
+                    eprintln!("Could not set repeat rate: {}", e);
+                });
+                tc.send(jay_input::SetRepeatRate {
+                    self_id: input,
+                    seat: &args.seat,
+                    repeat_rate: a.rate,
+                    repeat_delay: a.delay,
+                });
+            }
+            SeatCommand::SetKeymap(a) => {
+                self.handle_error(input, |e| {
+                    eprintln!("Could not set keymap: {}", e);
+                });
+                if self.tc.jay_compositor_version().await >= KEYMAP_BUILDER_SINCE {
+                    tc.send(jay_input::SetKeymapFromBuilder {
+                        self_id: input,
+                        seat: &args.seat,
+                        builder: self.prepare_keymap_builder_from_map(&a),
+                    });
+                } else {
+                    let (memfd, len) = self.prepare_keymap(&a);
+                    tc.send(jay_input::SetKeymap {
+                        self_id: input,
+                        seat: &args.seat,
+                        keymap: memfd,
+                        keymap_len: len as _,
+                    });
+                }
+            }
+            SeatCommand::UseHardwareCursor(a) => {
+                self.handle_error(input, |e| {
+                    eprintln!("Could not set hardware cursor: {}", e);
+                });
+                tc.send(jay_input::UseHardwareCursor {
+                    self_id: input,
+                    seat: &args.seat,
+                    use_hardware_cursor: a.enabled as _,
+                });
+            }
+            SeatCommand::Keymap => {
+                self.handle_error(input, |e| {
+                    eprintln!("Could not retrieve the keymap: {}", e);
+                });
+                tc.send(jay_input::GetKeymap {
+                    self_id: input,
+                    seat: &args.seat,
+                });
+                let map = self.handle_keymap(input).await;
+                stdout().write_all(&map).unwrap();
+            }
+            SeatCommand::SetCursorSize(a) => {
+                self.handle_error(input, |e| {
+                    eprintln!("Could not set cursor size: {}", e);
+                });
+                tc.send(jay_input::SetCursorSize {
+                    self_id: input,
+                    seat: &args.seat,
+                    size: a.size,
+                });
+            }
+            SeatCommand::SimpleIm(a) => match a.command {
+                SimpleImCommand::Enable | SimpleImCommand::Disable => {
+                    self.handle_error(input, |e| {
+                        eprintln!("Could not enable/disable the simple IM: {}", e);
+                    });
+                    tc.send(jay_input::SetSimpleImEnabled {
+                        self_id: input,
+                        seat: &args.seat,
+                        enabled: matches!(a.command, SimpleImCommand::Enable) as _,
+                    });
+                }
+                SimpleImCommand::Reload => {
+                    self.handle_error(input, |e| {
+                        eprintln!("Could not reload the simple IM: {}", e);
+                    });
+                    tc.send(jay_input::ReloadSimpleIm {
+                        self_id: input,
+                        seat: &args.seat,
+                    });
+                }
+            },
+            SeatCommand::SetKeymapFromNames(a) => {
+                self.handle_error(input, |e| {
+                    eprintln!("Could not set keymap: {}", e);
+                });
+                if tc.jay_compositor_version().await >= KEYMAP_BUILDER_SINCE {
+                    tc.send(jay_input::SetKeymapFromBuilder {
+                        self_id: input,
+                        seat: &args.seat,
+                        builder: self.prepare_keymap_builder_from_names(&a),
+                    });
+                } else {
+                    tc.send(jay_input::SetKeymapFromNames {
+                        self_id: input,
+                        seat: &args.seat,
+                        rules: a.rules.as_deref(),
+                        model: a.model.as_deref(),
+                        layout: a.layout.as_deref(),
+                        variant: a.variant.as_deref(),
+                        options: a.options.as_deref(),
+                    });
+                }
+            }
+        }
+        tc.round_trip().await;
+    }
+
+    async fn device(self: &Rc<Self>, global: &GlobalArgs, input: JayInputId, args: DeviceArgs) {
+        let tc = &self.tc;
+        match args.command.unwrap_or_default() {
+            DeviceCommand::Show => {
+                self.handle_error(input, |e| {
+                    eprintln!("Could not retrieve device data: {}", e);
+                });
+                tc.send(jay_input::GetDevice {
+                    self_id: input,
+                    id: args.device,
+                });
+                let data = self.get(input).await;
+                if global.json {
+                    self.print_data_json(data);
+                } else {
+                    for device in &data.input_device {
+                        self.print_device("", true, device);
+                    }
+                }
+            }
+            DeviceCommand::SetAccelProfile(a) => {
+                let profile = match a.profile {
+                    AccelProfile::Flat => LIBINPUT_CONFIG_ACCEL_PROFILE_FLAT.0,
+                    AccelProfile::Adaptive => LIBINPUT_CONFIG_ACCEL_PROFILE_ADAPTIVE.0,
+                };
+                self.handle_error(input, |e| {
+                    eprintln!("Could not set the acceleration profile: {}", e);
+                });
+                tc.send(jay_input::SetAccelProfile {
+                    self_id: input,
+                    id: args.device,
+                    profile,
+                });
+            }
+            DeviceCommand::SetAccelSpeed(a) => {
+                self.handle_error(input, |e| {
+                    eprintln!("Could not set the acceleration speed: {}", e);
+                });
+                tc.send(jay_input::SetAccelSpeed {
+                    self_id: input,
+                    id: args.device,
+                    speed: a.speed,
+                });
+            }
+            DeviceCommand::SetTapEnabled(a) => {
+                self.handle_error(input, |e| {
+                    eprintln!("Could not modify the tap-enabled setting: {}", e);
+                });
+                tc.send(jay_input::SetTapEnabled {
+                    self_id: input,
+                    id: args.device,
+                    enabled: a.enabled as _,
+                });
+            }
+            DeviceCommand::SetTapDragEnabled(a) => {
+                self.handle_error(input, |e| {
+                    eprintln!("Could not modify the tap-drag-enabled setting: {}", e);
+                });
+                tc.send(jay_input::SetTapDragEnabled {
+                    self_id: input,
+                    id: args.device,
+                    enabled: a.enabled as _,
+                });
+            }
+            DeviceCommand::SetTapDragLockEnabled(a) => {
+                self.handle_error(input, |e| {
+                    eprintln!("Could not modify the tap-drag-lock-enabled setting: {}", e);
+                });
+                tc.send(jay_input::SetTapDragLockEnabled {
+                    self_id: input,
+                    id: args.device,
+                    enabled: a.enabled as _,
+                });
+            }
+            DeviceCommand::SetLeftHanded(a) => {
+                self.handle_error(input, |e| {
+                    eprintln!("Could not modify the left-handed setting: {}", e);
+                });
+                tc.send(jay_input::SetLeftHanded {
+                    self_id: input,
+                    id: args.device,
+                    enabled: a.left_handed as _,
+                });
+            }
+            DeviceCommand::SetNaturalScrolling(a) => {
+                self.handle_error(input, |e| {
+                    eprintln!("Could not modify the natural-scrolling setting: {}", e);
+                });
+                tc.send(jay_input::SetNaturalScrolling {
+                    self_id: input,
+                    id: args.device,
+                    enabled: a.natural_scrolling as _,
+                });
+            }
+            DeviceCommand::SetPxPerWheelScroll(a) => {
+                self.handle_error(input, |e| {
+                    eprintln!("Could not modify the px-per-wheel-scroll setting: {}", e);
+                });
+                tc.send(jay_input::SetPxPerWheelScroll {
+                    self_id: input,
+                    id: args.device,
+                    px: a.px,
+                });
+            }
+            DeviceCommand::SetPxScrollMultiplier(a) => {
+                self.handle_error(input, |e| {
+                    eprintln!("Could not modify the px-scroll-multiplier setting: {}", e);
+                });
+                tc.send(jay_input::SetPxScrollMultiplier {
+                    self_id: input,
+                    id: args.device,
+                    mul: a.mul,
+                });
+            }
+            DeviceCommand::SetTransformMatrix(a) => {
+                self.handle_error(input, |e| {
+                    eprintln!("Could not modify the transform matrix: {}", e);
+                });
+                tc.send(jay_input::SetTransformMatrix {
+                    self_id: input,
+                    id: args.device,
+                    m11: a.m11,
+                    m12: a.m12,
+                    m21: a.m21,
+                    m22: a.m22,
+                });
+            }
+            DeviceCommand::Attach(a) => {
+                self.handle_error(input, |e| {
+                    eprintln!("Could not attach the device: {}", e);
+                });
+                tc.send(jay_input::Attach {
+                    self_id: input,
+                    id: args.device,
+                    seat: &a.seat,
+                });
+            }
+            DeviceCommand::Detach => {
+                self.handle_error(input, |e| {
+                    eprintln!("Could not detach the device: {}", e);
+                });
+                tc.send(jay_input::Detach {
+                    self_id: input,
+                    id: args.device,
+                });
+            }
+            DeviceCommand::SetKeymap(a) => {
+                self.handle_error(input, |e| {
+                    eprintln!("Could not set keymap: {}", e);
+                });
+                if self.tc.jay_compositor_version().await >= KEYMAP_BUILDER_SINCE {
+                    tc.send(jay_input::SetDeviceKeymapFromBuilder {
+                        self_id: input,
+                        id: args.device,
+                        builder: self.prepare_keymap_builder_from_map(&a),
+                    });
+                } else {
+                    let (memfd, len) = self.prepare_keymap(&a);
+                    tc.send(jay_input::SetDeviceKeymap {
+                        self_id: input,
+                        id: args.device,
+                        keymap: memfd,
+                        keymap_len: len as _,
+                    });
+                }
+            }
+            DeviceCommand::Keymap => {
+                self.handle_error(input, |e| {
+                    eprintln!("Could not retrieve the keymap: {}", e);
+                });
+                tc.send(jay_input::GetDeviceKeymap {
+                    self_id: input,
+                    id: args.device,
+                });
+                let map = self.handle_keymap(input).await;
+                stdout().write_all(&map).unwrap();
+            }
+            DeviceCommand::MapToOutput(a) => {
+                self.handle_error(input, |e| {
+                    eprintln!("Could not map the device to an output: {}", e);
+                });
+                tc.send(jay_input::MapToOutput {
+                    self_id: input,
+                    id: args.device,
+                    output: Some(&a.output),
+                });
+            }
+            DeviceCommand::RemoveMapping => {
+                self.handle_error(input, |e| {
+                    eprintln!("Could not remove the output mapping: {}", e);
+                });
+                tc.send(jay_input::MapToOutput {
+                    self_id: input,
+                    id: args.device,
+                    output: None,
+                });
+            }
+            DeviceCommand::SetCalibrationMatrix(a) => {
+                self.handle_error(input, |e| {
+                    eprintln!("Could not modify the calibration matrix: {}", e);
+                });
+                tc.send(jay_input::SetCalibrationMatrix {
+                    self_id: input,
+                    id: args.device,
+                    m00: a.m00,
+                    m01: a.m01,
+                    m02: a.m02,
+                    m10: a.m10,
+                    m11: a.m11,
+                    m12: a.m12,
+                });
+            }
+            DeviceCommand::SetClickMethod(a) => {
+                let method = match a.method {
+                    ClickMethod::None => LIBINPUT_CONFIG_CLICK_METHOD_NONE.0,
+                    ClickMethod::ButtonAreas => LIBINPUT_CONFIG_CLICK_METHOD_BUTTON_AREAS.0,
+                    ClickMethod::Clickfinger => LIBINPUT_CONFIG_CLICK_METHOD_CLICKFINGER.0,
+                };
+                self.handle_error(input, |e| {
+                    eprintln!("Could not set the click method: {}", e);
+                });
+                tc.send(jay_input::SetClickMethod {
+                    self_id: input,
+                    id: args.device,
+                    method,
+                });
+            }
+            DeviceCommand::SetMiddleButtonEmulation(a) => {
+                self.handle_error(input, |e| {
+                    eprintln!(
+                        "Could not modify the middle-button-emulation setting: {}",
+                        e
+                    );
+                });
+                tc.send(jay_input::SetMiddleButtonEmulation {
+                    self_id: input,
+                    id: args.device,
+                    enabled: a.middle_button_emulation as _,
+                });
+            }
+            DeviceCommand::SetKeymapFromNames(a) => {
+                self.handle_error(input, |e| {
+                    eprintln!("Could not set keymap: {}", e);
+                });
+                if self.tc.jay_compositor_version().await >= KEYMAP_BUILDER_SINCE {
+                    tc.send(jay_input::SetDeviceKeymapFromBuilder {
+                        self_id: input,
+                        id: args.device,
+                        builder: self.prepare_keymap_builder_from_names(&a),
+                    });
+                } else {
+                    tc.send(jay_input::SetDeviceKeymapFromNames {
+                        self_id: input,
+                        id: args.device,
+                        rules: a.rules.as_deref(),
+                        model: a.model.as_deref(),
+                        layout: a.layout.as_deref(),
+                        variant: a.variant.as_deref(),
+                        options: a.options.as_deref(),
+                    });
+                }
+            }
+            DeviceCommand::SetScrollMethod(a) => {
+                let method = match a.method {
+                    ScrollMethod::NoScroll => LIBINPUT_CONFIG_SCROLL_NO_SCROLL,
+                    ScrollMethod::TwoFingers => LIBINPUT_CONFIG_SCROLL_2FG,
+                    ScrollMethod::Edge => LIBINPUT_CONFIG_SCROLL_EDGE,
+                    ScrollMethod::OnButtonDown => LIBINPUT_CONFIG_SCROLL_ON_BUTTON_DOWN,
+                };
+                self.handle_error(input, |e| {
+                    eprintln!("Could not set the scroll method: {}", e);
+                });
+                tc.send(jay_input::SetScrollMethod {
+                    self_id: input,
+                    id: args.device,
+                    method: method.0,
+                });
+            }
+            DeviceCommand::SetScrollButton(a) => {
+                self.handle_error(input, |e| {
+                    eprintln!("Could not set the scroll button: {}", e);
+                });
+                tc.send(jay_input::SetScrollButton {
+                    self_id: input,
+                    id: args.device,
+                    button: a.button,
+                });
+            }
+            DeviceCommand::SetScrollButtonLock(a) => {
+                self.handle_error(input, |e| {
+                    eprintln!("Could not set the scroll button lock: {}", e);
+                });
+                tc.send(jay_input::SetScrollButtonLock {
+                    self_id: input,
+                    id: args.device,
+                    enabled: a.enabled as u32,
+                });
+            }
+        }
+        tc.round_trip().await;
+    }
+
+    async fn show(self: &Rc<Self>, global: &GlobalArgs, input: JayInputId, args: ShowArgs) {
+        self.tc.send(jay_input::GetAll { self_id: input });
+        let data = self.get(input).await;
+        if global.json {
+            self.print_data_json(data);
+        } else {
+            self.print_data(data, args.verbose);
+        }
+    }
+
+    fn print_data(self: &Rc<Self>, mut data: Data, verbose: bool) {
+        data.seats.sort_by(|l, r| l.name.cmp(&r.name));
+        data.input_device.sort_by_key(|l| l.id);
+        let mut first = true;
+        let print_devices = |d: &[&InputDevice]| {
+            for device in d {
+                if verbose {
+                    self.print_device("    ", false, device);
+                } else {
+                    println!("    {}: {}", device.id, device.name);
+                }
+            }
+        };
+        for seat in &data.seats {
+            if !mem::take(&mut first) {
+                println!();
+            }
+            self.print_seat(seat);
+            let input_devices: Vec<_> = data
+                .input_device
+                .iter()
+                .filter(|c| c.seat.as_ref() == Some(&seat.name))
+                .collect();
+            if input_devices.is_not_empty() {
+                println!("  devices:");
+            }
+            print_devices(&input_devices);
+        }
+        {
+            let input_devices: Vec<_> = data
+                .input_device
+                .iter()
+                .filter(|c| c.seat.is_none())
+                .collect();
+            if input_devices.is_not_empty() {
+                if !mem::take(&mut first) {
+                    println!();
+                }
+                println!("Detached devices:");
+                print_devices(&input_devices);
+            }
+        }
+    }
+
+    fn print_seat(&self, seat: &Seat) {
+        println!("Seat {}:", seat.name);
+        println!("  repeat rate: {}", seat.repeat_rate);
+        println!("  repeat delay: {}", seat.repeat_delay);
+        if !seat.hardware_cursor {
+            println!("  hardware cursor disabled");
+        }
+    }
+
+    fn print_device(&self, prefix: &str, print_seat: bool, device: &InputDevice) {
+        println!("{prefix}{}:", device.id);
+        println!("{prefix}  name: {}", device.name);
+        if print_seat {
+            let seat = device.seat.as_deref().unwrap_or("<detached>");
+            println!("{prefix}  seat: {}", seat);
+        }
+        if let Some(v) = &device.syspath {
+            println!("{prefix}  syspath: {}", v);
+        }
+        if let Some(v) = &device.devnode {
+            println!("{prefix}  devnode: {}", v);
+        }
+        print!("{prefix}  capabilities:");
+        let mut first = true;
+        for cap in &device.capabilities {
+            print!(" ");
+            if !mem::take(&mut first) {
+                print!("| ");
+            }
+            print!("{}", cap.text());
+        }
+        println!();
+        if let Some(v) = &device.accel_profile {
+            let name = match v {
+                InputDeviceAccelProfile::Flat => "flat",
+                InputDeviceAccelProfile::Adaptive => "adaptive",
+            };
+            println!("{prefix}  accel profile: {}", name);
+        }
+        if let Some(v) = &device.accel_speed {
+            println!("{prefix}  accel speed: {}", v);
+        }
+        if let Some(v) = &device.tap_enabled {
+            println!("{prefix}  tap enabled: {}", v);
+        }
+        if let Some(v) = &device.tap_drag_enabled {
+            println!("{prefix}  tap drag enabled: {}", v);
+        }
+        if let Some(v) = &device.tap_drag_lock_enabled {
+            println!("{prefix}  tap drag lock enabled: {}", v);
+        }
+        if let Some(v) = &device.left_handed {
+            println!("{prefix}  left handed: {}", v);
+        }
+        if let Some(v) = &device.natural_scrolling_enabled {
+            println!("{prefix}  natural scrolling: {}", v);
+        }
+        if let Some(v) = &device.px_per_wheel_scroll {
+            println!("{prefix}  px per wheel scroll: {}", v);
+        }
+        if let Some(v) = &device.transform_matrix {
+            println!("{prefix}  transform matrix: {:?}", v);
+        }
+        if let Some(v) = &device.output {
+            println!("{prefix}  mapped to output: {}", v);
+        }
+        if let Some(v) = &device.calibration_matrix {
+            println!("{prefix}  calibration matrix: {:?}", v);
+        }
+        if let Some(v) = &device.click_method {
+            let name = match v {
+                InputDeviceClickMethod::None => "none",
+                InputDeviceClickMethod::ButtonAreas => "button-areas",
+                InputDeviceClickMethod::Clickfinger => "clickfinger",
+            };
+            println!("{prefix}  click method: {}", name);
+        }
+        if let Some(v) = &device.middle_button_emulation_enabled {
+            println!("{prefix}  middle button emulation: {}", v);
+        }
+        if let Some(v) = &device.scroll_method {
+            println!("{prefix}  scroll method: {}", scroll_method_name(*v));
+        }
+        if let Some(v) = device.scroll_methods {
+            println!(
+                "{prefix}  scroll methods: {}",
+                supported_scroll_method_names(v).join(","),
+            );
+        }
+        if let Some(v) = &device.scroll_button {
+            println!("{prefix}  scroll button: {}", scroll_button_name(*v));
+        }
+        if let Some(v) = &device.scroll_button_lock {
+            println!("{prefix}  scroll button lock: {v}");
+        }
+    }
+
+    fn print_data_json(&self, mut data: Data) {
+        data.seats.sort_by(|l, r| l.name.cmp(&r.name));
+        data.input_device.sort_by_key(|l| l.id);
+        let mut seats = AHashMap::new();
+        let mut detached_devices = vec![];
+        for seat in &data.seats {
+            seats.insert(
+                seat.name.deref(),
+                JsonSeat {
+                    name: &seat.name,
+                    repeat_rate: Some(seat.repeat_rate),
+                    repeat_delay: Some(seat.repeat_delay),
+                    hardware_cursor: seat.hardware_cursor,
+                    devices: Default::default(),
+                },
+            );
+        }
+        for device in &data.input_device {
+            let device = make_json_device(device);
+            if let Some(seat) = device.seat {
+                let seat = seats.entry(seat).or_insert(JsonSeat {
+                    name: seat,
+                    repeat_rate: Default::default(),
+                    repeat_delay: Default::default(),
+                    hardware_cursor: Default::default(),
+                    devices: Default::default(),
+                });
+                seat.devices.push(device);
+            } else {
+                detached_devices.push(device);
+            }
+        }
+        let mut seats: Vec<_> = seats.into_values().collect();
+        seats.sort_by_key(|s| s.name);
+        for seat in &mut seats {
+            seat.devices.sort_by_key(|d| d.input_device_id);
+        }
+        detached_devices.sort_by_key(|d| d.input_device_id);
+        let json = JsonInputData {
+            seats,
+            detached_devices,
+        };
+        jsonl(&json);
+    }
+
+    async fn get(self: &Rc<Self>, input: JayInputId) -> Data {
+        let tc = &self.tc;
+        let data = Rc::new(RefCell::new(Data::default()));
+        jay_input::Seat::handle(tc, input, data.clone(), |data, msg| {
+            data.borrow_mut().seats.push(Seat {
+                name: msg.name.to_string(),
+                repeat_rate: msg.repeat_rate,
+                repeat_delay: msg.repeat_delay,
+                hardware_cursor: msg.hardware_cursor != 0,
+            });
+        });
+        jay_input::InputDevice::handle(tc, input, data.clone(), |data, msg| {
+            use crate::{backend::InputDeviceCapability::*, libinput::consts::*};
+            let mut capabilities = vec![];
+            let mut is_pointer = false;
+            for cap in msg.capabilities {
+                let cap = match DeviceCapability(*cap) {
+                    LIBINPUT_DEVICE_CAP_KEYBOARD => Keyboard,
+                    LIBINPUT_DEVICE_CAP_POINTER => {
+                        is_pointer = true;
+                        Pointer
+                    }
+                    LIBINPUT_DEVICE_CAP_TOUCH => Touch,
+                    LIBINPUT_DEVICE_CAP_TABLET_TOOL => TabletTool,
+                    LIBINPUT_DEVICE_CAP_TABLET_PAD => TabletPad,
+                    LIBINPUT_DEVICE_CAP_GESTURE => Gesture,
+                    LIBINPUT_DEVICE_CAP_SWITCH => InputDeviceCapability::Switch,
+                    _ => continue,
+                };
+                capabilities.push(cap);
+            }
+            let accel_available = msg.accel_available != 0;
+            let tap_available = msg.tap_available != 0;
+            let left_handed_available = msg.left_handed_available != 0;
+            let natural_scrolling_available = msg.natural_scrolling_available != 0;
+            let mut accel_profile = match AccelProfile(msg.accel_profile) {
+                LIBINPUT_CONFIG_ACCEL_PROFILE_FLAT => Some(InputDeviceAccelProfile::Flat),
+                LIBINPUT_CONFIG_ACCEL_PROFILE_ADAPTIVE => Some(InputDeviceAccelProfile::Adaptive),
+                _ => None,
+            };
+            if !accel_available {
+                accel_profile = None;
+            }
+            let mut data = data.borrow_mut();
+            data.input_device.push(InputDevice {
+                id: msg.id,
+                name: msg.name.to_string(),
+                seat: msg.seat.to_string_if_not_empty(),
+                syspath: msg.syspath.to_string_if_not_empty(),
+                devnode: msg.devnode.to_string_if_not_empty(),
+                capabilities,
+                accel_profile,
+                accel_speed: accel_available.then_some(msg.accel_speed),
+                tap_enabled: tap_available.then_some(msg.tap_enabled != 0),
+                tap_drag_enabled: tap_available.then_some(msg.tap_drag_enabled != 0),
+                tap_drag_lock_enabled: tap_available.then_some(msg.tap_drag_lock_enabled != 0),
+                left_handed: left_handed_available.then_some(msg.left_handed != 0),
+                natural_scrolling_enabled: natural_scrolling_available
+                    .then_some(msg.natural_scrolling_enabled != 0),
+                px_per_wheel_scroll: is_pointer.then_some(msg.px_per_wheel_scroll),
+                transform_matrix: uapi::pod_read(msg.transform_matrix).ok(),
+                output: None,
+                calibration_matrix: None,
+                click_method: None,
+                middle_button_emulation_enabled: None,
+                scroll_methods: None,
+                scroll_method: None,
+                scroll_button: None,
+                scroll_button_lock: None,
+            });
+        });
+        jay_input::InputDeviceOutput::handle(tc, input, data.clone(), |data, msg| {
+            let mut data = data.borrow_mut();
+            if let Some(last) = data.input_device.last_mut() {
+                last.output = Some(msg.output.to_string());
+            }
+        });
+        jay_input::CalibrationMatrix::handle(tc, input, data.clone(), |data, msg| {
+            let mut data = data.borrow_mut();
+            if let Some(last) = data.input_device.last_mut() {
+                last.calibration_matrix =
+                    Some([[msg.m00, msg.m01, msg.m02], [msg.m10, msg.m11, msg.m12]]);
+            }
+        });
+        jay_input::ClickMethod::handle(tc, input, data.clone(), |data, msg| {
+            let click_method = match ConfigClickMethod(msg.click_method) {
+                LIBINPUT_CONFIG_CLICK_METHOD_NONE => Some(InputDeviceClickMethod::None),
+                LIBINPUT_CONFIG_CLICK_METHOD_BUTTON_AREAS => {
+                    Some(InputDeviceClickMethod::ButtonAreas)
+                }
+                LIBINPUT_CONFIG_CLICK_METHOD_CLICKFINGER => {
+                    Some(InputDeviceClickMethod::Clickfinger)
+                }
+                _ => None,
+            };
+            let mut data = data.borrow_mut();
+            if let Some(last) = data.input_device.last_mut() {
+                last.click_method = click_method;
+            }
+        });
+        jay_input::MiddleButtonEmulation::handle(tc, input, data.clone(), |data, msg| {
+            let mut data = data.borrow_mut();
+            if let Some(last) = data.input_device.last_mut() {
+                last.middle_button_emulation_enabled =
+                    Some(msg.middle_button_emulation_enabled != 0);
+            }
+        });
+        jay_input::ScrollMethods::handle(tc, input, data.clone(), |data, msg| {
+            let mut data = data.borrow_mut();
+            if let Some(last) = data.input_device.last_mut() {
+                last.scroll_methods = Some(msg.scroll_methods);
+            }
+        });
+        jay_input::ScrollMethod::handle(tc, input, data.clone(), |data, msg| {
+            let scroll_method =
+                InputDeviceScrollMethod::from_libinput(ConfigScrollMethod(msg.scroll_method));
+            let mut data = data.borrow_mut();
+            if let Some(last) = data.input_device.last_mut() {
+                last.scroll_method = scroll_method;
+            }
+        });
+        jay_input::ScrollButton::handle(tc, input, data.clone(), |data, msg| {
+            let button = InputEventCode::from_raw(msg.scroll_button);
+            let mut data = data.borrow_mut();
+            if let Some(last) = data.input_device.last_mut() {
+                last.scroll_button = Some(button);
+            }
+        });
+        jay_input::ScrollButtonLock::handle(tc, input, data.clone(), |data, msg| {
+            let mut data = data.borrow_mut();
+            if let Some(last) = data.input_device.last_mut() {
+                last.scroll_button_lock = Some(msg.enabled != 0);
+            }
+        });
+        tc.round_trip().await;
+        data.borrow_mut().clone()
+    }
+}
+
+fn scroll_method_name(method: InputDeviceScrollMethod) -> &'static str {
+    match method {
+        InputDeviceScrollMethod::NoScroll => "no-scroll",
+        InputDeviceScrollMethod::TwoFingers => "two-fingers",
+        InputDeviceScrollMethod::Edge => "edge",
+        InputDeviceScrollMethod::OnButtonDown => "on-button-down",
+    }
+}
+
+fn supported_scroll_method_names(methods: u32) -> Vec<&'static str> {
+    let mut names = vec!["no-scroll"];
+    for (name, const_) in [
+        ("two-fingers", LIBINPUT_CONFIG_SCROLL_2FG),
+        ("edge", LIBINPUT_CONFIG_SCROLL_EDGE),
+        ("on-button-down", LIBINPUT_CONFIG_SCROLL_ON_BUTTON_DOWN),
+    ] {
+        if methods.contains(const_.0 as u32) {
+            names.push(name);
+        }
+    }
+    names
+}
+
+fn scroll_button_name(button: Option<InputEventCode>) -> &'static str {
+    button.map(|v| v.text()).unwrap_or("none")
+}
+
+fn make_json_device(device: &InputDevice) -> JsonInputDevice<'_> {
+    JsonInputDevice {
+        input_device_id: device.id,
+        name: &device.name,
+        seat: device.seat.as_deref(),
+        syspath: device.syspath.as_deref(),
+        devnode: device.devnode.as_deref(),
+        capabilities: device.capabilities.iter().map(|c| c.text()).collect(),
+        accel_profile: device.accel_profile.as_ref().map(|v| v.text()),
+        accel_speed: device.accel_speed,
+        tap_enabled: device.tap_enabled,
+        tap_drag_enabled: device.tap_drag_enabled,
+        tap_drag_lock_enabled: device.tap_drag_lock_enabled,
+        left_handed: device.left_handed,
+        natural_scrolling: device.natural_scrolling_enabled,
+        px_per_wheel_scroll: device.px_per_wheel_scroll,
+        transform_matrix: device.transform_matrix,
+        output: device.output.as_deref(),
+        calibration_matrix: device.calibration_matrix,
+        click_method: device.click_method.as_ref().map(|v| v.text()),
+        middle_button_emulation: device.middle_button_emulation_enabled,
+        scroll_method: device.scroll_method.map(scroll_method_name),
+        supported_scroll_methods: device.scroll_methods.map(supported_scroll_method_names),
+        scroll_button: device.scroll_button.map(scroll_button_name),
+        scroll_button_lock: device.scroll_button_lock,
+    }
+}

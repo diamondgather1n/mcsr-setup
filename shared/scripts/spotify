@@ -1,0 +1,8 @@
+#!/bin/sh
+
+if command -v spotify-launcher >/dev/null 2>&1; then
+    exec spotify-launcher "$@"
+fi
+
+echo "spotify-launcher is not installed. Run: sudo pacman -S spotify-launcher" >&2
+exit 127

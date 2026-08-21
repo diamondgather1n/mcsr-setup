@@ -1,0 +1,41 @@
+{
+  "loading_screen_tick_interval": {
+    "_description": "Changes how often the game ticks on the loading screen/preview, decreasing this number will reduce reset input latency (minimum/default: 1ms, max (vanilla): 16ms)",
+    "enable": true,
+    "loading_screen_tick_interval": 1
+  },
+  "world_preview": {
+    "_description": "config for world preview, every time (loading_screen) is rendered (render_times) times, will be render a preview. ex) if (loading_screen.fps_limit) is 30 and this value is 2, preview fps will be 15 (as 30 / 2).",
+    "enable": true,
+    "render_times": 5
+  },
+  "world_setup": {
+    "_description": "same with (background) config but for (max_ticks) ticks after the joined the world.",
+    "enable": true,
+    "fps_limit": 10,
+    "max_ticks": 30
+  },
+  "lock_instance": {
+    "_description": "It works when instance is in the background with sleepbg.lock file is exist in user directory at every interval ticks. (for macros option)",
+    "enable": true,
+    "fps_limit": 1,
+    "tick_interval": 20,
+    "wp_render_times_enable": true,
+    "wp_render_times": 10
+  },
+  "loading_screen": {
+    "_description": "It works when instance is in the world loading screen. minimum (fps_limit) is 15.",
+    "enable": true,
+    "fps_limit": 30
+  },
+  "log_interval": {
+    "_description": "Changes how often the game prints the worldgen progress to the log file, may be useful for macros (minimum: 50ms, max/default: 500ms)",
+    "enable": true,
+    "log_interval": 500
+  },
+  "background": {
+    "_description": "It works when instance is in the background after joined the world.",
+    "enable": true,
+    "fps_limit": 1
+  }
+}

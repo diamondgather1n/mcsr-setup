@@ -1,0 +1,9 @@
+# requests
+
+request destroy {
+
+}
+
+request set_known_cursor {
+    idx: u32,
+}

@@ -1,0 +1,12 @@
+foot
+rust
+libinput
+systemd-libs
+pango
+fontconfig
+vulkan-icd-loader
+wl-clipboard
+bemenu
+qt6-wayland
+wayland-protocols
+xorg-xwayland

@@ -1,0 +1,218 @@
+auto-reload = true
+device-config-filter = "all"
+gfx-api = "Vulkan"
+repeat-rate = { rate = 200, delay = 150 }
+keymap.rmlvo = { layout = "gb,no", options = "grp:sclk_toggle" }
+focus-follows-mouse = false
+unstable-mouse-follows-focus = false
+window-management-key = "Super_L"
+workspace-display-order = "sorted"
+workspace-capture = true
+direct-scanout = false
+show-bar = true
+show-titles = true
+
+on-graphics-initialized = [
+  { type = "exec", exec = ["/home/nathan/.local/bin/jay", "randr", "output", "DP-1", "mode", "1920", "1080", "165.003"] },
+  { type = "exec", exec = ["/usr/bin/polychromatic-cli", "-d", "mouse", "--dpi", "2000"] },
+]
+
+[theme]
+font = "monospace 8"
+bar-font = "monospace 10"
+title-font = "monospace 8"
+bg-color = "#061426"
+bar-bg-color = "#061426"
+bar-status-text-color = "#ffffff"
+border-color = "#3388cc"
+separator-color = "#2b5d82"
+focused-title-bg-color = "#0b315e"
+focused-title-text-color = "#ffffff"
+captured-focused-title-bg-color = "#0b315e"
+captured-unfocused-title-bg-color = "#061426"
+focused-inactive-title-bg-color = "#061426"
+focused-inactive-title-text-color = "#e8f3ff"
+unfocused-title-bg-color = "#061426"
+unfocused-title-text-color = "#e8f3ff"
+attention-requested-bg-color = "#5a0000"
+highlight-color = "#ffcc33"
+border-width = 5
+title-height = 10
+bar-height = 26
+bar-position = "top"
+bar-separator-width = 1
+
+
+[[inputs]]
+match = [
+  { name = "Razer Razer DeathAdder Essential", is-pointer = true },
+  { name = "ASUSTek TUF GAMING K3 GEN II Mouse", is-pointer = true },
+  { name = "keyd virtual pointer", is-pointer = true },
+  { name = "dotool relative pointer", is-pointer = true },
+]
+accel-profile = "flat"
+accel-speed = -0.87
+
+[[windows]]
+name = "twitch-chat"
+match.title-regex = "(?i)2adhd1 - Chat - Twitch"
+action = { type = "move-to-workspace", name = "2" }
+
+[[windows]]
+name = "twitch-activity-feed"
+match.title-regex = "(?i)Activity Feed - Twitch"
+action = { type = "move-to-workspace", name = "2" }
+
+[[windows]]
+name = "twitch-quick-actions"
+match.title-regex = "(?i)Quick Actions - Twitch"
+action = { type = "move-to-workspace", name = "2" }
+
+[[windows]]
+name = "helium"
+match.any = [
+  { app-id-regex = "(?i)^helium" },
+  { x-class-regex = "(?i)^helium" },
+]
+match.not.title-regex = "(?i)(2adhd1 - Chat - Twitch|Activity Feed - Twitch|Quick Actions - Twitch)"
+action = { type = "move-to-workspace", name = "6" }
+
+[[windows]]
+name = "projector"
+match.title-regex = "(?i)projector"
+action = { type = "move-to-workspace", name = "7" }
+
+[[windows]]
+name = "autokey"
+match.title-regex = "(?i)AutoKey"
+action = { type = "move-to-workspace", name = "10" }
+
+[[windows]]
+name = "qpwgraph"
+match.any = [
+  { app-id-regex = "(?i)^(org[.]rncbc[.])?qpwgraph$" },
+  { x-class-regex = "(?i)^qpwgraph$" },
+]
+action = { type = "move-to-workspace", name = "10" }
+
+[[windows]]
+name = "foot"
+match.any = [
+  { app-id-regex = "(?i)^foot$" },
+  { x-class-regex = "(?i)^foot$" },
+]
+action = { type = "move-to-workspace", name = "10" }
+
+[[windows]]
+name = "obs"
+match.any = [
+  { app-id-regex = "(?i)^com\\.obsproject\\.Studio$" },
+  { app-id-regex = "(?i)^obs$" },
+  { x-class-regex = "(?i)^obs$" },
+]
+action = { type = "move-to-workspace", name = "9" }
+
+[[windows]]
+name = "discord"
+match.any = [
+  { app-id-regex = "(?i)^com\\.discordapp\\.Discord$" },
+  { app-id-regex = "(?i)^discord$" },
+  { x-class-regex = "(?i)^discord$" },
+]
+action = { type = "move-to-workspace", name = "1" }
+
+[[windows]]
+name = "mcsr-launcher"
+match.title-regex = "^MCSR Launcher"
+action = { type = "move-to-workspace", name = "5" }
+
+[[windows]]
+name = "spotify"
+match.any = [
+  { app-id-regex = "(?i)^com\\.spotify\\.Client$" },
+  { app-id-regex = "(?i)^spotify$" },
+  { x-class-regex = "(?i)^Spotify$" },
+]
+action = { type = "move-to-workspace", name = "8" }
+
+[[windows]]
+name = "ninjabrain"
+match.any = [
+  { x-class = "ninjabrainbot-Main" },
+  { title-regex = "(?i)ninjabrain" },
+]
+initial-tile-state = "floating"
+action = [
+  { type = "move-to-workspace", name = "7" },
+  "float",
+]
+
+[[windows]]
+name = "ranked-minecraft"
+match.title-regex = "^Minecraft\\* 1\\.16\\.1 - MCSR Ranked$"
+initial-tile-state = "floating"
+action = [
+  { type = "move-to-workspace", name = "7" },
+  "float",
+]
+
+[[windows]]
+name = "lunar-client"
+match.any = [
+  { title-regex = "^Lunar Client " },
+  { x-class-regex = "^Lunar Client " },
+]
+initial-tile-state = "floating"
+action = "float"
+
+[shortcuts]
+logo-1 = { type = "show-workspace", name = "1" }
+logo-2 = { type = "show-workspace", name = "2" }
+logo-3 = { type = "show-workspace", name = "3" }
+logo-4 = { type = "show-workspace", name = "4" }
+logo-5 = { type = "show-workspace", name = "5" }
+logo-6 = { type = "show-workspace", name = "6" }
+logo-7 = { type = "show-workspace", name = "7" }
+logo-8 = { type = "show-workspace", name = "8" }
+logo-9 = { type = "show-workspace", name = "9" }
+logo-0 = { type = "show-workspace", name = "10" }
+
+logo-shift-1 = { type = "move-to-workspace", name = "1" }
+logo-shift-2 = { type = "move-to-workspace", name = "2" }
+logo-shift-3 = { type = "move-to-workspace", name = "3" }
+logo-shift-4 = { type = "move-to-workspace", name = "4" }
+logo-shift-5 = { type = "move-to-workspace", name = "5" }
+logo-shift-6 = { type = "move-to-workspace", name = "6" }
+logo-shift-7 = { type = "move-to-workspace", name = "7" }
+logo-shift-8 = { type = "move-to-workspace", name = "8" }
+logo-shift-9 = { type = "move-to-workspace", name = "9" }
+logo-shift-0 = { type = "move-to-workspace", name = "10" }
+
+
+logo-a = "focus-parent"
+logo-shift-q = "close"
+F5 = [
+  "disable-pointer-constraint",
+  "toggle-fullscreen",
+]
+F11 = [
+  "disable-pointer-constraint",
+  "toggle-fullscreen",
+]
+logo-d = { type = "exec", exec = "jay-desktop-launcher" }
+logo-shift-c = "reload-config-toml"
+logo-shift-r = "reload-config-toml"
+logo-shift-space = "toggle-floating"
+logo-Return = { type = "exec", exec = "foot-tabbed" }
+logo-shift-e  = "quit"
+logo-shift-s = { type = "exec", exec = ["systemctl", "suspend"] }
+# Waywall owns gameplay remapping; keyd only handles the mouse side buttons.
+logo-KP_End = { type = "exec", exec = ["playerctl", "-p", "spotify", "previous"] }
+logo-KP_Down = { type = "exec", exec = ["playerctl", "-p", "spotify", "play-pause"] }
+logo-KP_Next = { type = "exec", exec = ["playerctl", "-p", "spotify", "next"] }
+logo-KP_Up = { type = "exec", exec = ["playerctl", "-p", "spotify", "volume", "0.01+"] }
+logo-KP_Begin = { type = "exec", exec = ["playerctl", "-p", "spotify", "volume", "0.01-"] }
+
+[actions]
+launch-browser = { type = "exec", exec = "helium-browser" }
+normal-mouse-sensitivity = { type = "exec", exec = ["/usr/bin/polychromatic-cli", "-d", "mouse", "--dpi", "2000"] }

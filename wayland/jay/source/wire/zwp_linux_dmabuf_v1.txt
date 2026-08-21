@@ -1,0 +1,24 @@
+request destroy (destructor) {
+}
+
+request create_params {
+    params_id: id(zwp_linux_buffer_params_v1) (new),
+}
+
+event format {
+    format: u32,
+}
+
+event modifier (since = 3) {
+    format: u32,
+    modifier: u64,
+}
+
+request get_default_feedback (since = 4) {
+    id: id(zwp_linux_dmabuf_feedback_v1) (new),
+}
+
+request get_surface_feedback (since = 4) {
+    id: id(zwp_linux_dmabuf_feedback_v1) (new),
+    surface: id(wl_surface),
+}
