@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=MCSRLauncher
+GenericName=Minecraft Launcher
+Comment=Launch the MCSR Launcher
+Exec=@HOME@/.local/bin/mcsrlauncher
+Icon=minecraft-launcher
+Terminal=false
+Categories=Game;
+Keywords=Minecraft;MCSR;Speedrun;Launcher;
+StartupNotify=true

@@ -1,0 +1,19 @@
+execute positioned ~-5 ~2 ~-14 run function bastionbuilder:internal/place/mobs/hoglin
+execute positioned ~-7 ~2 ~-19 run function bastionbuilder:internal/place/mobs/piglin
+execute positioned ~-8 ~2 ~-16 run function bastionbuilder:internal/place/mobs/piglin
+execute positioned ~-10 ~2 ~-15 run function bastionbuilder:internal/place/mobs/piglin
+execute positioned ~-12 ~2 ~-15 run function bastionbuilder:internal/place/mobs/piglin
+execute positioned ~-14 ~3 ~-17 run function bastionbuilder:internal/place/mobs/hoglin
+execute positioned ~-15 ~3 ~-14 run function bastionbuilder:internal/place/mobs/piglin
+execute positioned ~-2 ~8 ~-28 run function bastionbuilder:internal/place/mobs/piglin
+execute positioned ~-4 ~8 ~-28 run function bastionbuilder:internal/place/mobs/piglin
+execute positioned ~-10 ~8 ~-27 run function bastionbuilder:internal/place/mobs/piglin
+execute positioned ~-12 ~9 ~-28 run function bastionbuilder:internal/place/mobs/piglin
+execute positioned ~-7 ~15 ~-4 run function bastionbuilder:internal/place/mobs/piglin
+execute positioned ~-11 ~15 ~-4 run function bastionbuilder:internal/place/mobs/piglin
+execute positioned ~-12 ~16 ~-4 run function bastionbuilder:internal/place/mobs/piglin_melee
+execute positioned ~-9 ~19 ~-6 run function bastionbuilder:internal/place/mobs/piglin
+execute positioned ~-7 ~20 ~-16 run function bastionbuilder:internal/place/mobs/piglin
+execute positioned ~-13 ~20 ~-27 run function bastionbuilder:internal/place/mobs/piglin
+execute positioned ~-9 ~16 ~-4 run function bastionbuilder:internal/utils/chest_loot/mark_chest
+execute if score id_piglins bastion.settings matches 1.. positioned ~-15 ~2 ~-28 as @e[type=piglin, tag=bastion_mob, dx=13, dy=18, dz=24] run data modify entity @s CustomName set value '{"text":"starting_pieces/entrance","color":"yellow"}'

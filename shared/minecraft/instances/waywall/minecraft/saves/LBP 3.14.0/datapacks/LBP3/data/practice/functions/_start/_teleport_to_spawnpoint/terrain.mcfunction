@@ -1,0 +1,2 @@
+execute if score terrain settings matches 0 run tp @e[type=area_effect_cloud, tag=terrain_spawnpoint, limit=1]
+execute if score terrain settings matches 1 run function practice:_start/_teleport_to_spawnpoint/random

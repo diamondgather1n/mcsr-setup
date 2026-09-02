@@ -1,0 +1,1 @@
+execute if score has_carpet practice matches 1 if score tick_warp settings matches 1.. run tick warp

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Micro
+Comment=Edit text files in Micro
+Exec=@HOME@/.local/bin/mcsr-open-micro %F
+TryExec=micro
+Icon=accessories-text-editor
+Terminal=false
+Categories=Utility;TextEditor;
+MimeType=text/plain;text/x-shellscript;text/markdown;application/json;application/xml;text/html;text/css;text/javascript;application/x-yaml;text/x-python;text/x-lua;text/x-csrc;text/x-c++src;

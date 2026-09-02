@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Foot
+GenericName=Terminal
+Comment=A Wayland native terminal emulator
+Exec=@HOME@/.local/bin/foot-tabbed
+Icon=foot
+Terminal=false
+Categories=System;TerminalEmulator;
+Keywords=shell;prompt;command;commandline;

@@ -1,0 +1,1 @@
+scoreboard players operation #half sp.fortress /= #2 sp.fortress

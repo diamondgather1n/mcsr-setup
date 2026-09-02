@@ -1,0 +1,1 @@
+summon piglin ~ ~ ~ {NoAI: 1, Silent: 1, PersistenceRequired: 1, CannotHunt: 1, ArmorItems: [{}, {}, {}, {}], HandItems: [{Count: 1b, id: "golden_sword"}, {}], Tags:["bastion_mob"]}

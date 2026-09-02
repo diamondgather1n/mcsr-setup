@@ -1,0 +1,1 @@
+execute as @e[type=player, scores={deaths=1..}] at @s run function practice:on_death

@@ -1,0 +1,3 @@
+execute if score units_left_rampart bastion.settings matches 0 run function bastionbuilder:internal/place/units/ramparts/ramparts_0/rot_0
+execute if score units_left_rampart bastion.settings matches 1 run function bastionbuilder:internal/place/units/ramparts/ramparts_1/rot_0
+execute if score units_left_rampart bastion.settings matches 2 run function bastionbuilder:internal/place/units/ramparts/ramparts_2/rot_0
