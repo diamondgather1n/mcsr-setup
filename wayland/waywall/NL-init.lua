@@ -828,8 +828,8 @@ local remaps = {
         ["Mouse5"] = "Home",
         ["Mouse4"] = "Backspace",
 
-        -- Arrow keys pass through natively. Gameplay remaps belong to Waywall,
-        -- not keyd's desktop input profile.
+        -- Arrow keys pass through natively. Right Ctrl is Jay's logo key via
+        -- keyd; gameplay remaps remain owned here by Waywall.
     },
 }
 
@@ -905,9 +905,9 @@ local cfg = {
     stretched_measure = false,
     crosshair = { enabled = true, size = 2, x = 0, y = 0, depth = 100 },
 
-    thin = { key = "*-Multi_key", alt_key = "*-F13", xf86_key = "*-XF86Tools", f3_safe = false, ingame_only = false },
-    wide = { key = "*-F16", alt_key = nil, xf86_key = "*-XF86Launch7", extra_keys = { "*-N" }, f3_safe = false, ingame_only = true },
-    tall = { key = "*-Alt_L", alt_key = "*-F14", xf86_key = "*-F15", extra_keys = { "*-H", "*-XF86Launch5", "*-XF86Launch6" }, f3_safe = false, ingame_only = false },
+    thin = { key = "*-F13", f3_safe = false, ingame_only = false },
+    wide = { key = "*-N", f3_safe = false, ingame_only = true },
+    tall = { key = "*-Alt_L", extra_keys = { "*-H" }, f3_safe = false, ingame_only = false },
 
     toggle_fullscreen_key = "Shift-O",
     launch_paceman_key = "Shift-P",
@@ -940,7 +940,7 @@ local cfg = {
         enabled = true,
         normal = 2000,
         tall = 200,
-        path = "/sys/devices/pci0000:00/0000:00:02.1/0000:03:00.0/0000:04:0c.0/0000:0a:00.0/usb1/1-5/1-5:1.0/0003:1532:0098.0006/dpi",
+        path = true, -- Use the guarded DeathAdder device discovery helper.
     },
     sens_change = { enabled = false, normal = 1.0, tall = 0.1 },
     enable_resize_animations = false,

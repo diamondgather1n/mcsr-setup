@@ -1,4 +1,4 @@
-waywall-working-git
-
 # Jay is built from the vendored, locked jay-compositor 1.14.0 source by both
 # Wayland installers; it is intentionally not replaced with jay-git.
+# Waywall is likewise built from the pinned vendored source and local input
+# action patch, so no moving AUR package is installed.

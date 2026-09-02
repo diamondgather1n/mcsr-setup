@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
-[[ "${EUID}" -ne 0 ]] || { echo "Run the setup as nathan, not root." >&2; exit 1; }
+[[ "${EUID}" -ne 0 ]] || { echo "Run the setup as a normal user, not root." >&2; exit 1; }
 command -v makepkg >/dev/null || { echo "makepkg is required." >&2; exit 1; }
 
 build_dir="$(mktemp -d)"

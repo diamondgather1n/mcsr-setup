@@ -1,0 +1,11 @@
+#!/bin/sh
+
+shim="$HOME/.local/lib/obs-jay-portal-cursor.so"
+if [ -n "${WAYLAND_DISPLAY:-}" ] && [ -r "$shim" ]; then
+    case ":${LD_PRELOAD-}:" in
+        *:"$shim":*) ;;
+        *) export LD_PRELOAD="$shim${LD_PRELOAD:+:$LD_PRELOAD}" ;;
+    esac
+fi
+
+exec /usr/bin/obs "$@"

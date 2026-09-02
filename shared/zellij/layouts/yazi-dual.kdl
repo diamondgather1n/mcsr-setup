@@ -1,0 +1,12 @@
+layout {
+    tab name="Files" {
+        pane split_direction="vertical" {
+            pane command="yazi" {
+                args "."
+            }
+            pane command="yazi" {
+                args "."
+            }
+        }
+    }
+}

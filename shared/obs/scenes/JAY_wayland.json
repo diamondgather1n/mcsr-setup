@@ -121,18 +121,17 @@
       },
       {
         "prev_ver": 536936450,
-        "name": "Background Noise Expander",
-        "uuid": "80b22083-d845-4e94-a67e-7d2a162f46ec",
-        "id": "expander_filter",
-        "versioned_id": "expander_filter",
+        "name": "Click Peak Compressor",
+        "uuid": "619b0048-0fe1-4fda-b23a-8fbee3e18850",
+        "id": "compressor_filter",
+        "versioned_id": "compressor_filter",
         "settings": {
-          "presets": "expander",
-          "ratio": 1.5,
-          "threshold": -64.0,
-          "attack_time": 5,
-          "release_time": 250,
-          "output_gain": 0.0,
-          "detector": "RMS"
+          "ratio": 6.0,
+          "threshold": -30.0,
+          "attack_time": 1,
+          "release_time": 70,
+          "output_gain": 10.0,
+          "sidechain_source": "none"
         },
         "mixers": 255,
         "sync": 0,
@@ -153,17 +152,18 @@
       },
       {
         "prev_ver": 536936450,
-        "name": "Click Peak Compressor",
-        "uuid": "619b0048-0fe1-4fda-b23a-8fbee3e18850",
-        "id": "compressor_filter",
-        "versioned_id": "compressor_filter",
+        "name": "Background Noise Expander",
+        "uuid": "80b22083-d845-4e94-a67e-7d2a162f46ec",
+        "id": "expander_filter",
+        "versioned_id": "expander_filter",
         "settings": {
-          "ratio": 6.0,
-          "threshold": -30.0,
-          "attack_time": 1,
-          "release_time": 70,
-          "output_gain": 10.0,
-          "sidechain_source": "none"
+          "presets": "expander",
+          "ratio": 2.5,
+          "threshold": -50.0,
+          "attack_time": 5,
+          "release_time": 120,
+          "output_gain": 0.0,
+          "detector": "RMS"
         },
         "mixers": 255,
         "sync": 0,
@@ -250,8 +250,7 @@
       "id": "pipewire-screen-capture-source",
       "versioned_id": "pipewire-screen-capture-source",
       "settings": {
-        "ShowCursor": true,
-        "RestoreToken": "[REDACTED]"
+        "ShowCursor": true
       },
       "mixers": 0,
       "sync": 0,
@@ -493,7 +492,7 @@
       "versioned_id": "browser_source",
       "settings": {
         "is_local_file": false,
-        "local_file": "/home/nathan/.local/share/obs-input-overlay/index.html",
+        "local_file": "@HOME@/.local/share/obs-input-overlay/index.html",
         "url": "http://127.0.0.1:16897/index.html?v=19",
         "width": 760,
         "height": 260,
@@ -533,8 +532,7 @@
       "id": "pipewire-screen-capture-source",
       "versioned_id": "pipewire-screen-capture-source",
       "settings": {
-        "ShowCursor": true,
-        "RestoreToken": "[REDACTED]"
+        "ShowCursor": true
       },
       "mixers": 0,
       "sync": 0,
@@ -559,9 +557,7 @@
       "uuid": "fed05405-861e-410a-b81d-54179de04a70",
       "id": "pipewire-screen-capture-source",
       "versioned_id": "pipewire-screen-capture-source",
-      "settings": {
-        "RestoreToken": "[REDACTED]"
-      },
+      "settings": {},
       "mixers": 0,
       "sync": 0,
       "flags": 0,
@@ -587,7 +583,7 @@
       "versioned_id": "browser_source",
       "settings": {
         "is_local_file": true,
-        "local_file": "[OMITTED_RUNTIME_ASSET]",
+        "local_file": "@HOME@/.local/share/obs-input-overlay/index.html",
         "url": "http://127.0.0.1:16897/index.html?v=18",
         "width": 760,
         "height": 260,
@@ -1353,7 +1349,7 @@
         "OBSBasic.SelectScene": [
           {
             "shift": true,
-            "key": "OBS_KEY_NUM8"
+            "key": "OBS_KEY_F21"
           }
         ],
         "libobs.show_scene_item.7": [],
@@ -1550,7 +1546,7 @@
         "OBSBasic.SelectScene": [
           {
             "shift": true,
-            "key": "OBS_KEY_NUM6"
+            "key": "OBS_KEY_F18"
           }
         ],
         "libobs.show_scene_item.5": [],
@@ -2065,7 +2061,7 @@
         "OBSBasic.SelectScene": [
           {
             "shift": true,
-            "key": "OBS_KEY_NUM3"
+            "key": "OBS_KEY_F15"
           }
         ],
         "libobs.show_scene_item.5": [],

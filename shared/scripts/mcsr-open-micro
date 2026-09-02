@@ -1,0 +1,11 @@
+#!/bin/sh
+
+if [ -n "${WAYLAND_DISPLAY:-}" ] && command -v foot >/dev/null 2>&1; then
+    exec foot -e micro "$@"
+fi
+if [ -n "${DISPLAY:-}" ] && command -v xterm >/dev/null 2>&1; then
+    exec xterm -e micro "$@"
+fi
+
+echo "No supported graphical terminal is available." >&2
+exit 127

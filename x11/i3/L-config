@@ -25,77 +25,77 @@ focus_follows_mouse no
 # Mode settings
 
 # Speedrun state binds
-bindcode --release 117 exec --no-startup-id /home/nathan/.local/bin/mcsr-speedrun-toggle
+bindcode --release 117 exec --no-startup-id @HOME@/.local/bin/mcsr-speedrun-toggle
 
-bindcode 191 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-thin
-bindcode Shift+191 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-thin
-bindcode Control+191 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-thin
-bindcode Mod1+191 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-thin
-bindcode Mod4+191 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-thin
-bindcode Shift+Control+191 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-thin
-bindcode Shift+Mod1+191 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-thin
-bindcode Shift+Mod4+191 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-thin
-bindcode Control+Mod1+191 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-thin
-bindcode Control+Mod4+191 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-thin
-bindcode Mod1+Mod4+191 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-thin
-bindcode Shift+Control+Mod1+191 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-thin
-bindcode Shift+Control+Mod4+191 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-thin
-bindcode Shift+Mod1+Mod4+191 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-thin
-bindcode Control+Mod1+Mod4+191 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-thin
-bindcode Shift+Control+Mod1+Mod4+191 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-thin
+bindcode 191 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-thin
+bindcode Shift+191 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-thin
+bindcode Control+191 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-thin
+bindcode Mod1+191 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-thin
+bindcode Mod4+191 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-thin
+bindcode Shift+Control+191 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-thin
+bindcode Shift+Mod1+191 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-thin
+bindcode Shift+Mod4+191 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-thin
+bindcode Control+Mod1+191 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-thin
+bindcode Control+Mod4+191 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-thin
+bindcode Mod1+Mod4+191 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-thin
+bindcode Shift+Control+Mod1+191 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-thin
+bindcode Shift+Control+Mod4+191 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-thin
+bindcode Shift+Mod1+Mod4+191 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-thin
+bindcode Control+Mod1+Mod4+191 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-thin
+bindcode Shift+Control+Mod1+Mod4+191 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-thin
 
-bindcode 193 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-wide
-bindcode Shift+193 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-wide
-bindcode Control+193 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-wide
-bindcode Mod1+193 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-wide
-bindcode Mod4+193 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-wide
-bindcode Shift+Control+193 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-wide
-bindcode Shift+Mod1+193 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-wide
-bindcode Shift+Mod4+193 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-wide
-bindcode Control+Mod1+193 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-wide
-bindcode Control+Mod4+193 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-wide
-bindcode Mod1+Mod4+193 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-wide
-bindcode Shift+Control+Mod1+193 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-wide
-bindcode Shift+Control+Mod4+193 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-wide
-bindcode Shift+Mod1+Mod4+193 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-wide
-bindcode Control+Mod1+Mod4+193 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-wide
-bindcode Shift+Control+Mod1+Mod4+193 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-wide
+bindcode 193 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-wide
+bindcode Shift+193 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-wide
+bindcode Control+193 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-wide
+bindcode Mod1+193 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-wide
+bindcode Mod4+193 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-wide
+bindcode Shift+Control+193 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-wide
+bindcode Shift+Mod1+193 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-wide
+bindcode Shift+Mod4+193 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-wide
+bindcode Control+Mod1+193 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-wide
+bindcode Control+Mod4+193 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-wide
+bindcode Mod1+Mod4+193 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-wide
+bindcode Shift+Control+Mod1+193 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-wide
+bindcode Shift+Control+Mod4+193 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-wide
+bindcode Shift+Mod1+Mod4+193 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-wide
+bindcode Control+Mod1+Mod4+193 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-wide
+bindcode Shift+Control+Mod1+Mod4+193 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-wide
 
-bindcode 194 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-dpilesszoom
-bindcode Shift+194 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-dpilesszoom
-bindcode Control+194 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-dpilesszoom
-bindcode Mod1+194 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-dpilesszoom
-bindcode Mod4+194 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-dpilesszoom
-bindcode Shift+Control+194 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-dpilesszoom
-bindcode Shift+Mod1+194 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-dpilesszoom
-bindcode Shift+Mod4+194 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-dpilesszoom
-bindcode Control+Mod1+194 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-dpilesszoom
-bindcode Control+Mod4+194 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-dpilesszoom
-bindcode Mod1+Mod4+194 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-dpilesszoom
-bindcode Shift+Control+Mod1+194 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-dpilesszoom
-bindcode Shift+Control+Mod4+194 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-dpilesszoom
-bindcode Shift+Mod1+Mod4+194 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-dpilesszoom
-bindcode Control+Mod1+Mod4+194 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-dpilesszoom
-bindcode Shift+Control+Mod1+Mod4+194 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-dpilesszoom
+bindcode 194 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-dpilesszoom
+bindcode Shift+194 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-dpilesszoom
+bindcode Control+194 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-dpilesszoom
+bindcode Mod1+194 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-dpilesszoom
+bindcode Mod4+194 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-dpilesszoom
+bindcode Shift+Control+194 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-dpilesszoom
+bindcode Shift+Mod1+194 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-dpilesszoom
+bindcode Shift+Mod4+194 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-dpilesszoom
+bindcode Control+Mod1+194 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-dpilesszoom
+bindcode Control+Mod4+194 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-dpilesszoom
+bindcode Mod1+Mod4+194 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-dpilesszoom
+bindcode Shift+Control+Mod1+194 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-dpilesszoom
+bindcode Shift+Control+Mod4+194 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-dpilesszoom
+bindcode Shift+Mod1+Mod4+194 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-dpilesszoom
+bindcode Control+Mod1+Mod4+194 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-dpilesszoom
+bindcode Shift+Control+Mod1+Mod4+194 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-dpilesszoom
 
-bindcode 192 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-zoom
-bindcode Shift+192 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-zoom
-bindcode Control+192 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-zoom
-bindcode Mod1+192 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-zoom
-bindcode Mod4+192 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-zoom
-bindcode Shift+Control+192 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-zoom
-bindcode Shift+Mod1+192 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-zoom
-bindcode Shift+Mod4+192 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-zoom
-bindcode Control+Mod1+192 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-zoom
-bindcode Control+Mod4+192 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-zoom
-bindcode Mod1+Mod4+192 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-zoom
-bindcode Shift+Control+Mod1+192 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-zoom
-bindcode Shift+Control+Mod4+192 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-zoom
-bindcode Shift+Mod1+Mod4+192 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-zoom
-bindcode Control+Mod1+Mod4+192 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-zoom
-bindcode Shift+Control+Mod1+Mod4+192 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-zoom
+bindcode 192 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-zoom
+bindcode Shift+192 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-zoom
+bindcode Control+192 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-zoom
+bindcode Mod1+192 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-zoom
+bindcode Mod4+192 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-zoom
+bindcode Shift+Control+192 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-zoom
+bindcode Shift+Mod1+192 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-zoom
+bindcode Shift+Mod4+192 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-zoom
+bindcode Control+Mod1+192 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-zoom
+bindcode Control+Mod4+192 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-zoom
+bindcode Mod1+Mod4+192 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-zoom
+bindcode Shift+Control+Mod1+192 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-zoom
+bindcode Shift+Control+Mod4+192 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-zoom
+bindcode Shift+Mod1+Mod4+192 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-zoom
+bindcode Control+Mod1+Mod4+192 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-zoom
+bindcode Shift+Control+Mod1+Mod4+192 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-zoom
 
-bindcode Control+Shift+44 exec --no-startup-id /home/nathan/.local/bin/mcsr-macro-restart-ninjabrain
+bindcode Control+Shift+44 exec --no-startup-id @HOME@/.local/bin/mcsr-macro-restart-ninjabrain
 # End speedrun state binds
 
 
@@ -103,7 +103,7 @@ bindcode Control+Shift+44 exec --no-startup-id /home/nathan/.local/bin/mcsr-macr
 
 
 
-exec --no-startup-id /home/nathan/MCSR/x11/shell-scripts/less.sh
+exec --no-startup-id @HOME@/MCSR/x11/shell-scripts/less.sh
 
 
 
@@ -135,7 +135,7 @@ assign [class="Spotify"] $ws8
 bindsym $mod+Shift+space floating toggle
 bindsym $mod+Shift+c reload
 bindsym $mod+Shift+r restart
-bindsym $mod+Return exec xterm -e zellij --config /home/nathan/.config/zellij/config-x11.kdl attach --create main
+bindsym $mod+Return exec xterm -e zellij --config @HOME@/.config/zellij/config-x11.kdl attach --create main
 bindsym $mod+Shift+e exec "i3-nagbar -t warning -m 'Exit i3?' -B 'Yes, exit i3' 'i3-msg exit'"
 
 
@@ -181,7 +181,7 @@ bindcode $mod+Shift+39 exec --no-startup-id systemctl suspend
 
 # Startup commands
 
-exec --no-startup-id /home/nathan/.local/bin/mcsr-speedrun-on
+exec --no-startup-id @HOME@/.local/bin/mcsr-speedrun-on
 
 bar {
         position top
@@ -207,15 +207,15 @@ exec --no-startup-id systemctl --user import-environment DISPLAY XAUTHORITY DBUS
 exec --no-startup-id dbus-update-activation-environment --systemd DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS XDG_CURRENT_DESKTOP=i3
 exec --no-startup-id dex --autostart --environment i3
 exec --no-startup-id xset r rate 150 200
-exec --no-startup-id feh --bg-fill '/home/nathan/MCSR/CrossDisplayManager/obs images/background.jpg'
+exec --no-startup-id feh --bg-fill '@HOME@/MCSR/CrossDisplayManager/obs images/background.jpg'
 exec --no-startup-id xset dpms 3600 3600 3600
 
 # window rules ig
 for_window [class="^ninjabrainbot-Main$"] move container to workspace number 7, floating enable, border normal 0
 for_window [title="^Minecraft\* 1\.16\.1 - MCSR Ranked$"] move container to workspace number 7, floating enable, border normal 0
 
-for_window [class="^ninjabrainbot-Main$"] exec --no-startup-id /home/nathan/.local/bin/mcsr-place-windows
-for_window [title="^Minecraft\* 1\.16\.1 - MCSR Ranked$"] exec --no-startup-id /home/nathan/.local/bin/mcsr-place-windows
+for_window [class="^ninjabrainbot-Main$"] exec --no-startup-id @HOME@/.local/bin/mcsr-place-windows
+for_window [title="^Minecraft\* 1\.16\.1 - MCSR Ranked$"] exec --no-startup-id @HOME@/.local/bin/mcsr-place-windows
 
 # spotify
 bindsym $mod+KP_End exec --no-startup-id playerctl -p spotify previous

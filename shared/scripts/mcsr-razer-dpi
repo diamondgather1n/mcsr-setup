@@ -1,0 +1,14 @@
+#!/bin/sh
+
+dpi=${1:-2000}
+
+command -v polychromatic-cli >/dev/null 2>&1 || exit 0
+
+for name_file in /sys/class/input/event*/device/name; do
+    [ -r "$name_file" ] || continue
+    if grep -qi 'Razer.*mouse\|Razer.*DeathAdder' "$name_file"; then
+        exec polychromatic-cli -d mouse --dpi "$dpi"
+    fi
+done
+
+exit 0

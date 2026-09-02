@@ -1,126 +1,103 @@
 # Non-pacman installation sources
 
-This file records live provenance and the non-pacman build steps used by the
-four setup scripts.
+This file records provenance for components that are not installed directly
+from the official Arch repositories. Paths under `/home/nathan` describe the
+audited reference machine only; installed runtime files use rendered target
+paths.
 
 ## Jay
 
-- Command: `/home/nathan/.local/bin/jay`
-- Real binary: `/home/nathan/.local/bin/jay.real`
-- Reported version: `1.14.0` (`jay version`)
-- Upstream repository: `https://github.com/mahkoh/jay`
-- Upstream release 1.14.0 commit: `1430d6b`
-- The exact `jay-compositor-1.14.0` Cargo source and `Cargo.lock` are vendored
-  under `wayland/jay/source/`. Both Wayland installers run
-  `cargo install --path ... --locked --root "$HOME/.local"` and verify that
-  the resulting binary reports `1.14.0`.
-- The source build was verified offline on the reference machine. It is the
-  reproducible Jay plan; `jay-git` is intentionally not used because it would
-  move the setup to an unpinned development revision.
-- Jay's pinned installation guide was checked for direct native requirements.
-  `rust` is the build requirement; `libinput`, `systemd-libs`, `pango`,
-  `fontconfig`, `mesa`, and `vulkan-icd-loader` are explicitly listed in the
-  Wayland manifest for its configured Vulkan runtime and native input/display
-  interfaces.
-- `jay.real` SHA-256: `3e1a4b5cfdad4aa8185fc4b1127900f79acb1c52bc17fe6767c1aea65e533fb9`
-- Wrapper SHA-256: `1ed09b87bba1c9e8be5037569008db5bde05cecd915c31f837b7691eaca56ab0`
-- The wrapper preloads the local GBM shim
-  `/home/nathan/.local/lib/jay-gbm-implicit-modifier.so`; the compiled shim is
-  intentionally not copied into Git. Its SHA-256 is
-  `23b3723a63aa72f096403c07c90dc9df5221b410af43a2bbc55f681c1cc2ff60`.
-- The current local GBM preload shim has no preserved source, so it is not
-  installed by the reproducible setup. The clean upstream 1.14.0 build is
-  used instead of carrying an opaque compiled shim.
+- Reference commands: `/home/nathan/.local/bin/jay` and `jay.real`.
+- Version: `1.14.0`; upstream release commit `1430d6b`.
+- The exact Cargo source and lock file are vendored under
+  `wayland/jay/source/`.
+- Both Wayland installers run `cargo install --path ... --locked` into a
+  temporary root, then install the binary as `~/.local/bin/jay.real`.
+- The portable wrapper is rendered to `~/.local/bin/jay` so the LightDM
+  session has an absolute executable and does not depend on shell `PATH`.
+- Source for the audited GBM compatibility preload is preserved at
+  `wayland/shims/jay-gbm-implicit-modifier.c` and compiled during setup.
+- Jay's portal metadata and the user service are installed explicitly. The
+  repository selects the official GTK portal for file selection.
 
 ## Waywall
 
-- Installed command: `/usr/bin/waywall`
-- Package: `waywall-working-git`
-- Installed version: `0.2026.02.06.r5.g5cd802b-1`
-- Upstream: `https://github.com/tesselslate/waywall`
-- The project documents `waywall-working-git` as its Arch AUR package.
+- Reference package: `waywall-working-git`
+  `0.2026.02.06.r5.g5cd802b-1`.
+- Upstream: `https://github.com/tesselslate/waywall`.
+- Exact source commit: `5cd802b3a4b3e3a87186263f876aa6e060a7ba23`,
+  vendored under `wayland/waywall/source/`.
+- The audited input-action patch is
+  `wayland/waywall/ctrl-scroll-actions.patch` with SHA-256
+  `0e3e51805a1c4c1554ad4c792a9805ed0702af75bc2647e977c2b4c5d18de903`.
+- Both Wayland installers build that source and patch deterministically and
+  install `~/.local/bin/waywall-ctrl-scroll`. They do not substitute a newer
+  moving AUR checkout.
 
-## Polychromatic
+## Helium
 
-- Live command: `/usr/bin/polychromatic-cli`; no pacman owner.
-- Local build tree: `/home/nathan/polychromatic-git`
-- AUR build tree commit: `6f5ca555bf98171e83510bb6047f2ec085acfc55`
-- AUR remote: `https://aur.archlinux.org/polychromatic-git.git`
-- Source remote: `https://github.com/polychromatic/polychromatic.git`
-- Source commit: `87cff1dd78555a5514a29f1221c5d03d31bb68e8`
-- The repository copy includes the source and PKGBUILD metadata, but not the
-  local package archive, `pkg/`, nested `.git`, or generated build outputs.
-- `shared/polychromatic/PKGBUILD.pinned` and `install.sh` build the vendored
-  source at commit `87cff1dd78555a5514a29f1221c5d03d31bb68e8` without cloning a
-  newer revision. The resulting package provides `/usr/bin/polychromatic-cli`.
+- The working reference installation was inspected with `command -v`,
+  `pacman -Qo`, foreign-package queries, and its desktop entry.
+- Actual package: AUR `helium-browser-bin`.
+- Reference version: `0.10.8.1-1`.
+- Executable: `/usr/bin/helium-browser`.
+- Desktop entry: `/usr/share/applications/helium.desktop`.
+- `yay-common.txt` reproduces this method. Firefox or Chromium is not used as
+  a replacement.
+
+## Polychromatic and OpenRazer
+
+- Reference Polychromatic source commit:
+  `87cff1dd78555a5514a29f1221c5d03d31bb68e8`.
+- The source and pinned package recipe are under `shared/polychromatic/` and
+  are built locally with `makepkg`.
+- OpenRazer is installed from Arch dependencies. Membership in `plugdev` is
+  added when that group exists, and the DPI command is guarded by live Razer
+  mouse detection.
 
 ## GoCrosshair
 
-- Current X11 scripts used `/home/nathan/gocrosshair/gocrosshair`; the repo
-  version uses the packaged command `gocrosshair`.
-- Current checkout: `/home/nathan/gocrosshair`
-- Remote: `https://github.com/MatheusLasserre/gocrosshair.git`
-- Current checkout commit: `77358e957702b9db11114b5fcebbb1c59f2e565d`
-- The upstream project documents an AUR package named `gocrosshair`, so that
-  package is in `yay-x11.txt`. The installed `gocrosshair-debug` package is not
-  treated as the application.
+- X11 fallback source commit: `77358e957702b9db11114b5fcebbb1c59f2e565d`.
+- X11 installers use the AUR `gocrosshair` package and its packaged command.
 
-## MCSR components
+## MCSR and Minecraft
 
-- MCSR Launcher source/data is copied from the live
-  `/home/nathan/MCSR/CrossDisplayManager/MCSRlauncher/MCSRLauncher.jar`, with
-  its small user options file at `shared/mcsr/launcher/options.json`.
-- Ninjabrain Bot `1.5.2` and Paceman Tracker `0.7.2` are copied as the current
-  JARs from Waywall resources.
-- Selected live PrismLauncher instance data is copied under
-  `shared/minecraft/instances/`: `ranked`, `seedqueue`, `x11 ranked`, and
-  `1.21.1 ssg`. Runtime logs, worlds, replay caches, generated jars, and
-  credentials are deliberately omitted. The launcher directory's downloaded
-  assets, libraries, Java runtimes, logs, and launcher-managed instance cache
-  are also omitted because they are reproducible runtime data and total about
-  15 GB.
+- MCSRLauncher was audited from
+  `/home/nathan/MCSR/CrossDisplayManager/MCSRlauncher/MCSRLauncher.jar`.
+- Active launcher runtime data is under `/home/nathan/launcher/`; installation
+  therefore places options and instances under the target user's `~/launcher`.
+- Ninjabrain Bot `1.5.2` and Paceman Tracker `0.7.2` are retained in both the
+  Waywall resource tree and `~/MCSR/CrossDisplayManager/jarfiles`.
+- `/home/nathan/launcher/instances/Ranked` maps to repository/install instance
+  `MCSRRanked` for X11.
+- `/home/nathan/launcher/instances/Ranked2` maps to repository/install instance
+  `waywall` for Wayland.
+- Named practice maps, configs, mods, options, hotbar data, natives, and Fabric
+  data are retained. Logs, crash dumps, screenshots, session locks, Hermes
+  process snapshots, user cache, replay caches, and generated reset/ranked
+  worlds are excluded.
 
-## Deliberately omitted local wrappers
+## OBS
 
-- `/home/nathan/.local/bin/obs` is a local OBS wrapper around the packaged OBS
-  executable. It is not copied because it is tied to the current machine's
-  portal/capture workaround. The repository scripts use the native packaged
-  `/usr/bin/obs` command instead.
-- `foot-tabbed` and `jay-desktop-launcher` are copied under
-  `wayland/helpers/` because the current Jay configuration invokes them
-  directly.
-- The live `mcsr-update-launcher` helper is deliberately not copied. It is an
-  optional updater and currently calls `jar`, which is not present with the
-  reference machine's JRE-only Java installation. The setup keeps the
-  current launcher JAR and launches it directly.
+- The native configuration source is `/home/nathan/.config/obs-studio/`; no
+  Flatpak path is used.
+- Scene collections preserve browser sources, image assets, PipeWire sources,
+  layering, and the current Mic/Aux RNNoise, compressor, expander, and limiter
+  filter chain.
+- `obs-studio-plugin-browser` is installed from Arch.
+- Source for the Jay portal cursor compatibility preload is preserved at
+  `wayland/shims/obs-jay-portal-cursor.c` and compiled during Wayland setup.
+- Portable scene copies omit portal restore tokens, Twitch credentials, stream
+  keys, and private SoundAlerts identifiers. Those are manual post-install
+  steps.
 
-## Private authentication backup
+## Authentication boundary
 
-Reusable launcher authentication is intentionally outside Git and GitHub.
-Before using a fresh setup, make a mode-600 offline backup at:
+Never add any `accounts.json`, OBS `service.json`, GitHub token, authenticator
+secret, Microsoft/Minecraft token, Twitch token, or stream key. The repository
+`.gitignore` rejects the launcher and OBS credential filenames, and validation
+also scans tracked files before push.
 
-`/home/nathan/MCSR/private-backup/mcsr-setup-auth/`
-
-Copy these exact live files there, preserving their filenames:
-
-- `/home/nathan/.local/share/PrismLauncher/accounts.json`
-  -> `PrismLauncher/accounts.json`
-- `/home/nathan/MCSR/CrossDisplayManager/MCSRlauncher/launcher/accounts.json`
-  -> `MCSRLauncher/accounts.json`
-
-Restore them to their original paths only after the relevant launcher is
-installed, and never add the private-backup directory to Git. This task does
-not create or copy those credential files.
-
-## Deliberately absent from manifests
-
-- `jay-git`: the active Jay is a local 1.14.0 build, not a pacman/AUR install.
-- `polychromatic-git`: the exact local source build is preserved instead of
-  silently substituting a newly built AUR revision.
-- `obs-plugin-input-overlay-bin`: saved scenes use an OBS browser source and a
-  local HTML overlay; no saved scene source uses the plugin's `input-overlay`
-  source id. The actual local overlay assets/helper are preserved under
-  `shared/obs/input-overlay/` for the full Wayland setup.
-- `dotool`: included in `packages/pacman-wayland-lag.txt` because the full
-  Wayland input-recorder helper invokes it, and the full Jay startup helper
-  may use it for focus. It is deliberately absent from NL Wayland.
+The optional live updater for MCSRLauncher is not included: it is not required
+to launch the pinned JAR and relied on JDK tooling not guaranteed by the JRE
+baseline.

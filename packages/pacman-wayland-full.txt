@@ -1,0 +1,7 @@
+waybar
+i3blocks
+polkit-gnome
+libnotify
+gawk
+iproute2
+libpulse

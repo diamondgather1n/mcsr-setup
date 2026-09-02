@@ -1,0 +1,1 @@
+# No fuller X11-only AUR packages are currently required.

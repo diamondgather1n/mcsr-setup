@@ -13,8 +13,8 @@ show-bar = true
 show-titles = true
 
 on-graphics-initialized = [
-  { type = "exec", exec = ["/home/nathan/.local/bin/jay", "randr", "output", "DP-1", "mode", "1920", "1080", "165.003"] },
-  { type = "exec", exec = ["/usr/bin/polychromatic-cli", "-d", "mouse", "--dpi", "2000"] },
+  { type = "exec", exec = ["@HOME@/.local/bin/jay", "randr", "output", "DP-1", "mode", "1920", "1080", "165.003"] },
+  { type = "exec", exec = ["@HOME@/.local/bin/mcsr-razer-dpi", "2000"] },
 ]
 
 [theme]
@@ -215,4 +215,4 @@ logo-KP_Begin = { type = "exec", exec = ["playerctl", "-p", "spotify", "volume",
 
 [actions]
 launch-browser = { type = "exec", exec = "helium-browser" }
-normal-mouse-sensitivity = { type = "exec", exec = ["/usr/bin/polychromatic-cli", "-d", "mouse", "--dpi", "2000"] }
+normal-mouse-sensitivity = { type = "exec", exec = ["@HOME@/.local/bin/mcsr-razer-dpi", "2000"] }

@@ -1,0 +1,290 @@
+diff --git a/include/config/config.h b/include/config/config.h
+index c7dde6a..c769aa2 100644
+--- a/include/config/config.h
++++ b/include/config/config.h
+@@ -75,6 +75,7 @@ struct config {
+ struct config_action {
+     enum config_action_type {
+         CONFIG_ACTION_NONE,
++        CONFIG_ACTION_AXIS,
+         CONFIG_ACTION_BUTTON,
+         CONFIG_ACTION_KEY,
+     } type;
+@@ -86,6 +87,11 @@ struct config_action {
+     uint16_t lua_index;
+ };
+
++enum config_action_axis {
++    CONFIG_ACTION_SCROLL_UP,
++    CONFIG_ACTION_SCROLL_DOWN,
++};
++
+ enum config_remap_type {
+     CONFIG_REMAP_NONE,
+     CONFIG_REMAP_KEY,
+diff --git a/include/server/wl_seat.h b/include/server/wl_seat.h
+index 26462f5..97d7e88 100644
+--- a/include/server/wl_seat.h
++++ b/include/server/wl_seat.h
+@@ -44,6 +44,14 @@ struct server_seat {
+     struct {
+         struct wl_pointer *remote;
+         double x, y;
++
++        struct {
++            bool source_pending;
++            uint32_t source;
++            bool vertical_checked;
++            bool vertical_consumed;
++            bool vertical_sequence_consumed;
++        } axis_frame;
+     } pointer;
+
+     uint32_t last_serial;
+@@ -83,6 +91,7 @@ struct server_seat_config {
+ };
+
+ struct server_seat_listener {
++    bool (*axis)(void *data, enum config_action_axis axis);
+     bool (*button)(void *data, uint32_t button, bool state);
+     bool (*key)(void *data, size_t num_syms, const uint32_t syms[static num_syms], bool state);
+     void (*modifiers)(void *data, uint32_t mods);
+diff --git a/waywall/config/config.c b/waywall/config/config.c
+index b807274..5718f6b 100644
+--- a/waywall/config/config.c
++++ b/waywall/config/config.c
+@@ -77,6 +77,14 @@ static const struct {
+     {"mb5", BTN_EXTRA},  {"mouse5", BTN_EXTRA},
+ };
+
++static const struct {
++    const char *name;
++    enum config_action_axis value;
++} axis_mappings[] = {
++    {"scrollup", CONFIG_ACTION_SCROLL_UP},
++    {"scrolldown", CONFIG_ACTION_SCROLL_DOWN},
++};
++
+ static const struct {
+     const char *name;
+     enum kb_modifier value;
+@@ -283,6 +291,19 @@ parse_bind_element(const char *bind, str elem, struct config_action *action) {
+         }
+     }
+
++    for (size_t j = 0; j < STATIC_ARRLEN(axis_mappings); j++) {
++        if (strcasecmp(axis_mappings[j].name, elem_str) == 0) {
++            if (action->type != CONFIG_ACTION_NONE) {
++                ww_log(LOG_ERROR, "action '%s' has multiple inputs", bind);
++                goto fail;
++            }
++
++            action->data = axis_mappings[j].value;
++            action->type = CONFIG_ACTION_AXIS;
++            goto ok;
++        }
++    }
++
+     for (size_t j = 0; j < STATIC_ARRLEN(modifier_mappings); j++) {
+         if (strcasecmp(modifier_mappings[j].name, elem_str) == 0) {
+             uint32_t mask = modifier_mappings[j].value;
+diff --git a/waywall/main.c b/waywall/main.c
+index a2f6993..4080805 100644
+--- a/waywall/main.c
++++ b/waywall/main.c
+@@ -245,6 +245,7 @@ set_realtime() {
+ int
+ main(int argc, char **argv) {
+     util_log_init();
++    setenv("WAYWALL_HAS_AXIS_ACTIONS", "1", true);
+
+     if (argc < 2) {
+         print_help(argv[0]);
+diff --git a/waywall/server/wl_seat.c b/waywall/server/wl_seat.c
+index fc9bf89..06e08b4 100644
+--- a/waywall/server/wl_seat.c
++++ b/waywall/server/wl_seat.c
+@@ -691,10 +691,8 @@ static const struct wl_keyboard_listener keyboard_listener = {
+ };
+
+ static void
+-on_pointer_axis(void *data, struct wl_pointer *wl, uint32_t time, uint32_t axis, wl_fixed_t value) {
+-    struct server_seat *seat = data;
+-
+-    if (!seat->input_focus) {
++send_pending_axis_source(struct server_seat *seat) {
++    if (!seat->pointer.axis_frame.source_pending || !seat->input_focus) {
+         return;
+     }
+
+@@ -705,18 +703,53 @@ on_pointer_axis(void *data, struct wl_pointer *wl, uint32_t time, uint32_t axis,
+             continue;
+         }
+
+-        wl_pointer_send_axis(resource, current_time(), axis, value);
++        if (wl_resource_get_version(resource) >= WL_POINTER_AXIS_SOURCE_SINCE_VERSION) {
++            wl_pointer_send_axis_source(resource, seat->pointer.axis_frame.source);
++        }
++    }
++
++    seat->pointer.axis_frame.source_pending = false;
++}
++
++static bool
++try_axis_action(struct server_seat *seat, uint32_t axis, double value) {
++    if (!seat->listener || !seat->listener->axis ||
++        axis != WL_POINTER_AXIS_VERTICAL_SCROLL || value == 0) {
++        return false;
+     }
++
++    enum config_action_axis direction =
++        value < 0 ? CONFIG_ACTION_SCROLL_UP : CONFIG_ACTION_SCROLL_DOWN;
++    return seat->listener->axis(seat->listener_data, direction);
+ }
+
+ static void
+-on_pointer_axis_discrete(void *data, struct wl_pointer *wl, uint32_t axis, int32_t discrete) {
++on_pointer_axis(void *data, struct wl_pointer *wl, uint32_t time, uint32_t axis, wl_fixed_t value) {
+     struct server_seat *seat = data;
+
+     if (!seat->input_focus) {
+         return;
+     }
+
++    bool consumed;
++    if (axis == WL_POINTER_AXIS_VERTICAL_SCROLL &&
++        seat->pointer.axis_frame.vertical_checked) {
++        consumed = seat->pointer.axis_frame.vertical_consumed;
++        seat->pointer.axis_frame.vertical_checked = false;
++        seat->pointer.axis_frame.vertical_consumed = false;
++    } else {
++        consumed = try_axis_action(seat, axis, wl_fixed_to_double(value));
++    }
++
++    if (axis == WL_POINTER_AXIS_VERTICAL_SCROLL) {
++        seat->pointer.axis_frame.vertical_sequence_consumed = consumed;
++    }
++    if (consumed) {
++        return;
++    }
++
++    send_pending_axis_source(seat);
++
+     struct wl_client *client = wl_resource_get_client(seat->input_focus->surface->resource);
+     struct wl_resource *resource;
+     wl_resource_for_each(resource, &seat->pointers) {
+@@ -724,20 +757,29 @@ on_pointer_axis_discrete(void *data, struct wl_pointer *wl, uint32_t axis, int32
+             continue;
+         }
+
+-        if (wl_resource_get_version(resource) >= WL_POINTER_AXIS_DISCRETE_SINCE_VERSION) {
+-            wl_pointer_send_axis_discrete(resource, axis, discrete);
+-        }
++        wl_pointer_send_axis(resource, current_time(), axis, value);
+     }
+ }
+
+ static void
+-on_pointer_axis_source(void *data, struct wl_pointer *wl, uint32_t source) {
++on_pointer_axis_discrete(void *data, struct wl_pointer *wl, uint32_t axis, int32_t discrete) {
+     struct server_seat *seat = data;
+
+     if (!seat->input_focus) {
+         return;
+     }
+
++    bool consumed = try_axis_action(seat, axis, discrete);
++    if (axis == WL_POINTER_AXIS_VERTICAL_SCROLL) {
++        seat->pointer.axis_frame.vertical_checked = true;
++        seat->pointer.axis_frame.vertical_consumed = consumed;
++    }
++    if (consumed) {
++        return;
++    }
++
++    send_pending_axis_source(seat);
++
+     struct wl_client *client = wl_resource_get_client(seat->input_focus->surface->resource);
+     struct wl_resource *resource;
+     wl_resource_for_each(resource, &seat->pointers) {
+@@ -745,12 +787,20 @@ on_pointer_axis_source(void *data, struct wl_pointer *wl, uint32_t source) {
+             continue;
+         }
+
+-        if (wl_resource_get_version(resource) >= WL_POINTER_AXIS_SOURCE_SINCE_VERSION) {
+-            wl_pointer_send_axis_source(resource, source);
++        if (wl_resource_get_version(resource) >= WL_POINTER_AXIS_DISCRETE_SINCE_VERSION) {
++            wl_pointer_send_axis_discrete(resource, axis, discrete);
+         }
+     }
+ }
+
++static void
++on_pointer_axis_source(void *data, struct wl_pointer *wl, uint32_t source) {
++    struct server_seat *seat = data;
++
++    seat->pointer.axis_frame.source = source;
++    seat->pointer.axis_frame.source_pending = true;
++}
++
+ static void
+ on_pointer_axis_stop(void *data, struct wl_pointer *wl, uint32_t time, uint32_t axis) {
+     struct server_seat *seat = data;
+@@ -759,6 +809,14 @@ on_pointer_axis_stop(void *data, struct wl_pointer *wl, uint32_t time, uint32_t
+         return;
+     }
+
++    if (axis == WL_POINTER_AXIS_VERTICAL_SCROLL &&
++        seat->pointer.axis_frame.vertical_sequence_consumed) {
++        seat->pointer.axis_frame.vertical_sequence_consumed = false;
++        return;
++    }
++
++    send_pending_axis_source(seat);
++
+     struct wl_client *client = wl_resource_get_client(seat->input_focus->surface->resource);
+     struct wl_resource *resource;
+     wl_resource_for_each(resource, &seat->pointers) {
+@@ -813,6 +871,10 @@ static void
+ on_pointer_frame(void *data, struct wl_pointer *wl) {
+     struct server_seat *seat = data;
+
++    seat->pointer.axis_frame.source_pending = false;
++    seat->pointer.axis_frame.vertical_checked = false;
++    seat->pointer.axis_frame.vertical_consumed = false;
++
+     if (!seat->input_focus) {
+         return;
+     }
+diff --git a/waywall/wrap.c b/waywall/wrap.c
+index 32ea33f..8220df0 100644
+--- a/waywall/wrap.c
++++ b/waywall/wrap.c
+@@ -437,6 +437,19 @@ on_view_destroy(struct wl_listener *listener, void *data) {
+     server_shutdown(wrap->server);
+ }
+
++static bool
++on_axis(void *data, enum config_action_axis axis) {
++    struct wrap *wrap = data;
++
++    struct config_action action = {};
++    action.type = CONFIG_ACTION_AXIS;
++    action.data = axis;
++    action.modifiers = wrap->input.modifiers;
++
++    ssize_t idx = config_find_action(wrap->cfg, &action);
++    return idx >= 0 && config_vm_try_action(wrap->cfg->vm, idx);
++}
++
+ static bool
+ on_button(void *data, uint32_t button, bool pressed) {
+     struct wrap *wrap = data;
+@@ -557,6 +570,7 @@ on_motion(void *data, double x, double y) {
+ }
+
+ static const struct server_seat_listener seat_listener = {
++    .axis = on_axis,
+     .button = on_button,
+     .key = on_key,
+     .modifiers = on_modifiers,

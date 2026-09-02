@@ -13,10 +13,10 @@ show-bar = true
 show-titles = true
 
 on-graphics-initialized = [
-  { type = "exec", exec = ["/home/nathan/.local/bin/jay", "randr", "output", "DP-1", "mode", "1920", "1080", "165.003"] },
-  { type = "exec", exec = ["/usr/bin/polychromatic-cli", "-d", "mouse", "--dpi", "2000"] },
+  { type = "exec", exec = ["@HOME@/.local/bin/jay", "randr", "output", "DP-1", "mode", "1920", "1080", "165.003"] },
+  { type = "exec", exec = ["@HOME@/.local/bin/mcsr-razer-dpi", "2000"] },
   { type = "exec", exec = ["/usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1"] },
-  { type = "exec", exec = ["/home/nathan/.local/bin/jay-startup-windows"] },
+  { type = "exec", exec = ["@HOME@/.local/bin/jay-startup-windows"] },
 ]
 
 [theme]
@@ -46,7 +46,7 @@ bar-separator-width = 1
 
 [status]
 format = "i3bar"
-exec = ["i3blocks", "-c", "/home/nathan/.config/i3blocks/config"]
+exec = ["i3blocks", "-c", "@HOME@/.config/i3blocks/config"]
 i3bar-separator = " | "
 
 [[inputs]]
@@ -212,8 +212,8 @@ logo-shift-space = "toggle-floating"
 logo-Return = { type = "exec", exec = "foot-tabbed" }
 logo-shift-e  = "quit"
 logo-shift-s = { type = "exec", exec = ["systemctl", "suspend"] }
-# Waywall owns gameplay remapping; keyd only handles the mouse side buttons.
-logo-F9 = { type = "exec", exec = ["/home/nathan/.local/bin/input-recorder", "toggle"] }
+# Right Ctrl provides Jay's logo layer through keyd.
+logo-F9 = { type = "exec", exec = ["@HOME@/.local/bin/input-recorder", "toggle"] }
 logo-KP_End = { type = "exec", exec = ["playerctl", "-p", "spotify", "previous"] }
 logo-KP_Down = { type = "exec", exec = ["playerctl", "-p", "spotify", "play-pause"] }
 logo-KP_Next = { type = "exec", exec = ["playerctl", "-p", "spotify", "next"] }
@@ -222,4 +222,4 @@ logo-KP_Begin = { type = "exec", exec = ["playerctl", "-p", "spotify", "volume",
 
 [actions]
 launch-browser = { type = "exec", exec = "helium-browser" }
-normal-mouse-sensitivity = { type = "exec", exec = ["/usr/bin/polychromatic-cli", "-d", "mouse", "--dpi", "2000"] }
+normal-mouse-sensitivity = { type = "exec", exec = ["@HOME@/.local/bin/mcsr-razer-dpi", "2000"] }

@@ -1,5 +1,15 @@
 foot
 rust
+meson
+ninja
+pkgconf
+libdrm
+glib2
+luajit
+libspng
+wayland
+libxcb
+libxkbcommon
 libinput
 systemd-libs
 pango
@@ -10,3 +20,7 @@ bemenu
 qt6-wayland
 wayland-protocols
 xorg-xwayland
+xdg-desktop-portal
+xdg-desktop-portal-gtk
+python-evdev
+python-websockets

@@ -9,4 +9,4 @@ pkill -f 'Ninjabrain-Bot-1.5.2.jar' 2>/dev/null
 sleep 0.4
 
 # Open a fresh Ninjabrain Bot
-exec /home/nathan/.local/bin/ninjabrain
+exec "$HOME/.local/bin/ninjabrain"

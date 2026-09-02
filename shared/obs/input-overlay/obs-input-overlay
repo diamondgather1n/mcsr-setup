@@ -29,7 +29,7 @@ DEVICE_NAMES = {
     "pointer": "keyd virtual pointer",
 }
 JAY_TREE_COMMAND = (
-    "/home/nathan/.local/bin/jay",
+    str(Path.home() / ".local/bin/jay"),
     "--json",
     "--all-json-fields",
     "tree",

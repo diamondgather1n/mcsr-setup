@@ -1,0 +1,16 @@
+[Unit]
+Description=Portal service (Jay implementation)
+PartOf=graphical-session.target
+After=graphical-session.target
+ConditionEnvironment=WAYLAND_DISPLAY
+
+[Service]
+Type=dbus
+BusName=org.freedesktop.impl.portal.desktop.jay
+Environment=LD_PRELOAD=@HOME@/.local/lib/jay-gbm-implicit-modifier.so
+Environment=JAY_GBM_IMPLICIT_SHIM_LOG=1
+ExecStart=@HOME@/.local/bin/jay portal
+Restart=on-failure
+
+[Install]
+WantedBy=graphical-session.target

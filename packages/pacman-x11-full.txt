@@ -1,8 +1,6 @@
 i3blocks
 feh
 dex
-qpwgraph
 gawk
 iproute2
 libpulse
-

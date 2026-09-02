@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-exec /home/nathan/.local/bin/mcsr-speedrun-only /home/nathan/MCSR/x11/macros/zoom.sh
+exec "$HOME/.local/bin/mcsr-speedrun-only" "$HOME/MCSR/x11/macros/zoom.sh"

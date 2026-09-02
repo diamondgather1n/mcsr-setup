@@ -139,6 +139,8 @@ launch_helium_if_missing \
 launch_if_missing "mcsr launcher workspace 5" 'MCSR Launcher|com-redlimerl-mcsrlauncher-MCSRLauncher' mcsrlauncher
 
 main_urls=(
+  "https://chatgpt.com/"
+  "https://mcsr.cards/"
   "https://discord.com/channels/1286062493826940981/1286062493826940984"
   "https://twitch.tv/doogile"
   "https://youtube.com"
@@ -148,7 +150,9 @@ main_urls=(
 )
 launch_helium_if_missing "main helium workspace 6" 'doogile - Twitch - Helium|YouTube - Helium|ChatGPT' "${main_urls[@]}"
 
-launch_if_missing "spotify workspace 8" 'x-class: Spotify|app-id: com\.spotify\.Client|app-id: spotify' spotify
+spotify_command=spotify
+command -v "$spotify_command" >/dev/null 2>&1 || spotify_command=spotify-launcher
+launch_if_missing "spotify workspace 8" 'x-class: Spotify|app-id: com\.spotify\.Client|app-id: spotify' "$spotify_command"
 launch_if_missing "obs workspace 9" 'app-id: com\.obsproject\.Studio|x-class: obs|title: OBS Studio' obs
 launch_if_missing "foot workspace 10" 'app-id: foot|x-class: foot|title: foot' foot-tabbed
 launch_if_missing "qpwgraph workspace 10" 'app-id: org\.rncbc\.qpwgraph|x-class: qpwgraph|PipeWire Graph' qpwgraph

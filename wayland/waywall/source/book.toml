@@ -1,0 +1,7 @@
+[book]
+title = "waywall"
+authors = ["tesselslate"]
+description = "Documentation for waywall"
+
+language = "en"
+src = "doc"
