@@ -1,0 +1,2 @@
+execute if score stables_left_gap bastion.settings matches ..-1 run function bastionbuilder:internal/place/hoglin_stable/walls/wall/random_wall/rot_180
+execute if score stables_left_gap bastion.settings matches 0.. run function bastionbuilder:internal/place/hoglin_stable/walls/wall/left_wall/fixed_left_wall/rot_180

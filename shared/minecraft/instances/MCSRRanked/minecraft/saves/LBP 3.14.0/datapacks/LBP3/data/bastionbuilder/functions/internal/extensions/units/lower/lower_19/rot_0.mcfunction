@@ -1,0 +1,27 @@
+execute positioned ~11 ~1 ~21 run function bastionbuilder:internal/place/blocks/gold
+execute positioned ~25 ~1 ~38 run function bastionbuilder:internal/place/blocks/gold
+execute positioned ~38 ~1 ~25 run function bastionbuilder:internal/place/blocks/gold
+execute positioned ~25 ~2 ~33 run function bastionbuilder:internal/place/mobs/piglin
+execute positioned ~33 ~2 ~25 run function bastionbuilder:internal/place/mobs/piglin
+execute positioned ~34 ~8 ~27 run function bastionbuilder:internal/place/blocks/gold
+execute positioned ~14 ~9 ~18 run function bastionbuilder:internal/place/mobs/piglin_melee
+execute positioned ~33 ~9 ~13 run function bastionbuilder:internal/place/mobs/piglin
+execute positioned ~38 ~9 ~23 run function bastionbuilder:internal/place/mobs/piglin
+execute positioned ~39 ~9 ~36 run function bastionbuilder:internal/place/mobs/piglin_melee
+execute positioned ~7 ~11 ~32 run function bastionbuilder:internal/place/blocks/gold
+execute positioned ~25 ~11 ~34 run function bastionbuilder:internal/place/blocks/gold
+execute positioned ~31 ~11 ~15 run function bastionbuilder:internal/place/blocks/gold
+execute positioned ~36 ~11 ~12 run function bastionbuilder:internal/place/mobs/piglin
+execute positioned ~7 ~16 ~16 run function bastionbuilder:internal/place/mobs/piglin
+execute positioned ~7 ~16 ~37 run function bastionbuilder:internal/place/mobs/piglin
+execute positioned ~15 ~16 ~10 run function bastionbuilder:internal/place/mobs/piglin
+execute positioned ~20 ~16 ~34 run function bastionbuilder:internal/place/mobs/piglin
+execute positioned ~31 ~16 ~24 run function bastionbuilder:internal/place/mobs/piglin
+execute positioned ~33 ~16 ~41 run function bastionbuilder:internal/place/mobs/piglin
+execute positioned ~35 ~16 ~10 run function bastionbuilder:internal/place/mobs/piglin
+execute positioned ~5 ~22 ~15 run function bastionbuilder:internal/place/blocks/gold
+execute positioned ~40 ~22 ~39 run function bastionbuilder:internal/place/blocks/gold
+execute positioned ~20 ~1 ~26 run function bastionbuilder:internal/utils/chest_loot/mark_chest
+execute positioned ~11 ~8 ~16 run function bastionbuilder:internal/utils/chest_loot/mark_chest
+execute positioned ~37 ~8 ~39 run function bastionbuilder:internal/utils/chest_loot/mark_chest
+execute if score id_piglins bastion.settings matches 1.. positioned ~7 ~2 ~10 as @e[type=piglin, tag=bastion_mob, dx=32, dy=14, dz=31] run data modify entity @s CustomName set value '{"text":"lower","color":"yellow"}'

@@ -1,0 +1,37 @@
+clone ~ ~ ~ ~ ~1 ~ ~ 254 ~
+setblock ~ ~ ~ structure_block{mode:"LOAD", rotation:"CLOCKWISE_180", name:"sp.fortress:bridge/bridge"}
+setblock ~ ~1 ~ redstone_block
+setblock ~ ~ ~ nether_bricks
+setblock ~ ~1 ~ nether_bricks
+fill ~ 254 ~ ~ 255 ~ air
+
+execute positioned ~ ~-1 ~ run function sp.fortress:internal/fill_support
+execute positioned ~ ~-1 ~-1 run function sp.fortress:internal/fill_support
+execute positioned ~ ~-1 ~-2 run function sp.fortress:internal/fill_support
+execute positioned ~ ~-1 ~-3 run function sp.fortress:internal/fill_support
+execute positioned ~ ~-1 ~-4 run function sp.fortress:internal/fill_support
+execute positioned ~-1 ~-1 ~ run function sp.fortress:internal/fill_support
+execute positioned ~-1 ~-1 ~-1 run function sp.fortress:internal/fill_support
+execute positioned ~-1 ~-1 ~-2 run function sp.fortress:internal/fill_support
+execute positioned ~-1 ~-1 ~-3 run function sp.fortress:internal/fill_support
+execute positioned ~-1 ~-1 ~-4 run function sp.fortress:internal/fill_support
+execute positioned ~-2 ~-1 ~ run function sp.fortress:internal/fill_support
+execute positioned ~-2 ~-1 ~-1 run function sp.fortress:internal/fill_support
+execute positioned ~-2 ~-1 ~-2 run function sp.fortress:internal/fill_support
+execute positioned ~-2 ~-1 ~-3 run function sp.fortress:internal/fill_support
+execute positioned ~-2 ~-1 ~-4 run function sp.fortress:internal/fill_support
+execute positioned ~-16 ~-1 ~ run function sp.fortress:internal/fill_support
+execute positioned ~-16 ~-1 ~-1 run function sp.fortress:internal/fill_support
+execute positioned ~-16 ~-1 ~-2 run function sp.fortress:internal/fill_support
+execute positioned ~-16 ~-1 ~-3 run function sp.fortress:internal/fill_support
+execute positioned ~-16 ~-1 ~-4 run function sp.fortress:internal/fill_support
+execute positioned ~-17 ~-1 ~ run function sp.fortress:internal/fill_support
+execute positioned ~-17 ~-1 ~-1 run function sp.fortress:internal/fill_support
+execute positioned ~-17 ~-1 ~-2 run function sp.fortress:internal/fill_support
+execute positioned ~-17 ~-1 ~-3 run function sp.fortress:internal/fill_support
+execute positioned ~-17 ~-1 ~-4 run function sp.fortress:internal/fill_support
+execute positioned ~-18 ~-1 ~ run function sp.fortress:internal/fill_support
+execute positioned ~-18 ~-1 ~-1 run function sp.fortress:internal/fill_support
+execute positioned ~-18 ~-1 ~-2 run function sp.fortress:internal/fill_support
+execute positioned ~-18 ~-1 ~-3 run function sp.fortress:internal/fill_support
+execute positioned ~-18 ~-1 ~-4 run function sp.fortress:internal/fill_support
