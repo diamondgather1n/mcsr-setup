@@ -1,1 +1,4 @@
 shared/minecraft/instances/** -text
+shared/minecraft/instances/**/* -text
+shared/minecraft/instances/*/** -text
+shared/minecraft/instances/*/**/* -text
