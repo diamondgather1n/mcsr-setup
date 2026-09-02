@@ -1,6 +1,7 @@
 base-devel
 git
 curl
+less
 linux
 linux-firmware
 linux-headers

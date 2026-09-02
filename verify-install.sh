@@ -5,6 +5,7 @@ VARIANT=${1:-NLmcsrWL.sh}
 TARGET_USER=$(id -un)
 TARGET_HOME=${HOME:?HOME is not set}
 FAILURES=0
+WARNINGS=0
 
 case "$VARIANT" in
     NLmcsrWL.sh|LmcsrWL.sh)
@@ -23,8 +24,9 @@ case "$VARIANT" in
         ;;
 esac
 
+section() { printf '\n== %s ==\n' "$*"; }
 pass() { printf 'PASS %s\n' "$*"; }
-warn() { printf 'WARN %s\n' "$*"; }
+warn() { printf 'WARN %s\n' "$*"; WARNINGS=$((WARNINGS + 1)); }
 fail() { printf 'FAIL %s\n' "$*"; FAILURES=$((FAILURES + 1)); }
 
 check_file() {
@@ -78,6 +80,7 @@ check_mime() {
 
 printf 'Verifying %s for %s at %s\n' "$VARIANT" "$TARGET_USER" "$TARGET_HOME"
 
+section "applications"
 for command_spec in \
     'Discord:discord' \
     'Helium:helium-browser' \
@@ -98,6 +101,7 @@ for command_spec in \
     check_command "${command_spec%%:*}" "${command_spec#*:}"
 done
 
+section "launcher"
 check_executable "MCSRLauncher wrapper" "$TARGET_HOME/.local/bin/mcsrlauncher"
 check_file "MCSRLauncher JAR" "$TARGET_HOME/MCSR/CrossDisplayManager/MCSRlauncher/MCSRLauncher.jar"
 check_file "MCSRLauncher options" "$TARGET_HOME/launcher/options.json"
@@ -105,6 +109,7 @@ check_file "MCSRLauncher desktop entry" "$TARGET_HOME/.local/share/applications/
 check_file "Ninjabrain JAR" "$TARGET_HOME/MCSR/CrossDisplayManager/jarfiles/Ninjabrain-Bot-1.5.2.jar"
 check_file "Paceman JAR" "$TARGET_HOME/MCSR/CrossDisplayManager/jarfiles/paceman-tracker-0.7.2.jar"
 
+section "user configuration"
 check_file "Foot config" "$TARGET_HOME/.config/foot/foot.ini"
 check_file "Zellij config" "$TARGET_HOME/.config/zellij/config.kdl"
 check_file "Yazi dual-pane Zellij layout" "$TARGET_HOME/.config/zellij/layouts/yazi-dual.kdl"
@@ -112,6 +117,7 @@ check_executable "Micro opener" "$TARGET_HOME/.local/bin/mcsr-open-micro"
 check_executable "Yazi opener" "$TARGET_HOME/.local/bin/mcsr-open-yazi"
 check_executable "OBS wrapper" "$TARGET_HOME/.local/bin/obs"
 
+section "OBS"
 check_file "OBS profile" "$TARGET_HOME/.config/obs-studio/basic/profiles/optimized/basic.ini"
 check_file "OBS global configuration" "$TARGET_HOME/.config/obs-studio/global.ini"
 check_file "OBS user configuration" "$TARGET_HOME/.config/obs-studio/user.ini"
@@ -124,6 +130,7 @@ check_contains "OBS Mic/Aux compressor" "$TARGET_HOME/.config/obs-studio/basic/s
 check_contains "OBS Mic/Aux expander" "$TARGET_HOME/.config/obs-studio/basic/scenes/$OBS_SCENE" 'expander_filter'
 check_contains "OBS Mic/Aux limiter" "$TARGET_HOME/.config/obs-studio/basic/scenes/$OBS_SCENE" 'limiter_filter'
 
+section "Minecraft"
 check_dir "$INSTANCE Minecraft instance" "$TARGET_HOME/launcher/instances/$INSTANCE/minecraft"
 check_file "$INSTANCE instance metadata" "$TARGET_HOME/launcher/instances/$INSTANCE/instance.json"
 if command -v jq >/dev/null 2>&1 && [[ -r "$TARGET_HOME/launcher/instances/$INSTANCE/instance.json" ]]; then
@@ -131,10 +138,13 @@ if command -v jq >/dev/null 2>&1 && [[ -r "$TARGET_HOME/launcher/instances/$INST
     [[ "$actual_id" == "$INSTANCE" ]] && pass "$INSTANCE metadata id" || fail "$INSTANCE metadata id (got ${actual_id:-none})"
 fi
 
+section "input/keyd"
 check_file "keyd configuration" /etc/keyd/normal.conf
 check_contains "keyd mouse2 mapping" /etc/keyd/normal.conf 'mouse2 = home'
 check_contains "keyd mouse1 mapping" /etc/keyd/normal.conf 'mouse1 = backspace'
 check_contains "keyd right-control desktop mapping" /etc/keyd/normal.conf 'rightcontrol = leftmeta'
+
+section "services"
 check_enabled NetworkManager.service
 check_enabled keyd.service
 check_enabled lightdm.service
@@ -149,6 +159,7 @@ else
 fi
 
 if [[ "$PLATFORM" == wayland ]]; then
+    section "Jay/Waywall"
     check_command "Foot" foot
     check_executable "Jay wrapper" "$TARGET_HOME/.local/bin/jay"
     check_executable "Jay binary" "$TARGET_HOME/.local/bin/jay.real"
@@ -175,11 +186,13 @@ if [[ "$PLATFORM" == wayland ]]; then
         "$TARGET_HOME/launcher/instances/waywall/instance.json" \
         "$TARGET_HOME/.local/bin/waywall-ctrl-scroll wrap --"
 else
+    section "X11"
     check_command "i3" i3
     check_file "i3 config" "$TARGET_HOME/.config/i3/config"
     check_dir "X11 xmodmap assets" "$TARGET_HOME/MCSR/x11/xmodmap"
 fi
 
+section "default applications"
 check_mime x-scheme-handler/http helium.desktop
 check_mime x-scheme-handler/https helium.desktop
 check_mime text/plain micro-foot.desktop
@@ -187,6 +200,7 @@ check_mime video/mp4 mpv.desktop
 check_mime image/png imv.desktop
 check_mime inode/directory yazi-foot.desktop
 
+section "portability"
 scan_candidates=(
     "$TARGET_HOME/.config/jay"
     "$TARGET_HOME/.config/waywall"
@@ -235,8 +249,10 @@ warn "Minecraft/Microsoft, Twitch, SoundAlerts, and GitHub authentication are in
 warn "DP-1 1920x1080@165 and Razer DPI actions are guarded reference-hardware settings"
 
 if ((FAILURES > 0)); then
-    printf 'FAIL %d required check(s) failed\n' "$FAILURES"
+    printf '\nFAIL: %d REQUIRED CHECKS FAILED\n' "$FAILURES"
+    printf 'WARN: %d warning(s)\n' "$WARNINGS"
     exit 1
 fi
 
-printf 'PASS all required checks passed\n'
+printf '\nPASS: ALL REQUIRED CHECKS PASSED\n'
+printf 'WARN: %d warning(s)\n' "$WARNINGS"

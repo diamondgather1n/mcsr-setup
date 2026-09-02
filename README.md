@@ -10,7 +10,8 @@ one entry point without `sudo`:
 ```
 
 The installer invokes `sudo` only for packages, system configuration, user
-group membership, and system services. Reboot after it completes.
+group membership, and system services. It also tees full output to
+`~/mcsr-setup-<variant>.log` for debugging. Reboot after it completes.
 
 ## Variants
 

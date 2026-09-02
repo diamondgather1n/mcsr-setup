@@ -9,6 +9,8 @@ set -Eeuo pipefail
 TARGET_USER="$(id -un)"
 TARGET_HOME="${HOME:?HOME is not set}"
 CURRENT_STAGE="initialization"
+LOG_FILE=""
+SYSTEM_ROOT="${MCSR_SYSTEM_ROOT:-}"
 
 if [[ "$MCSR_PLATFORM" == wayland ]]; then
     OBS_COLLECTION="JAY (wayland)"
@@ -19,13 +21,26 @@ else
 fi
 
 die() {
-    printf 'mcsr-setup: %s\n' "$*" >&2
+    {
+        printf '\n===== MCSR SETUP FAILED =====\n'
+        printf 'Variant: %s\n' "$MCSR_VARIANT"
+        printf 'Stage: %s\n' "$CURRENT_STAGE"
+        printf 'Reason: %s\n' "$*"
+        [[ -n "$LOG_FILE" ]] && printf 'Log: %s\n' "$LOG_FILE"
+    } >&2
     exit 1
 }
 
 on_error() {
     local status=$?
-    printf 'mcsr-setup: FAIL during %s (exit %d)\n' "$CURRENT_STAGE" "$status" >&2
+    {
+        printf '\n===== MCSR SETUP FAILED =====\n'
+        printf 'Variant: %s\n' "$MCSR_VARIANT"
+        printf 'Stage: %s\n' "$CURRENT_STAGE"
+        printf 'Exit: %d\n' "$status"
+        printf 'Command: %s\n' "$BASH_COMMAND"
+        [[ -n "$LOG_FILE" ]] && printf 'Log: %s\n' "$LOG_FILE"
+    } >&2
     exit "$status"
 }
 trap on_error ERR
@@ -51,6 +66,25 @@ require_executable() {
     [[ -x "$1" ]] || die "missing or non-executable source file: $1"
 }
 
+root_path() {
+    printf '%s%s' "$SYSTEM_ROOT" "$1"
+}
+
+setup_logging() {
+    [[ "${MCSR_SETUP_LOGGING_STARTED:-0}" == 1 ]] && return
+    LOG_FILE="$TARGET_HOME/mcsr-setup-$MCSR_VARIANT.log"
+    touch "$LOG_FILE" || die "could not write installer log: $LOG_FILE"
+    export MCSR_SETUP_LOGGING_STARTED=1
+    exec > >(tee -a "$LOG_FILE") 2>&1
+    printf '\n===== MCSR SETUP STARTED =====\n'
+    printf 'Variant: %s\n' "$MCSR_VARIANT"
+    printf 'Log: %s\n' "$LOG_FILE"
+}
+
+file_has_template_marker() {
+    grep -IqE '@(HOME|USER|OBS_COLLECTION|OBS_SCENE_FILE)@' "$1"
+}
+
 deploy_rendered() {
     local src=$1 dest=$2 mode=${3:-644} tmp
     require_file "$src"
@@ -74,8 +108,9 @@ deploy_copy() {
 }
 
 deploy_root_rendered() {
-    local src=$1 dest=$2 mode=${3:-644} tmp
+    local src=$1 dest=$2 mode=${3:-644} tmp target
     require_file "$src"
+    target=$(root_path "$dest")
     tmp=$(mktemp)
     sed \
         -e "s|@HOME@|$TARGET_HOME|g" \
@@ -83,7 +118,11 @@ deploy_root_rendered() {
         -e "s|@OBS_COLLECTION@|$OBS_COLLECTION|g" \
         -e "s|@OBS_SCENE_FILE@|$OBS_SCENE_FILE|g" \
         "$src" >"$tmp"
-    sudo install -Dm"$mode" "$tmp" "$dest"
+    if [[ -n "$SYSTEM_ROOT" ]]; then
+        install -Dm"$mode" "$tmp" "$target"
+    else
+        sudo install -Dm"$mode" "$tmp" "$target"
+    fi
     rm -f -- "$tmp"
 }
 
@@ -94,6 +133,11 @@ deploy_tree() {
 
     while IFS= read -r -d '' entry; do
         rel=${entry#"$src/"}
+        case "$rel" in
+            __pycache__|__pycache__/*|*/__pycache__|*/__pycache__/*|*.pyc)
+                continue
+                ;;
+        esac
         target="$dest/$rel"
         if [[ -d "$entry" && ! -L "$entry" ]]; then
             mkdir -p "$target"
@@ -103,7 +147,11 @@ deploy_tree() {
         elif [[ -f "$entry" ]]; then
             mode=644
             [[ -x "$entry" ]] && mode=755
-            deploy_rendered "$entry" "$target" "$mode"
+            if file_has_template_marker "$entry"; then
+                deploy_rendered "$entry" "$target" "$mode"
+            else
+                deploy_copy "$entry" "$target" "$mode"
+            fi
         fi
     done < <(find "$src" -mindepth 1 -print0)
 }
@@ -111,13 +159,51 @@ deploy_tree() {
 render_instance_templates() {
     local dest=$1 file mode tmp
     while IFS= read -r -d '' file; do
-        grep -IqE '@(HOME|USER)@' "$file" || continue
+        file_has_template_marker "$file" || continue
         mode=$(stat -c '%a' "$file")
         tmp=$(mktemp)
-        sed -e "s|@HOME@|$TARGET_HOME|g" -e "s|@USER@|$TARGET_USER|g" "$file" >"$tmp"
+        sed \
+            -e "s|@HOME@|$TARGET_HOME|g" \
+            -e "s|@USER@|$TARGET_USER|g" \
+            -e "s|@OBS_COLLECTION@|$OBS_COLLECTION|g" \
+            -e "s|@OBS_SCENE_FILE@|$OBS_SCENE_FILE|g" \
+            "$file" >"$tmp"
         install -m "$mode" "$tmp" "$file"
         rm -f -- "$tmp"
     done < <(find "$dest" -type f -print0)
+}
+
+jay_version_token_is_expected() {
+    local output=$1 version
+    read -r version _ <<<"$output"
+    [[ "$version" == "1.14.0" ]]
+}
+
+validate_built_jay_version() {
+    local output
+    output="$("$TARGET_HOME/.local/bin/jay" version)"
+    if ! jay_version_token_is_expected "$output"; then
+        die "built Jay reported '$output'; expected first version token 1.14.0"
+    fi
+    printf 'Jay version check passed: %s\n' "$output"
+}
+
+assert_file() {
+    [[ -f "$1" ]] || die "post-deploy sanity missing file: $1"
+}
+
+assert_dir() {
+    [[ -d "$1" ]] || die "post-deploy sanity missing directory: $1"
+}
+
+assert_executable() {
+    [[ -x "$1" ]] || die "post-deploy sanity missing executable: $1"
+}
+
+assert_contains() {
+    local path=$1 text=$2
+    [[ -r "$path" ]] || die "post-deploy sanity cannot read: $path"
+    grep -Fq -- "$text" "$path" || die "post-deploy sanity expected '$text' in $path"
 }
 
 deploy_instance() {
@@ -415,7 +501,7 @@ build_wayland_components() {
     deploy_copy "$ROOT/wayland/shims/obs-jay-portal-cursor.c" \
         "$TARGET_HOME/.local/src/obs-jay-portal-cursor.c"
     deploy_rendered "$ROOT/wayland/helpers/jay" "$TARGET_HOME/.local/bin/jay" 755
-    [[ "$("$TARGET_HOME/.local/bin/jay" version)" == "1.14.0" ]] || die "built Jay did not report version 1.14.0"
+    validate_built_jay_version
 }
 
 deploy_common_configuration() {
@@ -545,7 +631,68 @@ enable_system_services() {
     sudo systemctl enable NetworkManager.service keyd.service lightdm.service
 }
 
+post_deploy_sanity_check() {
+    stage "pre-reboot deployment sanity check"
+    assert_executable "$TARGET_HOME/.local/bin/mcsr-open-micro"
+    assert_executable "$TARGET_HOME/.local/bin/mcsr-open-yazi"
+    assert_executable "$TARGET_HOME/.local/bin/mcsrlauncher"
+    assert_executable "$TARGET_HOME/.local/bin/ninjabrain"
+    assert_executable "$TARGET_HOME/.local/bin/obs"
+    assert_executable "$TARGET_HOME/.local/bin/spotify"
+    assert_file "$TARGET_HOME/.config/foot/foot.ini"
+    assert_file "$TARGET_HOME/.config/zellij/config.kdl"
+    assert_dir "$TARGET_HOME/.config/zellij/layouts"
+    assert_file "$TARGET_HOME/.config/mimeapps.list"
+    assert_file "$TARGET_HOME/.config/obs-studio/global.ini"
+    assert_file "$TARGET_HOME/.config/obs-studio/user.ini"
+    assert_dir "$TARGET_HOME/.config/obs-studio/basic/profiles/optimized"
+    assert_file "$(root_path /etc/keyd/normal.conf)"
+    assert_contains "$(root_path /etc/keyd/normal.conf)" 'mouse2 = home'
+    assert_contains "$(root_path /etc/keyd/normal.conf)" 'mouse1 = backspace'
+    assert_contains "$(root_path /etc/keyd/normal.conf)" 'rightcontrol = leftmeta'
+    assert_file "$TARGET_HOME/launcher/options.json"
+    assert_dir "$TARGET_HOME/MCSR/CrossDisplayManager/MCSRlauncher"
+    assert_dir "$TARGET_HOME/MCSR/CrossDisplayManager/jarfiles"
+    assert_dir "$TARGET_HOME/MCSR/CrossDisplayManager/obs images"
+    assert_dir "$TARGET_HOME/.local/share/applications"
+
+    if [[ "$MCSR_PLATFORM" == wayland ]]; then
+        assert_executable "$TARGET_HOME/.local/bin/jay"
+        assert_executable "$TARGET_HOME/.local/bin/jay.real"
+        assert_executable "$TARGET_HOME/.local/bin/waywall-ctrl-scroll"
+        assert_file "$TARGET_HOME/.config/jay/config.toml"
+        assert_contains "$TARGET_HOME/.config/jay/config.toml" 'layout = "gb,no"'
+        assert_file "$TARGET_HOME/.config/waywall/init.lua"
+        assert_contains "$TARGET_HOME/.config/waywall/init.lua" 'layout = "mcsr"'
+        assert_dir "$TARGET_HOME/.config/waywall/resources"
+        assert_file "$TARGET_HOME/MCSR/wayland/xkb/symbols/mcsr"
+        [[ -L "$TARGET_HOME/.config/xkb/symbols/mcsr" ]] \
+            || die "post-deploy sanity missing symlink: $TARGET_HOME/.config/xkb/symbols/mcsr"
+        [[ "$(readlink -f "$TARGET_HOME/.config/xkb/symbols/mcsr")" == "$TARGET_HOME/MCSR/wayland/xkb/symbols/mcsr" ]] \
+            || die "post-deploy sanity bad XKB symlink target: $TARGET_HOME/.config/xkb/symbols/mcsr"
+        assert_file "$TARGET_HOME/.config/obs-studio/basic/scenes/JAY_wayland.json"
+        assert_file "$TARGET_HOME/.config/systemd/user/xdg-desktop-portal-jay.service"
+        assert_file "$TARGET_HOME/.config/systemd/user/obs-input-overlay.service"
+        assert_file "$TARGET_HOME/.config/environment.d/10-mcsr-defaults.conf"
+        assert_dir "$TARGET_HOME/.local/share/obs-input-overlay"
+        assert_file "$TARGET_HOME/.local/share/obs-input-overlay/index.html"
+        assert_file "$TARGET_HOME/launcher/instances/waywall/instance.json"
+        assert_dir "$TARGET_HOME/launcher/instances/waywall/minecraft"
+        assert_file "$(root_path /usr/share/wayland-sessions/jay.desktop)"
+        assert_contains "$(root_path /usr/share/wayland-sessions/jay.desktop)" "Exec=$TARGET_HOME/.local/bin/jay run"
+        assert_file "$(root_path /usr/share/xdg-desktop-portal/portals/jay.portal)"
+        assert_file "$(root_path /usr/share/xdg-desktop-portal/jay-portals.conf)"
+    else
+        assert_file "$TARGET_HOME/.config/i3/config"
+        assert_dir "$TARGET_HOME/MCSR/x11/xmodmap"
+        assert_file "$TARGET_HOME/.config/obs-studio/basic/scenes/I3_x11.json"
+        assert_file "$TARGET_HOME/launcher/instances/MCSRRanked/instance.json"
+        assert_dir "$TARGET_HOME/launcher/instances/MCSRRanked/minecraft"
+    fi
+}
+
 run_install() {
+    setup_logging
     preflight
     install_pacman_packages
     install_aur_packages
@@ -563,8 +710,12 @@ run_install() {
         deploy_x11_configuration
     fi
     enable_system_services
+    post_deploy_sanity_check
 
     CURRENT_STAGE="complete"
-    printf '\nInstalled %s successfully. Reboot, select the appropriate session, then run ./verify-install.sh %s.\n' \
-        "$MCSR_VARIANT" "$MCSR_VARIANT"
+    printf '\n===== MCSR SETUP COMPLETE =====\n'
+    printf 'Installed %s successfully.\n' "$MCSR_VARIANT"
+    printf 'Reboot, select the appropriate session, then run ./verify-install.sh %s.\n' \
+        "$MCSR_VARIANT"
+    printf 'Log: %s\n' "$LOG_FILE"
 }
