@@ -1,0 +1,24 @@
+{
+    "id": "waywall",
+    "displayName": "waywall",
+    "group": "Waywall",
+    "minecraftVersion": "1.16.1",
+    "lwjglVersion": {
+        "type": "org.lwjgl3",
+        "version": "3.3.6"
+    },
+    "fabricVersion": {
+        "loaderVersion": "0.19.2",
+        "intermediaryType": "net.fabricmc:intermediary",
+        "intermediaryVersion": "1.16.1"
+    },
+    "options": {
+        "useLauncherJavaOption": false,
+        "autoModUpdates": true,
+        "useLauncherWorkarounds": false,
+        "wrapperCommand": "/usr/bin/env GLFW_PLATFORM=x11 @HOME@/.local/bin/waywall-ctrl-scroll wrap --",
+        "maxMemory": 8192,
+        "javaPath": "/usr/lib/jvm/java-21-openjdk/bin/java"
+    },
+    "playTime": 2306080
+}

@@ -1,0 +1,200 @@
+[
+  {
+    "matchId": 12967213,
+    "player": {
+      "spectator": false,
+      "achievements": [
+        {
+          "id": "bestTime",
+          "date": 1780101981,
+          "data": [],
+          "level": 7,
+          "goal": 599999,
+          "value": 626238
+        }
+      ],
+      "chatDisabled": false,
+      "anonymousLevel": 0,
+      "hideOnClient": false,
+      "waitingResponse": false,
+      "status": "ONLINE",
+      "twitchId": null,
+      "uuid": "35126fa968d84e35b6397bd405b60781",
+      "nickname": "Acosha",
+      "roleType": 0,
+      "eloRate": null,
+      "eloRank": null,
+      "country": "us"
+    }
+  },
+  {
+    "matchId": 12967353,
+    "player": {
+      "spectator": false,
+      "achievements": [
+        {
+          "id": "bestTime",
+          "date": 1766529433,
+          "data": [],
+          "level": 9,
+          "goal": 479999,
+          "value": 528565
+        },
+        {
+          "id": "wins",
+          "date": 1766530579,
+          "data": [],
+          "level": 9,
+          "goal": 2000,
+          "value": 1321
+        },
+        {
+          "id": "ironPickless",
+          "date": 1729234520,
+          "data": [],
+          "level": 1,
+          "goal": null,
+          "value": null
+        }
+      ],
+      "chatDisabled": false,
+      "anonymousLevel": 0,
+      "hideOnClient": false,
+      "waitingResponse": false,
+      "status": "ONLINE",
+      "twitchId": null,
+      "uuid": "3bd1a50394dc49d38605a59b4be8bc7d",
+      "nickname": "fizyu",
+      "roleType": 1,
+      "eloRate": 1458,
+      "eloRank": null,
+      "country": "us"
+    }
+  },
+  {
+    "matchId": 12967521,
+    "player": {
+      "spectator": false,
+      "achievements": [],
+      "chatDisabled": false,
+      "anonymousLevel": 0,
+      "hideOnClient": false,
+      "waitingResponse": true,
+      "status": "FORFEIT",
+      "twitchId": null,
+      "uuid": "d7bdc64835cc454f9b6f29f994f70895",
+      "nickname": "congtuoctrungki",
+      "roleType": 0,
+      "eloRate": 1318,
+      "eloRank": null,
+      "country": null
+    }
+  },
+  {
+    "matchId": 12967724,
+    "player": {
+      "spectator": false,
+      "achievements": [
+        {
+          "id": "bestTime",
+          "date": 1786330984,
+          "data": [],
+          "level": 7,
+          "goal": 599999,
+          "value": 622233
+        },
+        {
+          "id": "oneshot",
+          "date": 1786134597,
+          "data": [],
+          "level": 1,
+          "goal": null,
+          "value": null
+        }
+      ],
+      "chatDisabled": false,
+      "anonymousLevel": 0,
+      "hideOnClient": false,
+      "waitingResponse": false,
+      "status": "ONLINE",
+      "twitchId": null,
+      "uuid": "7d73ed21b1a94783b55dd2c458d46406",
+      "nickname": "Cycleruns",
+      "roleType": 0,
+      "eloRate": 1348,
+      "eloRank": null,
+      "country": "ca"
+    }
+  },
+  {
+    "matchId": 12968464,
+    "player": {
+      "spectator": false,
+      "achievements": [],
+      "chatDisabled": false,
+      "anonymousLevel": 0,
+      "hideOnClient": false,
+      "waitingResponse": true,
+      "status": "LEAVE",
+      "twitchId": null,
+      "uuid": "03066ce145344c5b93e71bb8bfdf63bf",
+      "nickname": "shinr1v9",
+      "roleType": 0,
+      "eloRate": 1376,
+      "eloRank": null,
+      "country": null
+    }
+  },
+  {
+    "matchId": 12968624,
+    "player": {
+      "spectator": false,
+      "achievements": [
+        {
+          "id": "bestTime",
+          "date": 1787129898,
+          "data": [],
+          "level": 9,
+          "goal": 479999,
+          "value": 514801
+        },
+        {
+          "id": "playtime",
+          "date": 1779423567,
+          "data": [],
+          "level": 7,
+          "goal": 1800000000,
+          "value": 1209352871
+        },
+        {
+          "id": "playedMatches",
+          "date": 1778980751,
+          "data": [],
+          "level": 9,
+          "goal": 2000,
+          "value": 1991
+        },
+        {
+          "id": "oneshot",
+          "date": 1784872485,
+          "data": [],
+          "level": 1,
+          "goal": null,
+          "value": null
+        }
+      ],
+      "chatDisabled": false,
+      "anonymousLevel": 1,
+      "hideOnClient": false,
+      "waitingResponse": true,
+      "status": "LEAVE",
+      "twitchId": null,
+      "uuid": "ea0d4506972f4fc499824a982ba4734f",
+      "nickname": "zwis_po_kolano",
+      "roleType": 2,
+      "eloRate": 1381,
+      "eloRank": null,
+      "country": null
+    }
+  }
+]
