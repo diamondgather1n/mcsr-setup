@@ -1,0 +1,13 @@
+scoreboard players set cow petOwned 0
+scoreboard players set pig petOwned 0
+scoreboard players set rabbit petOwned 0
+scoreboard players set llama petOwned 0
+scoreboard players set polar_bear petOwned 0
+scoreboard players set panda petOwned 0
+scoreboard players set spoingus petOwned 0
+scoreboard players set walter petOwned 0
+scoreboard players set bee petOwned 0
+scoreboard players set fox petOwned 0
+scoreboard players set sheep petOwned 0
+scoreboard players set turtle petOwned 0
+scoreboard players set parrot petOwned 0

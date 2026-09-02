@@ -1,0 +1,15 @@
+[
+    {
+        "condition": "minecraft:location_check",
+        "predicate": {
+            "position": {
+                "y": {
+                    "min": 32
+                }
+            },
+            "block": {
+                "block": "minecraft:lava"
+            }
+        }
+    }
+]

@@ -1,0 +1,1 @@
+playsound minecraft:entity.player.levelup ambient @a[tag=sound] ~ ~ ~ 0.6 1

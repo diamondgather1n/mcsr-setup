@@ -1,0 +1,2 @@
+execute if score bridge_right_rampart bastion.settings matches ..-1 run function bastionbuilder:internal/place/bridge/ramparts/rampart/random_rampart/rot_0
+execute if score bridge_right_rampart bastion.settings matches 0.. run function bastionbuilder:internal/place/bridge/ramparts/rampart/right_rampart/fixed_right_rampart/rot_0

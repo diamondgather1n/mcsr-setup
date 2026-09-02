@@ -1,0 +1,1 @@
+replaceitem block 0 61 -2 container.0 barrier{display:{Name:'{"text":"Confirm Deletion","italic":"false","color":"red"}'},index:2b}

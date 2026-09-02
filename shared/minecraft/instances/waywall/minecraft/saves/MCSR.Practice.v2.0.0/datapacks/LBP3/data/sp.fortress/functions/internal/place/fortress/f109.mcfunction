@@ -1,0 +1,71 @@
+execute positioned ~ 48 ~ run function sp.fortress:internal/place/bridge/crossing/rot_0
+execute positioned ~19 48 ~7 run function sp.fortress:internal/place/bridge/bridge/rot_0
+execute positioned ~7 48 ~-1 run function sp.fortress:internal/place/bridge/bridge/rot_270
+execute positioned ~12 51 ~19 run function sp.fortress:internal/place/bridge/small_crossing/rot_90
+execute positioned ~38 51 ~6 run function sp.fortress:internal/place/bridge/stairs/rot_0
+execute positioned ~50 54 ~13 run function sp.fortress:internal/place/bridge/crossing/rot_90
+execute positioned ~7 48 ~-20 run function sp.fortress:internal/place/bridge/bridge/rot_270
+execute positioned ~44 57 ~32 run function sp.fortress:internal/place/bridge/platform/rot_90
+execute positioned ~31 54 ~24 run function sp.fortress:internal/place/bridge/bridge/rot_180
+execute positioned ~51 54 ~20 run function sp.fortress:internal/place/bridge/bridge/rot_0
+execute positioned ~70 54 ~13 run function sp.fortress:internal/place/bridge/crossing/rot_0
+execute positioned ~11 48 ~26 run function sp.fortress:internal/place/bridge/bridge/rot_90
+execute positioned ~5 51 ~25 run function sp.fortress:internal/place/bridge/stairs/rot_180
+execute positioned ~89 57 ~19 run function sp.fortress:internal/place/bridge/small_crossing/rot_0
+execute positioned ~77 54 ~12 run function sp.fortress:internal/place/bridge/bridge/rot_270
+execute positioned ~82 57 ~32 run function sp.fortress:internal/place/bridge/stairs/rot_90
+execute positioned ~76 57 ~-7 run function sp.fortress:internal/place/bridge/small_crossing/rot_270
+execute positioned ~70 54 ~-14 run function sp.fortress:internal/place/bridge/crossing/rot_270
+execute positioned ~75 54 ~-8 run function sp.fortress:internal/place/bridge/bridge/rot_180
+execute positioned ~83 54 ~-12 run function sp.fortress:internal/place/bridge/bridge/rot_0
+execute positioned ~77 54 ~-33 run function sp.fortress:internal/place/bridge/bridge/rot_270
+execute positioned ~69 57 ~-20 run function sp.fortress:internal/place/bridge/small_crossing/rot_180
+execute positioned ~89 54 ~-25 run function sp.fortress:internal/place/bridge/bridge/rot_0
+execute positioned ~7 48 ~-39 run function sp.fortress:internal/place/bridge/bridge/rot_270
+execute positioned ~11 48 ~45 run function sp.fortress:internal/place/bridge/bridge/rot_90
+execute positioned ~108 54 ~-25 run function sp.fortress:internal/place/bridge/bridge/rot_0
+execute positioned ~96 54 ~20 run function sp.fortress:internal/place/bridge/bridge/rot_0
+execute positioned ~90 54 ~18 run function sp.fortress:internal/place/bridge/bridge/rot_270
+execute positioned ~94 54 ~26 run function sp.fortress:internal/place/bridge/bridge/rot_90
+execute positioned ~4 54 ~26 run function sp.fortress:internal/place/bridge/bridge/rot_90
+execute positioned ~ 48 ~-58 run function sp.fortress:internal/place/bridge/crossing/rot_270
+execute positioned ~62 54 ~-21 run function sp.fortress:internal/place/bridge/bridge/rot_180
+execute positioned ~64 54 ~-27 run function sp.fortress:internal/place/bridge/bridge/rot_270
+execute positioned ~102 57 ~-13 run function sp.fortress:internal/place/bridge/platform/rot_0
+execute positioned ~4 54 ~45 run function sp.fortress:internal/place/bridge/bridge/rot_90
+execute positioned ~4 54 ~64 run function sp.fortress:internal/place/bridge/bridge/rot_90
+execute positioned ~7 48 ~-77 run function sp.fortress:internal/place/bridge/bridge/rot_270
+execute positioned ~-1 48 ~-65 run function sp.fortress:internal/place/bridge/bridge/rot_180
+execute positioned ~19 48 ~-69 run function sp.fortress:internal/place/bridge/bridge/rot_0
+execute positioned ~7 48 ~-96 run function sp.fortress:internal/place/bridge/bridge/rot_270
+execute positioned ~77 54 ~-52 run function sp.fortress:internal/place/bridge/bridge/rot_270
+execute positioned ~56 54 ~-8 run function sp.fortress:internal/place/bridge/bridge/rot_180
+execute positioned ~77 54 ~-71 run function sp.fortress:internal/place/bridge/bridge/rot_270
+execute positioned ~11 48 ~64 run function sp.fortress:internal/place/bridge/bridge/rot_90
+execute positioned ~38 48 ~-69 run function sp.fortress:internal/place/bridge/bridge/rot_0
+execute positioned ~77 54 ~-90 run function sp.fortress:internal/place/bridge/bridge/rot_270
+execute positioned ~15 48 ~83 run function sp.fortress:internal/place/corridor/exit/rot_90
+execute positioned ~57 48 ~-69 run function sp.fortress:internal/place/bridge/end/rot_0
+execute positioned ~94 54 ~45 run function sp.fortress:internal/place/bridge/end/rot_90
+execute positioned ~-20 48 ~-65 run function sp.fortress:internal/place/bridge/end/rot_180
+execute positioned ~11 51 ~96 run function sp.fortress:internal/place/corridor/crossing/rot_90
+execute positioned ~43 54 ~-21 run function sp.fortress:internal/place/bridge/end/rot_180
+execute positioned ~64 54 ~-46 run function sp.fortress:internal/place/bridge/end/rot_270
+execute positioned ~77 54 ~-109 run function sp.fortress:internal/place/bridge/end/rot_270
+execute positioned ~37 54 ~-8 run function sp.fortress:internal/place/bridge/end/rot_180
+execute positioned ~11 51 ~105 run function sp.fortress:internal/place/corridor/right_turn/rot_180
+execute positioned ~6 51 ~96 run function sp.fortress:internal/place/corridor/left_turn/rot_90
+execute positioned ~12 51 ~96 run function sp.fortress:internal/place/corridor/small_corridor/rot_0
+execute positioned ~17 51 ~94 run function sp.fortress:internal/place/corridor/balcony/rot_0
+execute positioned ~17 51 ~93 run function sp.fortress:internal/place/corridor/small_corridor/rot_270
+execute positioned ~23 51 ~103 run function sp.fortress:internal/place/corridor/balcony/rot_90
+execute positioned ~24 51 ~103 run function sp.fortress:internal/place/corridor/right_turn/rot_0
+execute positioned ~17 51 ~88 run function sp.fortress:internal/place/corridor/small_corridor/rot_270
+execute positioned ~28 51 ~108 run function sp.fortress:internal/place/corridor/small_corridor/rot_90
+execute positioned ~17 51 ~83 run function sp.fortress:internal/place/corridor/left_turn/rot_270
+execute positioned ~41 ~59 ~6 rotated -180 0 run function sp.fortress:internal/place/bridge/stairs/open_pathway
+execute positioned ~41 ~59 ~12 rotated 0 0 run function sp.fortress:internal/place/bridge/stairs/open_pathway
+execute positioned ~2 ~59 ~25 rotated 0 0 run function sp.fortress:internal/place/bridge/stairs/open_pathway
+execute positioned ~2 ~59 ~19 rotated -180 0 run function sp.fortress:internal/place/bridge/stairs/open_pathway
+execute positioned ~82 ~65 ~35 rotated -90 0 run function sp.fortress:internal/place/bridge/stairs/open_pathway
+execute positioned ~76 ~65 ~35 rotated 90 0 run function sp.fortress:internal/place/bridge/stairs/open_pathway

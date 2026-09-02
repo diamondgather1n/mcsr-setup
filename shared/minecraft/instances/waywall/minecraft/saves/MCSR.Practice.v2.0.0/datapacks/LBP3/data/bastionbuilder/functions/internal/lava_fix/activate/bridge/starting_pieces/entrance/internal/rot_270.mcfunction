@@ -1,0 +1,6 @@
+setblock ~3 ~10 ~-5 sticky_piston[extended=true, facing=down]
+setblock ~4 ~10 ~-6 sticky_piston[extended=true, facing=down]
+setblock ~4 ~17 ~-5 sticky_piston[extended=true, facing=down]
+setblock ~4 ~17 ~-6 sticky_piston[extended=true, facing=down]
+setblock ~5 ~17 ~-7 sticky_piston[extended=true, facing=down]
+setblock ~6 ~17 ~-7 sticky_piston[extended=true, facing=down]

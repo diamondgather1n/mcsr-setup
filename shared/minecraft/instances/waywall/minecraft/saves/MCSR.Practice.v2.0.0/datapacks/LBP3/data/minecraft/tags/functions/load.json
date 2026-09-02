@@ -1,0 +1,12 @@
+{
+	"values": [
+		"loadout:init",
+		"timer:init",
+		"bastionbuilder:internal/utils/rng/init",
+		"bastionbuilder:internal/init",
+		"practice:menu/init",
+		"practice:init",
+		"sp.fortress:load",
+		"sp.utils:load"
+	]
+}

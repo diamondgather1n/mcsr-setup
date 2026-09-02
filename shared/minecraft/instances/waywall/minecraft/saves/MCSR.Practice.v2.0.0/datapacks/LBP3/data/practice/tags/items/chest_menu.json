@@ -1,0 +1,32 @@
+{
+    "values": [
+        "respawn_anchor",
+        "red_bed",
+        "gold_block",
+        "warped_nylium",
+        "rotten_flesh",
+        "pumpkin_pie",
+        "clock",
+        "gray_stained_glass_pane",
+        "piglin_banner_pattern",
+        "nether_star",
+        "barrier",
+        "firework_star",
+        "arrow",
+        "cooked_porkchop",
+        "warped_fungus",
+        "feather",
+        "lava_bucket",
+        "nether_sprouts",
+        "blaze_powder",
+        "spawner",
+        "piglin_spawn_egg",
+        "compass",
+        "warped_stem",
+        "name_tag",
+        "ender_eye",
+        "golden_carrot",
+        "lodestone",
+        "tipped_arrow"
+    ]
+}

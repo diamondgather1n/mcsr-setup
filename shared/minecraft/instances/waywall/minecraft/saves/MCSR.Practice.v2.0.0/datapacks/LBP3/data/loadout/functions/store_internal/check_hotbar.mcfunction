@@ -1,0 +1,2 @@
+# Check whether slot number matches a hotbar slot:
+execute if score #slot_count loadout.settings matches 1.. if score #slot loadout.settings matches 0..8 run function loadout:store_internal/found_hotbar

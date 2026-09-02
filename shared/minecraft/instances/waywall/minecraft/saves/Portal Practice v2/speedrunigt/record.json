@@ -1,0 +1,2057 @@
+{
+  "mc_version": "1.16.1",
+  "speedrunigt_version": "16.0+1.16.1",
+  "category": "ANY",
+  "run_type": "random_seed",
+  "is_completed": true,
+  "is_coop": false,
+  "is_hardcore": false,
+  "world_name": "Portal Practice v2",
+  "is_cheat_allowed": false,
+  "default_gamemode": 0,
+  "date": 1788153004826,
+  "retimed_igt": 6763257,
+  "final_igt": 6763257,
+  "stats_igt": 6768500,
+  "final_rta": 1707920462,
+  "open_lan": null,
+  "timelines": [
+    {
+      "name": "portal_no_1",
+      "igt": 2056042,
+      "rta": 503506359
+    },
+    {
+      "name": "enter_end",
+      "igt": 2056092,
+      "rta": 503506367
+    }
+  ],
+  "advancements": {
+    "minecraft:adventure/adventuring_time": {
+      "complete": false,
+      "is_advancement": true,
+      "criteria": {
+        "minecraft:plains": {
+          "igt": 0,
+          "rta": 0
+        }
+      },
+      "igt": 0,
+      "rta": 0
+    },
+    "minecraft:recipes/building_blocks/oak_slab": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_planks": {
+          "igt": 36085,
+          "rta": 39502
+        },
+        "has_the_recipe": {
+          "igt": 36085,
+          "rta": 39502
+        }
+      },
+      "igt": 36085,
+      "rta": 39503
+    },
+    "minecraft:recipes/redstone/oak_button": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_planks": {
+          "igt": 36085,
+          "rta": 39501
+        },
+        "has_the_recipe": {
+          "igt": 36085,
+          "rta": 39501
+        }
+      },
+      "igt": 36085,
+      "rta": 39503
+    },
+    "minecraft:recipes/redstone/oak_pressure_plate": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_planks": {
+          "igt": 36085,
+          "rta": 39502
+        },
+        "has_the_recipe": {
+          "igt": 36085,
+          "rta": 39502
+        }
+      },
+      "igt": 36085,
+      "rta": 39503
+    },
+    "minecraft:recipes/redstone/oak_door": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_planks": {
+          "igt": 36085,
+          "rta": 39502
+        },
+        "has_the_recipe": {
+          "igt": 36085,
+          "rta": 39502
+        }
+      },
+      "igt": 36085,
+      "rta": 39503
+    },
+    "minecraft:recipes/decorations/crafting_table": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_planks": {
+          "igt": 36085,
+          "rta": 39502
+        },
+        "has_the_recipe": {
+          "igt": 36085,
+          "rta": 39502
+        }
+      },
+      "igt": 36085,
+      "rta": 39503
+    },
+    "minecraft:story/iron_tools": {
+      "complete": true,
+      "is_advancement": true,
+      "criteria": {
+        "iron_pickaxe": {
+          "igt": 36085,
+          "rta": 39501
+        }
+      },
+      "igt": 36085,
+      "rta": 39503
+    },
+    "minecraft:recipes/decorations/oak_sign": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_oak_planks": {
+          "igt": 36085,
+          "rta": 39501
+        },
+        "has_the_recipe": {
+          "igt": 36085,
+          "rta": 39501
+        }
+      },
+      "igt": 36085,
+      "rta": 39503
+    },
+    "minecraft:recipes/misc/stick": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_planks": {
+          "igt": 36085,
+          "rta": 39502
+        },
+        "has_the_recipe": {
+          "igt": 36085,
+          "rta": 39502
+        }
+      },
+      "igt": 36085,
+      "rta": 39503
+    },
+    "minecraft:recipes/misc/iron_nugget_from_blasting": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_chainmail_boots": {
+          "igt": 36085,
+          "rta": 39501
+        },
+        "has_chainmail_chestplate": {
+          "igt": 36085,
+          "rta": 39501
+        },
+        "has_chainmail_helmet": {
+          "igt": 36085,
+          "rta": 39501
+        },
+        "has_chainmail_leggings": {
+          "igt": 36085,
+          "rta": 39501
+        },
+        "has_iron_axe": {
+          "igt": 36085,
+          "rta": 39501
+        },
+        "has_iron_boots": {
+          "igt": 36085,
+          "rta": 39501
+        },
+        "has_iron_chestplate": {
+          "igt": 36085,
+          "rta": 39501
+        },
+        "has_iron_helmet": {
+          "igt": 36085,
+          "rta": 39501
+        },
+        "has_iron_hoe": {
+          "igt": 36085,
+          "rta": 39501
+        },
+        "has_iron_horse_armor": {
+          "igt": 36085,
+          "rta": 39501
+        },
+        "has_iron_leggings": {
+          "igt": 36085,
+          "rta": 39501
+        },
+        "has_iron_pickaxe": {
+          "igt": 36085,
+          "rta": 39501
+        },
+        "has_iron_shovel": {
+          "igt": 36085,
+          "rta": 39501
+        },
+        "has_iron_sword": {
+          "igt": 36085,
+          "rta": 39501
+        },
+        "has_the_recipe": {
+          "igt": 36085,
+          "rta": 39501
+        }
+      },
+      "igt": 36085,
+      "rta": 39503
+    },
+    "minecraft:recipes/decorations/snow": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_snowball": {
+          "igt": 36085,
+          "rta": 39500
+        },
+        "has_the_recipe": {
+          "igt": 36085,
+          "rta": 39500
+        }
+      },
+      "igt": 36085,
+      "rta": 39503
+    },
+    "minecraft:recipes/decorations/oak_fence": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_planks": {
+          "igt": 36085,
+          "rta": 39502
+        },
+        "has_the_recipe": {
+          "igt": 36085,
+          "rta": 39502
+        }
+      },
+      "igt": 36085,
+      "rta": 39503
+    },
+    "minecraft:recipes/redstone/oak_trapdoor": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_planks": {
+          "igt": 36085,
+          "rta": 39501
+        },
+        "has_the_recipe": {
+          "igt": 36085,
+          "rta": 39501
+        }
+      },
+      "igt": 36085,
+      "rta": 39503
+    },
+    "minecraft:recipes/decorations/barrel": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_planks": {
+          "igt": 36085,
+          "rta": 39502
+        },
+        "has_the_recipe": {
+          "igt": 36085,
+          "rta": 39502
+        },
+        "has_wood_slab": {
+          "igt": 36085,
+          "rta": 39502
+        }
+      },
+      "igt": 36085,
+      "rta": 39503
+    },
+    "minecraft:recipes/misc/iron_nugget_from_smelting": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_chainmail_boots": {
+          "igt": 36085,
+          "rta": 39501
+        },
+        "has_chainmail_chestplate": {
+          "igt": 36085,
+          "rta": 39501
+        },
+        "has_chainmail_helmet": {
+          "igt": 36085,
+          "rta": 39501
+        },
+        "has_chainmail_leggings": {
+          "igt": 36085,
+          "rta": 39501
+        },
+        "has_iron_axe": {
+          "igt": 36085,
+          "rta": 39501
+        },
+        "has_iron_boots": {
+          "igt": 36085,
+          "rta": 39501
+        },
+        "has_iron_chestplate": {
+          "igt": 36085,
+          "rta": 39501
+        },
+        "has_iron_helmet": {
+          "igt": 36085,
+          "rta": 39501
+        },
+        "has_iron_hoe": {
+          "igt": 36085,
+          "rta": 39501
+        },
+        "has_iron_horse_armor": {
+          "igt": 36085,
+          "rta": 39501
+        },
+        "has_iron_leggings": {
+          "igt": 36085,
+          "rta": 39501
+        },
+        "has_iron_pickaxe": {
+          "igt": 36085,
+          "rta": 39501
+        },
+        "has_iron_shovel": {
+          "igt": 36085,
+          "rta": 39501
+        },
+        "has_iron_sword": {
+          "igt": 36085,
+          "rta": 39501
+        },
+        "has_the_recipe": {
+          "igt": 36085,
+          "rta": 39501
+        }
+      },
+      "igt": 36085,
+      "rta": 39503
+    },
+    "minecraft:recipes/building_blocks/snow_block": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_snowball": {
+          "igt": 36085,
+          "rta": 39500
+        },
+        "has_the_recipe": {
+          "igt": 36085,
+          "rta": 39500
+        }
+      },
+      "igt": 36085,
+      "rta": 39503
+    },
+    "minecraft:recipes/building_blocks/oak_stairs": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_planks": {
+          "igt": 36085,
+          "rta": 39502
+        },
+        "has_the_recipe": {
+          "igt": 36085,
+          "rta": 39502
+        }
+      },
+      "igt": 36085,
+      "rta": 39503
+    },
+    "minecraft:recipes/redstone/oak_fence_gate": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_planks": {
+          "igt": 36085,
+          "rta": 39502
+        },
+        "has_the_recipe": {
+          "igt": 36085,
+          "rta": 39502
+        }
+      },
+      "igt": 36085,
+      "rta": 39503
+    },
+    "minecraft:recipes/transportation/oak_boat": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_the_recipe": {
+          "igt": 46685,
+          "rta": 50101
+        },
+        "in_water": {
+          "igt": 46685,
+          "rta": 50101
+        }
+      },
+      "igt": 46735,
+      "rta": 50154
+    },
+    "minecraft:recipes/transportation/dark_oak_boat": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_the_recipe": {
+          "igt": 46685,
+          "rta": 50100
+        },
+        "in_water": {
+          "igt": 46685,
+          "rta": 50100
+        }
+      },
+      "igt": 46735,
+      "rta": 50154
+    },
+    "minecraft:recipes/transportation/birch_boat": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_the_recipe": {
+          "igt": 46685,
+          "rta": 50101
+        },
+        "in_water": {
+          "igt": 46685,
+          "rta": 50101
+        }
+      },
+      "igt": 46735,
+      "rta": 50154
+    },
+    "minecraft:recipes/transportation/acacia_boat": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_the_recipe": {
+          "igt": 46685,
+          "rta": 50101
+        },
+        "in_water": {
+          "igt": 46685,
+          "rta": 50101
+        }
+      },
+      "igt": 46735,
+      "rta": 50154
+    },
+    "minecraft:recipes/transportation/spruce_boat": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_the_recipe": {
+          "igt": 46685,
+          "rta": 50101
+        },
+        "in_water": {
+          "igt": 46685,
+          "rta": 50101
+        }
+      },
+      "igt": 46735,
+      "rta": 50154
+    },
+    "minecraft:recipes/transportation/jungle_boat": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_the_recipe": {
+          "igt": 46685,
+          "rta": 50101
+        },
+        "in_water": {
+          "igt": 46685,
+          "rta": 50101
+        }
+      },
+      "igt": 46735,
+      "rta": 50154
+    },
+    "minecraft:story/lava_bucket": {
+      "complete": true,
+      "is_advancement": true,
+      "criteria": {
+        "lava_bucket": {
+          "igt": 64485,
+          "rta": 67900
+        }
+      },
+      "igt": 64485,
+      "rta": 67902
+    },
+    "minecraft:recipes/brewing/cauldron": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_the_recipe": {
+          "igt": 68835,
+          "rta": 72250
+        },
+        "has_water_bucket": {
+          "igt": 68835,
+          "rta": 72250
+        }
+      },
+      "igt": 68835,
+      "rta": 72253
+    },
+    "minecraft:recipes/building_blocks/stone": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_cobblestone": {
+          "igt": 83385,
+          "rta": 86801
+        },
+        "has_the_recipe": {
+          "igt": 83385,
+          "rta": 86801
+        }
+      },
+      "igt": 83435,
+      "rta": 86854
+    },
+    "minecraft:recipes/decorations/furnace": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_cobblestone": {
+          "igt": 83385,
+          "rta": 86802
+        },
+        "has_the_recipe": {
+          "igt": 83385,
+          "rta": 86802
+        }
+      },
+      "igt": 83435,
+      "rta": 86854
+    },
+    "minecraft:recipes/tools/stone_pickaxe": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_cobblestone": {
+          "igt": 83385,
+          "rta": 86803
+        },
+        "has_the_recipe": {
+          "igt": 83385,
+          "rta": 86803
+        }
+      },
+      "igt": 83435,
+      "rta": 86854
+    },
+    "minecraft:recipes/building_blocks/cobblestone_slab_from_cobblestone_stonecutting": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_cobblestone": {
+          "igt": 83385,
+          "rta": 86801
+        },
+        "has_the_recipe": {
+          "igt": 83385,
+          "rta": 86801
+        }
+      },
+      "igt": 83435,
+      "rta": 86854
+    },
+    "minecraft:recipes/tools/stone_shovel": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_cobblestone": {
+          "igt": 83385,
+          "rta": 86802
+        },
+        "has_the_recipe": {
+          "igt": 83385,
+          "rta": 86802
+        }
+      },
+      "igt": 83435,
+      "rta": 86854
+    },
+    "minecraft:story/mine_stone": {
+      "complete": true,
+      "is_advancement": true,
+      "criteria": {
+        "get_stone": {
+          "igt": 83385,
+          "rta": 86802
+        }
+      },
+      "igt": 83435,
+      "rta": 86854
+    },
+    "minecraft:recipes/building_blocks/cobblestone_stairs_from_cobblestone_stonecutting": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_cobblestone": {
+          "igt": 83385,
+          "rta": 86802
+        },
+        "has_the_recipe": {
+          "igt": 83385,
+          "rta": 86802
+        }
+      },
+      "igt": 83435,
+      "rta": 86854
+    },
+    "minecraft:recipes/combat/stone_sword": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_cobblestone": {
+          "igt": 83385,
+          "rta": 86802
+        },
+        "has_the_recipe": {
+          "igt": 83385,
+          "rta": 86802
+        }
+      },
+      "igt": 83435,
+      "rta": 86854
+    },
+    "minecraft:recipes/building_blocks/cobblestone_stairs": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_cobblestone": {
+          "igt": 83385,
+          "rta": 86801
+        },
+        "has_the_recipe": {
+          "igt": 83385,
+          "rta": 86801
+        }
+      },
+      "igt": 83435,
+      "rta": 86854
+    },
+    "minecraft:recipes/decorations/cobblestone_wall_from_cobblestone_stonecutting": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_cobblestone": {
+          "igt": 83385,
+          "rta": 86802
+        },
+        "has_the_recipe": {
+          "igt": 83385,
+          "rta": 86802
+        }
+      },
+      "igt": 83435,
+      "rta": 86854
+    },
+    "minecraft:recipes/tools/stone_hoe": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_cobblestone": {
+          "igt": 83385,
+          "rta": 86801
+        },
+        "has_the_recipe": {
+          "igt": 83385,
+          "rta": 86801
+        }
+      },
+      "igt": 83435,
+      "rta": 86854
+    },
+    "minecraft:recipes/tools/stone_axe": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_cobblestone": {
+          "igt": 83385,
+          "rta": 86802
+        },
+        "has_the_recipe": {
+          "igt": 83385,
+          "rta": 86802
+        }
+      },
+      "igt": 83435,
+      "rta": 86854
+    },
+    "minecraft:recipes/building_blocks/cobblestone_slab": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_cobblestone": {
+          "igt": 83385,
+          "rta": 86802
+        },
+        "has_the_recipe": {
+          "igt": 83385,
+          "rta": 86802
+        }
+      },
+      "igt": 83435,
+      "rta": 86854
+    },
+    "minecraft:recipes/decorations/cobblestone_wall": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_cobblestone": {
+          "igt": 83385,
+          "rta": 86802
+        },
+        "has_the_recipe": {
+          "igt": 83385,
+          "rta": 86802
+        }
+      },
+      "igt": 83435,
+      "rta": 86854
+    },
+    "minecraft:recipes/redstone/lever": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_cobblestone": {
+          "igt": 83385,
+          "rta": 86802
+        },
+        "has_the_recipe": {
+          "igt": 83385,
+          "rta": 86802
+        }
+      },
+      "igt": 83435,
+      "rta": 86854
+    },
+    "minecraft:recipes/decorations/chest": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_lots_of_items": {
+          "igt": 89585,
+          "rta": 93001
+        },
+        "has_the_recipe": {
+          "igt": 89585,
+          "rta": 93001
+        }
+      },
+      "igt": 89635,
+      "rta": 93054
+    },
+    "minecraft:recipes/decorations/end_crystal": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_ender_eye": {
+          "igt": 237385,
+          "rta": 4053897
+        },
+        "has_the_recipe": {
+          "igt": 237385,
+          "rta": 4053897
+        }
+      },
+      "igt": 237385,
+      "rta": 4053909
+    },
+    "minecraft:recipes/decorations/ender_chest": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_ender_eye": {
+          "igt": 237385,
+          "rta": 4053897
+        },
+        "has_the_recipe": {
+          "igt": 237385,
+          "rta": 4053897
+        }
+      },
+      "igt": 237385,
+      "rta": 4053909
+    },
+    "minecraft:recipes/food/cake": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_egg": {
+          "igt": 237385,
+          "rta": 4053896
+        },
+        "has_the_recipe": {
+          "igt": 237385,
+          "rta": 4053896
+        }
+      },
+      "igt": 237385,
+      "rta": 4053909
+    },
+    "minecraft:recipes/decorations/enchanting_table": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_obsidian": {
+          "igt": 252585,
+          "rta": 4069096
+        },
+        "has_the_recipe": {
+          "igt": 252585,
+          "rta": 4069096
+        }
+      },
+      "igt": 252585,
+      "rta": 4069099
+    },
+    "minecraft:story/form_obsidian": {
+      "complete": true,
+      "is_advancement": true,
+      "criteria": {
+        "obsidian": {
+          "igt": 252585,
+          "rta": 4069096
+        }
+      },
+      "igt": 252585,
+      "rta": 4069099
+    },
+    "minecraft:recipes/tools/flint_and_steel": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_flint": {
+          "igt": 252585,
+          "rta": 4069095
+        },
+        "has_obsidian": {
+          "igt": 252585,
+          "rta": 4069095
+        },
+        "has_the_recipe": {
+          "igt": 252585,
+          "rta": 4069095
+        }
+      },
+      "igt": 252585,
+      "rta": 4069099
+    },
+    "minecraft:recipes/building_blocks/light_gray_concrete_powder": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_gravel": {
+          "igt": 259785,
+          "rta": 4076300
+        },
+        "has_sand": {
+          "igt": 259785,
+          "rta": 4076300
+        },
+        "has_the_recipe": {
+          "igt": 259785,
+          "rta": 4076300
+        }
+      },
+      "igt": 259835,
+      "rta": 4076350
+    },
+    "minecraft:recipes/building_blocks/light_blue_concrete_powder": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_gravel": {
+          "igt": 259785,
+          "rta": 4076299
+        },
+        "has_sand": {
+          "igt": 259785,
+          "rta": 4076299
+        },
+        "has_the_recipe": {
+          "igt": 259785,
+          "rta": 4076299
+        }
+      },
+      "igt": 259835,
+      "rta": 4076350
+    },
+    "minecraft:recipes/building_blocks/orange_concrete_powder": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_gravel": {
+          "igt": 259785,
+          "rta": 4076300
+        },
+        "has_sand": {
+          "igt": 259785,
+          "rta": 4076300
+        },
+        "has_the_recipe": {
+          "igt": 259785,
+          "rta": 4076300
+        }
+      },
+      "igt": 259835,
+      "rta": 4076350
+    },
+    "minecraft:recipes/building_blocks/pink_concrete_powder": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_gravel": {
+          "igt": 259785,
+          "rta": 4076300
+        },
+        "has_sand": {
+          "igt": 259785,
+          "rta": 4076300
+        },
+        "has_the_recipe": {
+          "igt": 259785,
+          "rta": 4076300
+        }
+      },
+      "igt": 259835,
+      "rta": 4076350
+    },
+    "minecraft:recipes/building_blocks/black_concrete_powder": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_gravel": {
+          "igt": 259785,
+          "rta": 4076299
+        },
+        "has_sand": {
+          "igt": 259785,
+          "rta": 4076299
+        },
+        "has_the_recipe": {
+          "igt": 259785,
+          "rta": 4076299
+        }
+      },
+      "igt": 259835,
+      "rta": 4076350
+    },
+    "minecraft:recipes/building_blocks/lime_concrete_powder": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_gravel": {
+          "igt": 259785,
+          "rta": 4076300
+        },
+        "has_sand": {
+          "igt": 259785,
+          "rta": 4076300
+        },
+        "has_the_recipe": {
+          "igt": 259785,
+          "rta": 4076300
+        }
+      },
+      "igt": 259835,
+      "rta": 4076350
+    },
+    "minecraft:recipes/building_blocks/gray_concrete_powder": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_gravel": {
+          "igt": 259785,
+          "rta": 4076299
+        },
+        "has_sand": {
+          "igt": 259785,
+          "rta": 4076299
+        },
+        "has_the_recipe": {
+          "igt": 259785,
+          "rta": 4076299
+        }
+      },
+      "igt": 259835,
+      "rta": 4076350
+    },
+    "minecraft:recipes/building_blocks/green_concrete_powder": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_gravel": {
+          "igt": 259785,
+          "rta": 4076299
+        },
+        "has_sand": {
+          "igt": 259785,
+          "rta": 4076299
+        },
+        "has_the_recipe": {
+          "igt": 259785,
+          "rta": 4076299
+        }
+      },
+      "igt": 259835,
+      "rta": 4076350
+    },
+    "minecraft:recipes/building_blocks/blue_concrete_powder": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_gravel": {
+          "igt": 259785,
+          "rta": 4076300
+        },
+        "has_sand": {
+          "igt": 259785,
+          "rta": 4076300
+        },
+        "has_the_recipe": {
+          "igt": 259785,
+          "rta": 4076300
+        }
+      },
+      "igt": 259835,
+      "rta": 4076350
+    },
+    "minecraft:recipes/building_blocks/brown_concrete_powder": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_gravel": {
+          "igt": 259785,
+          "rta": 4076300
+        },
+        "has_sand": {
+          "igt": 259785,
+          "rta": 4076300
+        },
+        "has_the_recipe": {
+          "igt": 259785,
+          "rta": 4076300
+        }
+      },
+      "igt": 259835,
+      "rta": 4076350
+    },
+    "minecraft:recipes/building_blocks/magenta_concrete_powder": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_gravel": {
+          "igt": 259785,
+          "rta": 4076300
+        },
+        "has_sand": {
+          "igt": 259785,
+          "rta": 4076300
+        },
+        "has_the_recipe": {
+          "igt": 259785,
+          "rta": 4076300
+        }
+      },
+      "igt": 259835,
+      "rta": 4076350
+    },
+    "minecraft:recipes/building_blocks/cyan_concrete_powder": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_gravel": {
+          "igt": 259785,
+          "rta": 4076301
+        },
+        "has_sand": {
+          "igt": 259785,
+          "rta": 4076301
+        },
+        "has_the_recipe": {
+          "igt": 259785,
+          "rta": 4076301
+        }
+      },
+      "igt": 259835,
+      "rta": 4076350
+    },
+    "minecraft:recipes/building_blocks/coarse_dirt": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_gravel": {
+          "igt": 259785,
+          "rta": 4076300
+        },
+        "has_the_recipe": {
+          "igt": 259785,
+          "rta": 4076300
+        }
+      },
+      "igt": 259835,
+      "rta": 4076350
+    },
+    "minecraft:recipes/building_blocks/red_concrete_powder": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_gravel": {
+          "igt": 259785,
+          "rta": 4076300
+        },
+        "has_sand": {
+          "igt": 259785,
+          "rta": 4076300
+        },
+        "has_the_recipe": {
+          "igt": 259785,
+          "rta": 4076300
+        }
+      },
+      "igt": 259835,
+      "rta": 4076350
+    },
+    "minecraft:recipes/building_blocks/white_concrete_powder": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_gravel": {
+          "igt": 259785,
+          "rta": 4076300
+        },
+        "has_sand": {
+          "igt": 259785,
+          "rta": 4076300
+        },
+        "has_the_recipe": {
+          "igt": 259785,
+          "rta": 4076300
+        }
+      },
+      "igt": 259835,
+      "rta": 4076350
+    },
+    "minecraft:recipes/building_blocks/yellow_concrete_powder": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_gravel": {
+          "igt": 259785,
+          "rta": 4076300
+        },
+        "has_sand": {
+          "igt": 259785,
+          "rta": 4076300
+        },
+        "has_the_recipe": {
+          "igt": 259785,
+          "rta": 4076300
+        }
+      },
+      "igt": 259835,
+      "rta": 4076350
+    },
+    "minecraft:recipes/building_blocks/purple_concrete_powder": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_gravel": {
+          "igt": 259785,
+          "rta": 4076300
+        },
+        "has_sand": {
+          "igt": 259785,
+          "rta": 4076300
+        },
+        "has_the_recipe": {
+          "igt": 259785,
+          "rta": 4076300
+        }
+      },
+      "igt": 259835,
+      "rta": 4076350
+    },
+    "minecraft:recipes/decorations/soul_torch": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_soul_sand": {
+          "igt": 263685,
+          "rta": 4080176
+        },
+        "has_the_recipe": {
+          "igt": 263685,
+          "rta": 4080176
+        }
+      },
+      "igt": 263685,
+      "rta": 4080198
+    },
+    "minecraft:recipes/decorations/soul_campfire": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_soul_sand": {
+          "igt": 263685,
+          "rta": 4080176
+        },
+        "has_stick": {
+          "igt": 263685,
+          "rta": 4080176
+        },
+        "has_the_recipe": {
+          "igt": 263685,
+          "rta": 4080176
+        }
+      },
+      "igt": 263685,
+      "rta": 4080198
+    },
+    "minecraft:story/enter_the_end": {
+      "complete": true,
+      "is_advancement": true,
+      "criteria": {
+        "entered_end": {
+          "igt": 2056092,
+          "rta": 503506370
+        }
+      },
+      "igt": 2056092,
+      "rta": 503506423
+    },
+    "minecraft:end/root": {
+      "complete": true,
+      "is_advancement": true,
+      "criteria": {
+        "entered_end": {
+          "igt": 2056092,
+          "rta": 503506370
+        }
+      },
+      "igt": 2056092,
+      "rta": 503506423
+    },
+    "minecraft:recipes/decorations/green_stained_glass_pane": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_glass": {
+          "igt": 3147977,
+          "rta": 622306468
+        },
+        "has_the_recipe": {
+          "igt": 3147977,
+          "rta": 622306468
+        }
+      },
+      "igt": 3147977,
+      "rta": 622306474
+    },
+    "minecraft:story/obtain_armor": {
+      "complete": true,
+      "is_advancement": true,
+      "criteria": {
+        "iron_boots": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "iron_chestplate": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "iron_helmet": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "iron_leggings": {
+          "igt": 6763257,
+          "rta": 1707920462
+        }
+      },
+      "igt": 6763257,
+      "rta": 1707920462
+    },
+    "minecraft:recipes/misc/gold_nugget_from_smelting": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_golden_axe": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_golden_boots": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_golden_chestplate": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_golden_helmet": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_golden_hoe": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_golden_horse_armor": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_golden_leggings": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_golden_pickaxe": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_golden_shovel": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_golden_sword": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_the_recipe": {
+          "igt": 6763257,
+          "rta": 1707920462
+        }
+      },
+      "igt": 6763257,
+      "rta": 1707920462
+    },
+    "minecraft:recipes/tools/wooden_hoe": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_stick": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_the_recipe": {
+          "igt": 6763257,
+          "rta": 1707920462
+        }
+      },
+      "igt": 6763257,
+      "rta": 1707920462
+    },
+    "minecraft:recipes/decorations/ladder": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_stick": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_the_recipe": {
+          "igt": 6763257,
+          "rta": 1707920462
+        }
+      },
+      "igt": 6763257,
+      "rta": 1707920462
+    },
+    "minecraft:recipes/decorations/red_carpet_from_white_carpet": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_red_dye": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_the_recipe": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_white_carpet": {
+          "igt": 6763257,
+          "rta": 1707920462
+        }
+      },
+      "igt": 6763257,
+      "rta": 1707920462
+    },
+    "minecraft:recipes/decorations/orange_carpet_from_white_carpet": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_orange_dye": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_the_recipe": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_white_carpet": {
+          "igt": 6763257,
+          "rta": 1707920462
+        }
+      },
+      "igt": 6763257,
+      "rta": 1707920462
+    },
+    "minecraft:recipes/building_blocks/sandstone": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_sand": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_the_recipe": {
+          "igt": 6763257,
+          "rta": 1707920462
+        }
+      },
+      "igt": 6763257,
+      "rta": 1707920462
+    },
+    "minecraft:recipes/decorations/brown_carpet_from_white_carpet": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_brown_dye": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_the_recipe": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_white_carpet": {
+          "igt": 6763257,
+          "rta": 1707920462
+        }
+      },
+      "igt": 6763257,
+      "rta": 1707920462
+    },
+    "minecraft:recipes/decorations/magenta_carpet_from_white_carpet": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_magenta_dye": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_the_recipe": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_white_carpet": {
+          "igt": 6763257,
+          "rta": 1707920462
+        }
+      },
+      "igt": 6763257,
+      "rta": 1707920462
+    },
+    "minecraft:recipes/combat/wooden_sword": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_stick": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_the_recipe": {
+          "igt": 6763257,
+          "rta": 1707920462
+        }
+      },
+      "igt": 6763257,
+      "rta": 1707920462
+    },
+    "minecraft:recipes/decorations/blue_carpet_from_white_carpet": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_blue_dye": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_the_recipe": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_white_carpet": {
+          "igt": 6763257,
+          "rta": 1707920462
+        }
+      },
+      "igt": 6763257,
+      "rta": 1707920462
+    },
+    "minecraft:recipes/misc/gold_nugget_from_blasting": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_golden_axe": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_golden_boots": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_golden_chestplate": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_golden_helmet": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_golden_hoe": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_golden_horse_armor": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_golden_leggings": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_golden_pickaxe": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_golden_shovel": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_golden_sword": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_the_recipe": {
+          "igt": 6763257,
+          "rta": 1707920462
+        }
+      },
+      "igt": 6763257,
+      "rta": 1707920462
+    },
+    "minecraft:recipes/decorations/light_gray_carpet_from_white_carpet": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_light_gray_dye": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_the_recipe": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_white_carpet": {
+          "igt": 6763257,
+          "rta": 1707920462
+        }
+      },
+      "igt": 6763257,
+      "rta": 1707920462
+    },
+    "minecraft:recipes/decorations/green_carpet_from_white_carpet": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_green_dye": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_the_recipe": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_white_carpet": {
+          "igt": 6763257,
+          "rta": 1707920462
+        }
+      },
+      "igt": 6763257,
+      "rta": 1707920462
+    },
+    "minecraft:recipes/misc/nether_brick": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_netherrack": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_the_recipe": {
+          "igt": 6763257,
+          "rta": 1707920462
+        }
+      },
+      "igt": 6763257,
+      "rta": 1707920462
+    },
+    "minecraft:recipes/decorations/lime_carpet_from_white_carpet": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_lime_dye": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_the_recipe": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_white_carpet": {
+          "igt": 6763257,
+          "rta": 1707920462
+        }
+      },
+      "igt": 6763257,
+      "rta": 1707920462
+    },
+    "minecraft:recipes/decorations/yellow_carpet_from_white_carpet": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_the_recipe": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_white_carpet": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_yellow_dye": {
+          "igt": 6763257,
+          "rta": 1707920462
+        }
+      },
+      "igt": 6763257,
+      "rta": 1707920462
+    },
+    "minecraft:recipes/tools/wooden_shovel": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_stick": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_the_recipe": {
+          "igt": 6763257,
+          "rta": 1707920462
+        }
+      },
+      "igt": 6763257,
+      "rta": 1707920462
+    },
+    "minecraft:recipes/combat/crossbow": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_iron_ingot": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_stick": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_string": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_the_recipe": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_tripwire_hook": {
+          "igt": 6763257,
+          "rta": 1707920462
+        }
+      },
+      "igt": 6763257,
+      "rta": 1707920462
+    },
+    "minecraft:recipes/decorations/gray_carpet_from_white_carpet": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_gray_dye": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_the_recipe": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_white_carpet": {
+          "igt": 6763257,
+          "rta": 1707920462
+        }
+      },
+      "igt": 6763257,
+      "rta": 1707920462
+    },
+    "minecraft:recipes/decorations/pink_carpet_from_white_carpet": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_pink_dye": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_the_recipe": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_white_carpet": {
+          "igt": 6763257,
+          "rta": 1707920462
+        }
+      },
+      "igt": 6763257,
+      "rta": 1707920462
+    },
+    "minecraft:recipes/decorations/light_blue_carpet_from_white_carpet": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_light_blue_dye": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_the_recipe": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_white_carpet": {
+          "igt": 6763257,
+          "rta": 1707920462
+        }
+      },
+      "igt": 6763257,
+      "rta": 1707920462
+    },
+    "minecraft:recipes/tools/wooden_pickaxe": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_stick": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_the_recipe": {
+          "igt": 6763257,
+          "rta": 1707920462
+        }
+      },
+      "igt": 6763257,
+      "rta": 1707920462
+    },
+    "minecraft:recipes/decorations/campfire": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_coal": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_stick": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_the_recipe": {
+          "igt": 6763257,
+          "rta": 1707920462
+        }
+      },
+      "igt": 6763257,
+      "rta": 1707920462
+    },
+    "minecraft:recipes/building_blocks/glass": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_sand": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_the_recipe": {
+          "igt": 6763257,
+          "rta": 1707920462
+        }
+      },
+      "igt": 6763257,
+      "rta": 1707920462
+    },
+    "minecraft:recipes/tools/wooden_axe": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_stick": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_the_recipe": {
+          "igt": 6763257,
+          "rta": 1707920462
+        }
+      },
+      "igt": 6763257,
+      "rta": 1707920462
+    },
+    "minecraft:recipes/decorations/cyan_carpet_from_white_carpet": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_cyan_dye": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_the_recipe": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_white_carpet": {
+          "igt": 6763257,
+          "rta": 1707920462
+        }
+      },
+      "igt": 6763257,
+      "rta": 1707920462
+    },
+    "minecraft:recipes/decorations/black_carpet_from_white_carpet": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_black_dye": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_the_recipe": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_white_carpet": {
+          "igt": 6763257,
+          "rta": 1707920462
+        }
+      },
+      "igt": 6763257,
+      "rta": 1707920462
+    },
+    "minecraft:recipes/decorations/purple_carpet_from_white_carpet": {
+      "complete": true,
+      "is_advancement": false,
+      "criteria": {
+        "has_purple_dye": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_the_recipe": {
+          "igt": 6763257,
+          "rta": 1707920462
+        },
+        "has_white_carpet": {
+          "igt": 6763257,
+          "rta": 1707920462
+        }
+      },
+      "igt": 6763257,
+      "rta": 1707920462
+    }
+  },
+  "stats": {
+    "010ae763-86da-46cb-8a2e-e8b2ca5a5c0c": {
+      "stats": {
+        "minecraft:custom": {
+          "minecraft:play_one_minute": 1090938,
+          "minecraft:leave_game": 517,
+          "minecraft:time_since_death": 459778,
+          "minecraft:time_since_rest": 459778,
+          "minecraft:sprint_one_cm": 1690080,
+          "minecraft:walk_one_cm": 1194352,
+          "minecraft:damage_taken": 55410,
+          "minecraft:drop": 148,
+          "minecraft:swim_one_cm": 2783862,
+          "minecraft:fly_one_cm": 4158155,
+          "minecraft:open_chest": 85,
+          "minecraft:crouch_one_cm": 237045,
+          "minecraft:deaths": 12,
+          "minecraft:sneak_time": 292606,
+          "minecraft:walk_under_water_one_cm": 668639,
+          "minecraft:boat_one_cm": 1826,
+          "minecraft:jump": 25542,
+          "minecraft:walk_on_water_one_cm": 937586,
+          "minecraft:fall_one_cm": 898764
+        },
+        "minecraft:used": {
+          "minecraft:nether_brick_fence": 2,
+          "minecraft:water_bucket": 3989,
+          "minecraft:jungle_leaves": 3686,
+          "minecraft:iron_shovel": 311,
+          "minecraft:flint_and_steel": 2597,
+          "minecraft:oak_planks": 1461,
+          "minecraft:chest": 1,
+          "minecraft:oak_door": 13064,
+          "minecraft:oak_leaves": 11944,
+          "minecraft:soul_sand": 9526,
+          "minecraft:snowball": 6611,
+          "minecraft:shears": 2469,
+          "minecraft:blue_concrete": 1,
+          "minecraft:obsidian": 31096,
+          "minecraft:ender_eye": 6447,
+          "minecraft:lava_bucket": 9290,
+          "minecraft:iron_axe": 269,
+          "minecraft:barrier": 10,
+          "minecraft:iron_pickaxe": 6323,
+          "minecraft:stone_button": 1,
+          "minecraft:dark_oak_leaves": 45,
+          "minecraft:gravel": 783,
+          "minecraft:stone_axe": 4,
+          "minecraft:fishing_rod": 862,
+          "minecraft:fire_charge": 42,
+          "minecraft:magma_block": 6,
+          "minecraft:cobblestone": 698,
+          "minecraft:bucket": 15495,
+          "minecraft:chain_command_block": 3,
+          "minecraft:end_portal_frame": 13,
+          "minecraft:oak_boat": 24,
+          "minecraft:infested_cobblestone": 1596,
+          "minecraft:egg": 5697,
+          "minecraft:golden_pickaxe": 324,
+          "minecraft:green_stained_glass": 1
+        },
+        "minecraft:mined": {
+          "minecraft:soul_sand": 313,
+          "minecraft:dark_oak_leaves": 9,
+          "minecraft:oak_door": 27,
+          "minecraft:jungle_leaves": 545,
+          "minecraft:infested_cobblestone": 20,
+          "minecraft:blue_concrete": 1,
+          "minecraft:cobblestone": 1368,
+          "minecraft:oak_planks": 243,
+          "minecraft:spawner": 1,
+          "minecraft:magma_block": 4894,
+          "minecraft:fire": 131,
+          "minecraft:white_carpet": 1,
+          "minecraft:gravel": 6,
+          "minecraft:dirt": 1,
+          "minecraft:stone": 283,
+          "minecraft:netherrack": 22,
+          "minecraft:oak_leaves": 1962
+        },
+        "minecraft:picked_up": {
+          "minecraft:magma_block": 3837,
+          "minecraft:chest_minecart": 1,
+          "minecraft:iron_axe": 1,
+          "minecraft:flint_and_steel": 1,
+          "minecraft:iron_shovel": 1,
+          "minecraft:white_carpet": 12,
+          "minecraft:dark_oak_leaves": 6,
+          "minecraft:oak_boat": 17,
+          "minecraft:iron_pickaxe": 1,
+          "minecraft:oak_planks": 152,
+          "minecraft:soul_sand": 214,
+          "minecraft:egg": 4,
+          "minecraft:stick": 1,
+          "minecraft:oak_door": 3529,
+          "minecraft:gravel": 70,
+          "minecraft:stone_button": 1,
+          "minecraft:light_gray_stained_glass_pane": 64,
+          "minecraft:jungle_leaves": 369,
+          "minecraft:oak_sapling": 2,
+          "minecraft:netherrack": 17,
+          "minecraft:obsidian": 11,
+          "minecraft:snowball": 16,
+          "minecraft:oak_leaves": 1137,
+          "minecraft:cobblestone": 482
+        },
+        "minecraft:dropped": {
+          "minecraft:oak_door": 10,
+          "minecraft:gravel": 1,
+          "minecraft:stone_axe": 1,
+          "minecraft:soul_sand": 6,
+          "minecraft:obsidian": 62,
+          "minecraft:cobblestone": 1,
+          "minecraft:oak_planks": 1,
+          "minecraft:iron_boots": 13,
+          "minecraft:flint_and_steel": 6,
+          "minecraft:snowball": 20,
+          "minecraft:jungle_leaves": 60,
+          "minecraft:iron_pickaxe": 28,
+          "minecraft:iron_shovel": 1,
+          "minecraft:oak_leaves": 3,
+          "minecraft:fishing_rod": 2,
+          "minecraft:infested_cobblestone": 2,
+          "minecraft:egg": 5
+        },
+        "minecraft:crafted": {
+          "minecraft:stick": 4,
+          "minecraft:oak_button": 14
+        }
+      },
+      "DataVersion": 2567
+    }
+  }
+}

@@ -1,0 +1,1 @@
+tellraw @a {"nbt":"time_string","storage":"searchcraft:timeparser","interpret":true}

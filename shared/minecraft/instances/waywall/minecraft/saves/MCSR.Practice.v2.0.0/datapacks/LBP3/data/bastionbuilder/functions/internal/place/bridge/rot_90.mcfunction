@@ -1,0 +1,12 @@
+execute positioned ~ ~ ~ run function bastionbuilder:internal/place/bridge/starting_pieces/entrance_base/rot_90
+execute positioned ~-8 ~24 ~16 run function bastionbuilder:internal/place/bridge/connectors/back_bridge_bottom/rot_90
+execute positioned ~ ~32 ~ run function bastionbuilder:internal/place/bridge/starting_pieces/entrance/rot_90
+execute positioned ~-8 ~32 ~17 run function bastionbuilder:internal/place/bridge/connectors/back_bridge_top/rot_90
+execute positioned ~ ~40 ~-5 run function bastionbuilder:internal/place/bridge/starting_pieces/entrance_face/rot_90
+execute positioned ~16 ~ ~2 run function bastionbuilder:internal/place/bridge/walls/wall_base_0/rot_90
+execute positioned ~16 ~24 ~2 run function bastionbuilder:internal/place/bridge/ramparts/rampart/left_rampart/left_rampart_controller/rot_90
+execute positioned ~-32 ~ ~2 run function bastionbuilder:internal/place/bridge/walls/wall_base_1/rot_90
+execute positioned ~-32 ~24 ~2 run function bastionbuilder:internal/place/bridge/ramparts/rampart/right_rampart/right_rampart_controller/rot_90
+execute positioned ~-7 ~21 ~-31 run function bastionbuilder:internal/place/bridge/bridge_pieces/bridge/rot_90
+execute positioned ~-14 ~-1 ~-25 run function bastionbuilder:internal/place/bridge/legs/leg/random_leg/rot_90
+execute positioned ~-14 ~-1 ~-7 run function bastionbuilder:internal/place/bridge/legs/leg/random_leg/rot_90

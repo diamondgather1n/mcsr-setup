@@ -1,0 +1,17 @@
+{
+    "criteria": {
+        "requirement": {
+            "trigger": "minecraft:item_used_on_block",
+            "conditions": {
+                "location": {
+                    "block": {
+                        "block": "minecraft:ender_chest"
+                    }
+                }
+            }
+        }
+    },
+    "rewards": {
+        "function": "practice:menu/on_open"
+    }
+}

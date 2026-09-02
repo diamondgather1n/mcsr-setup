@@ -1,0 +1,1 @@
+data modify storage searchcraft:recipes recipes[].enabled set value 0b

@@ -1,0 +1,1 @@
+data modify block 0 61 -2 Items append from storage searchcraft:gui background_config[]
