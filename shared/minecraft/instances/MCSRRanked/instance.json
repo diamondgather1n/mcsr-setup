@@ -1,0 +1,23 @@
+{
+    "id": "MCSRRanked",
+    "displayName": "MCSRRanked",
+    "group": "X11",
+    "minecraftVersion": "1.16.1",
+    "lwjglVersion": {
+        "type": "org.lwjgl3",
+        "version": "3.3.6"
+    },
+    "fabricVersion": {
+        "loaderVersion": "0.19.2",
+        "intermediaryType": "net.fabricmc:intermediary",
+        "intermediaryVersion": "1.16.1"
+    },
+    "options": {
+        "useLauncherJavaOption": false,
+        "autoModUpdates": true,
+        "useLauncherWorkarounds": false,
+        "useDiscreteGpu": true,
+        "javaPath": "/usr/bin/java"
+    },
+    "playTime": 2877038
+}
