@@ -1,0 +1,2 @@
+execute if score stables_right_gap bastion.settings matches ..-1 run function bastionbuilder:internal/place/hoglin_stable/walls/wall/random_wall/rot_90
+execute if score stables_right_gap bastion.settings matches 0.. run function bastionbuilder:internal/place/hoglin_stable/walls/wall/right_wall/fixed_right_wall/rot_90

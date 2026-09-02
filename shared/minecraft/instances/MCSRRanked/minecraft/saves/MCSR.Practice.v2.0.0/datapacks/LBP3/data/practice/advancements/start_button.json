@@ -1,0 +1,32 @@
+{
+    "criteria": {
+      "requirement": {
+        "trigger": "minecraft:item_used_on_block",
+        "conditions": {
+          "location": {
+            "position": {
+              "x": {
+                "min": 105,
+                "max": 106
+              },
+              "y": {
+                "min": 115,
+                "max": 116
+              },
+              "z": {
+                "min": 7,
+                "max": 8
+              }
+            },
+            "dimension": "minecraft:the_nether",
+            "block": {
+              "block": "minecraft:warped_button"
+            }
+          }
+        }
+      }
+    },
+    "rewards": {
+      "function": "practice:start"
+    }
+  }

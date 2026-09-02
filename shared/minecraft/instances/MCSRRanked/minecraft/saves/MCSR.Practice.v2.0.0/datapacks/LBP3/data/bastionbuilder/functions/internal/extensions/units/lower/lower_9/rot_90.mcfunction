@@ -1,0 +1,22 @@
+execute positioned ~-21 ~1 ~11 run function bastionbuilder:internal/place/blocks/gold
+execute positioned ~-33 ~2 ~24 run function bastionbuilder:internal/place/mobs/piglin
+execute positioned ~-38 ~4 ~18 run function bastionbuilder:internal/place/blocks/gold
+execute positioned ~-28 ~4 ~33 run function bastionbuilder:internal/place/mobs/piglin
+execute positioned ~-31 ~8 ~6 run function bastionbuilder:internal/place/blocks/gold
+execute positioned ~-35 ~9 ~10 run function bastionbuilder:internal/place/mobs/piglin
+execute positioned ~-29 ~9 ~36 run function bastionbuilder:internal/place/mobs/piglin_melee
+execute positioned ~-13 ~11 ~15 run function bastionbuilder:internal/place/blocks/gold
+execute positioned ~-34 ~11 ~25 run function bastionbuilder:internal/place/blocks/gold
+execute positioned ~-37 ~11 ~34 run function bastionbuilder:internal/place/blocks/gold
+execute positioned ~-16 ~11 ~38 run function bastionbuilder:internal/place/blocks/gold
+execute positioned ~-24 ~16 ~3 run function bastionbuilder:internal/place/mobs/piglin
+execute positioned ~-36 ~16 ~5 run function bastionbuilder:internal/place/mobs/piglin
+execute positioned ~-19 ~16 ~12 run function bastionbuilder:internal/place/mobs/piglin
+execute positioned ~-38 ~16 ~28 run function bastionbuilder:internal/place/mobs/piglin
+execute positioned ~-23 ~16 ~31 run function bastionbuilder:internal/place/mobs/piglin
+execute positioned ~-17 ~16 ~40 run function bastionbuilder:internal/place/mobs/piglin
+execute positioned ~-25 ~22 ~5 run function bastionbuilder:internal/place/blocks/gold
+execute positioned ~-18 ~22 ~36 run function bastionbuilder:internal/place/blocks/gold
+execute positioned ~-28 ~1 ~25 run function bastionbuilder:internal/utils/chest_loot/mark_chest
+execute positioned ~-27 ~8 ~33 run function bastionbuilder:internal/utils/chest_loot/mark_chest
+execute if score id_piglins bastion.settings matches 1.. positioned ~-38 ~2 ~3 as @e[type=piglin, tag=bastion_mob, dx=21, dy=14, dz=37] run data modify entity @s CustomName set value '{"text":"lower","color":"yellow"}'

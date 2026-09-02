@@ -1,0 +1,1 @@
+execute as @a[tag=inSetup] run function practice:setup/setup_start

@@ -1,0 +1,22 @@
+{
+    "criteria": {
+      "right_click_bed_in_end": {
+        "trigger": "minecraft:item_used_on_block",
+        "conditions": {
+          "location": {
+            "dimension": "minecraft:the_end"
+          },
+          "item": {
+            "item": "minecraft:air"
+          },
+          "block": {
+            "block": "minecraft:white_bed"
+          }
+        }
+      }
+    },
+    "rewards": {
+      "function": "practice:setup/setup_check"
+    }
+  }
+  

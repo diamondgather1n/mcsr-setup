@@ -1,0 +1,1 @@
+execute if block ^-2 ^ ^1 nether_bricks if block ^2 ^ ^1 nether_bricks if block ^-1 ^ ^1 air if block ^ ^ ^1 air if block ^1 ^ ^1 air run fill ^-1 ^ ^ ^1 ^ ^ air

@@ -1,0 +1,6 @@
+datapack disable "file/ZeroPractice"
+datapack disable "file/PortalPractice"
+datapack disable "file/OWPractice"
+datapack disable "file/LBP3"
+datapack disable "file/FortPractice"
+datapack disable "file/SearchCraftPractice"

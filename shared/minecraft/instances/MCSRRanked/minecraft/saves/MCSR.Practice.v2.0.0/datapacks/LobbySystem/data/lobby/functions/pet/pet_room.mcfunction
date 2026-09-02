@@ -1,0 +1,13 @@
+execute if score @p petType matches 1 run summon cow -153 92 67 {Invulnerable:1b,PersistenceRequired:1b,Rotation:[0.0f,0.0f],Tags:["pet"],Age:-2147483648}
+execute if score @p petType matches 2 run summon pig -153 92 67 {Invulnerable:1b,PersistenceRequired:1b,Rotation:[0.0f,0.0f],Tags:["pet"],Age:-2147483648}
+execute if score @p petType matches 3 run summon rabbit -150 92 70 {Invulnerable:1b,PersistenceRequired:1b,Rotation:[0.0f,0.0f],Tags:["pet"],Age:-2147483648}
+execute if score @p petType matches 4 run summon llama -150 92 70 {Invulnerable:1b,PersistenceRequired:1b,Rotation:[0.0f,0.0f],Tags:["pet"],Age:-2147483648}
+execute if score @p petType matches 5 run summon parrot -150 92.5 70 {Variant:3,Invulnerable:1b,PersistenceRequired:1b,Rotation:[0.0f,0.0f],Tags:["pet","parrot"],Age:1}
+execute if score @p petType matches 6 run summon bee -150 92.5 70 {Invulnerable:1b,PersistenceRequired:1b,Rotation:[0.0f,0.0f],Tags:["pet"],Age:-2147483648}
+execute if score @p petType matches 7 run summon turtle -150 92 70 {Invulnerable:1b,PersistenceRequired:1b,Rotation:[0.0f,0.0f],Tags:["pet"],Age:-2147483648}
+execute if score @p petType matches 8 run summon panda -150 92 70 {Invulnerable:1b,PersistenceRequired:1b,Rotation:[0.0f,0.0f],Tags:["pet"],Age:-2147483648}
+execute if score @p petType matches 9 run summon polar_bear -150 92 70 {Invulnerable:1b,PersistenceRequired:1b,Rotation:[0.0f,0.0f],Tags:["pet"],Age:-2147483648}
+execute if score @p petType matches 10 run summon fox -150 92 70 {Type:"snow",Invulnerable:1b,PersistenceRequired:1b,Rotation:[0.0f,0.0f],Tags:["pet"],Age:-2147483648}
+execute if score @p petType matches 11 run summon sheep -150 92 70 {Color:6,Invulnerable:1b,PersistenceRequired:1b,Rotation:[0.0f,0.0f],Tags:["pet"],Age:-2147483648}
+execute if score @p petType matches 12 run summon wolf -150 92 81 {CollarColor:6,Sitting:1,Invulnerable:1b,NoAI:1b,PersistenceRequired:1b,Rotation:[0.0f,0.0f],Tags:["pet","dog"],Age:1}
+execute if score @p petType matches 13 run summon cat -147 93 74 {CatType:2,Invulnerable:1b,PersistenceRequired:1b,Rotation:[0.0f,0.0f],Tags:["pet"],Age:-2147483648}

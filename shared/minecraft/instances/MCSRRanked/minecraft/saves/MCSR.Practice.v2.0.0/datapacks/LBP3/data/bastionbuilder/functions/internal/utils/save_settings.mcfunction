@@ -1,0 +1,13 @@
+scoreboard players operation cur_seed bastion.temp = current bastion.rng
+scoreboard players operation s_random_gold bastion.temp = random_gold bastion.settings
+scoreboard players operation s_hoglins bastion.temp = hoglins bastion.settings
+scoreboard players operation s_b_left_rampart bastion.temp = bridge_left_rampart bastion.settings
+scoreboard players operation s_b_right_rampart bastion.temp = bridge_right_rampart bastion.settings
+scoreboard players operation s_s_left_gap bastion.temp = stables_left_gap bastion.settings
+scoreboard players operation s_s_left_rampart bastion.temp = stables_left_rampart bastion.settings
+scoreboard players operation s_s_middle_rampart bastion.temp = stables_middle_rampart bastion.settings
+scoreboard players operation s_s_right_gap bastion.temp = stables_right_gap bastion.settings
+scoreboard players operation s_s_right_rampart bastion.temp = stables_right_rampart bastion.settings
+scoreboard players operation s_s_playable bastion.temp = stables_playable bastion.settings
+scoreboard players operation s_t_center bastion.temp = treasure_center bastion.settings
+scoreboard players operation s_u_left_rampart bastion.temp = units_left_rampart bastion.settings

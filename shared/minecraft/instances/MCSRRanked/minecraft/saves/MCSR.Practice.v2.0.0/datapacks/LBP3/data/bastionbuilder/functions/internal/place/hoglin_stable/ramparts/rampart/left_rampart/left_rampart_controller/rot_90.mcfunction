@@ -1,0 +1,2 @@
+execute if score stables_left_rampart bastion.settings matches ..-1 run function bastionbuilder:internal/place/hoglin_stable/ramparts/rampart/random_rampart/rot_90
+execute if score stables_left_rampart bastion.settings matches 0.. run function bastionbuilder:internal/place/hoglin_stable/ramparts/rampart/left_rampart/fixed_left_rampart/rot_90

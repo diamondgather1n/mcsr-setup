@@ -1,0 +1,1 @@
+execute in the_nether run forceload remove all
