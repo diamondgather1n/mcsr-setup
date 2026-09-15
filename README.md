@@ -69,6 +69,42 @@ mpv for audio/video, imv for images/GIFs, and Yazi for terminal directory
 navigation. Thunar remains available for GUI file handling, drag-and-drop,
 tabs, and split view.
 
+### Wayland Terminal
+
+Super+Enter opens Foot with an independent Zellij session for each window.
+`foot` opens a plain shell; `foot-tabbed -e command ...` forwards explicit
+commands/options to Foot. The Yazi and Micro desktop helpers open those apps
+directly. An existing session can be attached explicitly with `zellij attach`.
+
+| Shortcut | Action |
+| --- | --- |
+| Ctrl+Shift+T / Ctrl+Shift+W | New / close tab (closing stops its programs) |
+| Ctrl+Tab / Ctrl+Shift+Tab | Next / previous tab |
+| Ctrl+PageDown / Ctrl+PageUp | Next / previous tab, alternative |
+| Alt+1 through Alt+9 | Select tab |
+| Ctrl+Shift+C / Ctrl+Shift+V | Copy / paste |
+| Shift+mouse drag | Foot selection, including across pane boundaries |
+| Mouse wheel / Shift+PageUp or PageDown | Scroll output; Esc returns from keyboard scrolling |
+| Ctrl+Shift+F | Search pane output: type, Enter, n/p for matches, Esc to return |
+| Ctrl+Shift+E | Open pane scrollback in Micro |
+| Ctrl+Shift+Right or Down | Split a pane |
+| Alt+arrow | Focus a pane |
+| Ctrl+Shift+Y | Dual-pane Yazi tab |
+| Ctrl+Shift+Space | Zellij session controls; Esc returns |
+
+Dragging normally selects within a Zellij pane and copies through `wl-copy`.
+Jay grants `data-control` only to the installed `wl-copy`/`wl-paste` executables
+so these clipboard tools can work without acquiring keyboard focus.
+Holding Shift selects through Foot instead. Plain Foot's output search is
+Ctrl+Shift+R. Ordinary shell editing keys pass through Zellij's normal mode,
+including Ctrl+C/L/R, Ctrl+A/E/B/F, Ctrl+U/K/W, and Alt+B/F.
+
+Arch Bash enables Readline bracketed paste by default. Multiline clipboard
+text is inserted for review, preserving newlines, and Enter submits it.
+Paste inserts at the cursor: existing prompt text is not cleared or separated
+automatically. Cancel an unfinished command with Ctrl+C before pasting a new
+block. No shell startup replacement is needed for this behavior.
+
 ## Authentication and Hardware
 
 Launcher accounts, Microsoft/Minecraft credentials, Twitch tokens, stream

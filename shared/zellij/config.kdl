@@ -16,11 +16,26 @@ env {
 }
 
 keybinds {
-      normal {
-          bind "Ctrl Shift t" { NewTab; }
+    // Keep Readline and editor keys available in the normal terminal mode.
+    normal clear-defaults=true {
+        bind "Ctrl Shift t" { NewTab; }
         bind "Ctrl Shift w" { CloseTab; }
-        bind "Ctrl Tab" { GoToNextTab; }
-        bind "Ctrl Shift Tab" { GoToPreviousTab; }
+        bind "Ctrl Tab" "Ctrl PageDown" { GoToNextTab; }
+        bind "Ctrl Shift Tab" "Ctrl PageUp" { GoToPreviousTab; }
+        bind "Alt 1" { GoToTab 1; }
+        bind "Alt 2" { GoToTab 2; }
+        bind "Alt 3" { GoToTab 3; }
+        bind "Alt 4" { GoToTab 4; }
+        bind "Alt 5" { GoToTab 5; }
+        bind "Alt 6" { GoToTab 6; }
+        bind "Alt 7" { GoToTab 7; }
+        bind "Alt 8" { GoToTab 8; }
+        bind "Alt 9" { GoToTab 9; }
+        bind "Ctrl Shift f" { SearchInput 0; SwitchToMode "EnterSearch"; }
+        bind "Ctrl Shift e" { EditScrollback; }
+        bind "Shift PageUp" { PageScrollUp; SwitchToMode "Scroll"; }
+        bind "Shift PageDown" { PageScrollDown; SwitchToMode "Scroll"; }
+        bind "Ctrl Shift Space" { SwitchToMode "Session"; }
         bind "Ctrl Shift Right" { NewPane "Right"; }
         bind "Ctrl Shift Down" { NewPane "Down"; }
         bind "Alt Left" { MoveFocus "Left"; }
@@ -33,5 +48,16 @@ keybinds {
                 layout "@HOME@/.config/zellij/layouts/yazi-dual.kdl"
             }
         }
+    }
+    scroll {
+        bind "Shift PageUp" { PageScrollUp; }
+        bind "Shift PageDown" { PageScrollDown; }
+        bind "Esc" "Enter" { ScrollToBottom; SwitchToMode "Normal"; }
+    }
+    entersearch {
+        bind "Esc" "Ctrl c" { ScrollToBottom; SwitchToMode "Normal"; }
+    }
+    search {
+        bind "Esc" "Enter" { ScrollToBottom; SwitchToMode "Normal"; }
     }
 }

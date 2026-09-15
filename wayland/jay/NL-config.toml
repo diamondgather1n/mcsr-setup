@@ -17,6 +17,12 @@ on-graphics-initialized = [
   { type = "exec", exec = ["@HOME@/.local/bin/mcsr-razer-dpi", "2000"] },
 ]
 
+# Clipboard command-line tools need data-control without taking keyboard focus.
+[[clients]]
+match.any = [{ exe = "/usr/bin/wl-copy" }, { exe = "/usr/bin/wl-paste" }]
+match.sandboxed = false
+capabilities = "data-control"
+
 [theme]
 font = "monospace 8"
 bar-font = "monospace 10"

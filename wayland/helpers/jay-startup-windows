@@ -139,8 +139,6 @@ launch_helium_if_missing \
 launch_if_missing "mcsr launcher workspace 5" 'MCSR Launcher|com-redlimerl-mcsrlauncher-MCSRLauncher' mcsrlauncher
 
 main_urls=(
-  "https://chatgpt.com/"
-  "https://mcsr.cards/"
   "https://discord.com/channels/1286062493826940981/1286062493826940984"
   "https://twitch.tv/doogile"
   "https://youtube.com"

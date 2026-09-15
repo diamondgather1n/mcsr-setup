@@ -1,5 +1,8 @@
 layout {
     tab name="Files" {
+        pane size=1 borderless=true {
+            plugin location="zellij:tab-bar"
+        }
         pane split_direction="vertical" {
             pane command="yazi" {
                 args "."
@@ -7,6 +10,9 @@ layout {
             pane command="yazi" {
                 args "."
             }
+        }
+        pane size=1 borderless=true {
+            plugin location="zellij:status-bar"
         }
     }
 }

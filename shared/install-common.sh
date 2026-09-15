@@ -207,7 +207,8 @@ assert_contains() {
 }
 
 deploy_instance() {
-    local src=$1 dest=$2 old_manifest="$dest/.mcsr-setup-manifest" rel
+    local src=$1 dest=$2 old_manifest rel
+    old_manifest="$dest/.mcsr-setup-manifest"
     require_dir "$src"
     mkdir -p "$dest"
 
