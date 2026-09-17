@@ -443,32 +443,75 @@ import re
 import sys
 
 root = pathlib.Path(sys.argv[1])
-sensitive = re.compile(r"(?:token|secret|password|oauth|cookie|stream.?key|authorization|account.?id|uuid)", re.I)
+secret_field = re.compile(
+    r"(?:token|secret|password|oauth|cookie|stream.?key|authorization|webhook|api.?key)",
+    re.I,
+)
+
+def report(path, field, reason):
+    try:
+        name = path.relative_to(root).as_posix()
+    except ValueError:
+        name = path.name
+    print(f"OBS sanitization failed: file: {name}; field: {field}; reason: {reason}", file=sys.stderr)
+    raise SystemExit(1)
+
+def is_sensitive_field(key, path):
+    normalized = re.sub(r"[^a-z0-9]", "", key.lower())
+    if secret_field.search(key):
+        return "credential-like field"
+    account_fields = {
+        "accountid", "accountuuid", "userid", "useruuid", "email", "emailaddress",
+    }
+    if normalized in account_fields:
+        return "account identifier field"
+    if normalized.startswith("twitch") and any(
+        part in normalized for part in ("uuid", "userid", "username", "account", "email", "token")
+    ):
+        return "Twitch account or credential field"
+    # OBS stores streaming credentials in service.json under settings.key.
+    if path.name == "service.json" and normalized == "key":
+        return "streaming service key"
+    return None
+
 for path in root.rglob("*"):
     if not path.is_file():
         continue
     if path.suffix == ".json":
-        data = json.loads(path.read_text())
-        def visit(value):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as error:
+            report(path, "<document>", f"invalid JSON at line {error.lineno}, column {error.colno}")
+        except (OSError, UnicodeError):
+            report(path, "<document>", "could not read UTF-8 JSON")
+
+        def visit(value, parent=""):
             if isinstance(value, dict):
                 for key, child in value.items():
-                    if (key.lower() == "key" or sensitive.search(key)) and child not in (None, "", False, 0, [], {}):
-                        raise SystemExit("non-empty credential/account field")
-                    visit(child)
+                    field = f"{parent}.{key}" if parent else key
+                    reason = is_sensitive_field(key, path)
+                    if reason and child not in (None, "", False, 0, [], {}):
+                        report(path, field, f"non-empty {reason}")
+                    visit(child, field)
             elif isinstance(value, list):
-                for child in value:
-                    visit(child)
+                for index, child in enumerate(value):
+                    visit(child, f"{parent}[{index}]")
         visit(data)
     elif path.suffix == ".ini":
-        for line in path.read_text(errors="replace").splitlines():
+        try:
+            lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        except OSError:
+            report(path, "<document>", "could not read profile")
+        for number, line in enumerate(lines, 1):
             key, separator, value = line.partition("=")
-            if separator and (key.lower() == "key" or sensitive.search(key)) and value.strip():
-                raise SystemExit("non-empty credential/account field")
+            reason = is_sensitive_field(key.strip(), path)
+            if separator and reason and value.strip():
+                report(path, f"line {number}:{key.strip()}", f"non-empty {reason}")
 PY
 }
 
 preflight_sources() {
-    local common_executables common_sources source
+    local common_executables common_sources source obs_profiles=${1:-"$ROOT/shared/obs/profiles"}
     common_sources=(
         "$ROOT/packages/pacman-common.txt"
         "$ROOT/packages/yay-common.txt"
@@ -619,8 +662,8 @@ preflight_sources() {
         \( -name accounts.json -o -name service.json \) -print -quit | grep -q .; then
         die "launcher or OBS authentication data is present in the repository"
     fi
-    validate_obs_profile_sanitization "$ROOT/shared/obs/profiles" \
-        || die "OBS profile contains an unredacted credential or account identifier"
+    validate_obs_profile_sanitization "$obs_profiles" \
+        || die "OBS profile sanitization failed; see the file/field diagnostic above"
 }
 
 preflight() {
@@ -965,7 +1008,7 @@ post_deploy_sanity_check() {
         assert_file "$TARGET_HOME/.config/obs-studio/basic/profiles/$profile/service.json"
     done
     validate_obs_profile_sanitization "$TARGET_HOME/.config/obs-studio/basic/profiles" \
-        || die "OBS profile $profile contains an unredacted credential or account identifier"
+        || die "deployed OBS profile sanitization failed; see the file/field diagnostic above"
     assert_contains "$TARGET_HOME/.config/obs-studio/user.ini" 'ProfileDir=Untitled'
     assert_file "$(root_path /etc/keyd/normal.conf)"
     assert_contains "$(root_path /etc/keyd/normal.conf)" 'mouse2 = home'
