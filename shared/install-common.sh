@@ -436,6 +436,10 @@ deploy_instance() {
 }
 
 validate_obs_profile_sanitization() {
+    if ! command -v python3 >/dev/null 2>&1; then
+        printf 'required command missing: python3\n' >&2
+        return 127
+    fi
     python3 - "$1" <<'PY'
 import json
 import pathlib
@@ -510,8 +514,15 @@ for path in root.rglob("*"):
 PY
 }
 
+validate_obs_profiles_or_die() {
+    local profiles=$1
+    command -v python3 >/dev/null 2>&1 || die "required command missing: python3"
+    validate_obs_profile_sanitization "$profiles" \
+        || die "OBS profile sanitization failed; see the file/field diagnostic above"
+}
+
 preflight_sources() {
-    local common_executables common_sources source obs_profiles=${1:-"$ROOT/shared/obs/profiles"}
+    local common_executables common_sources source
     common_sources=(
         "$ROOT/packages/pacman-common.txt"
         "$ROOT/packages/yay-common.txt"
@@ -662,8 +673,6 @@ preflight_sources() {
         \( -name accounts.json -o -name service.json \) -print -quit | grep -q .; then
         die "launcher or OBS authentication data is present in the repository"
     fi
-    validate_obs_profile_sanitization "$obs_profiles" \
-        || die "OBS profile sanitization failed; see the file/field diagnostic above"
 }
 
 preflight() {
@@ -683,8 +692,6 @@ preflight() {
     command -v pacman >/dev/null || die "pacman is required"
     command -v sudo >/dev/null || die "sudo is required"
     command -v git >/dev/null || die "git is required"
-    command -v makepkg >/dev/null || die "makepkg is required"
-    command -v curl >/dev/null || die "curl is required"
     [[ -d "$ROOT/.git" ]] || die "run this installer from a Git clone"
     sudo -v
     systemctl --user show-environment >/dev/null \
@@ -702,7 +709,6 @@ preflight() {
     required_kb=$((payload_kb + 6 * 1024 * 1024))
     (( available_kb >= required_kb )) || die "insufficient free space: need the instance payload plus 6 GiB"
 
-    curl -fsSI --connect-timeout 10 --max-time 20 https://archlinux.org/ >/dev/null
     git ls-remote https://aur.archlinux.org/yay.git HEAD >/dev/null
 }
 
@@ -1007,8 +1013,7 @@ post_deploy_sanity_check() {
         assert_file "$TARGET_HOME/.config/obs-studio/basic/profiles/$profile/basic.ini"
         assert_file "$TARGET_HOME/.config/obs-studio/basic/profiles/$profile/service.json"
     done
-    validate_obs_profile_sanitization "$TARGET_HOME/.config/obs-studio/basic/profiles" \
-        || die "deployed OBS profile sanitization failed; see the file/field diagnostic above"
+    validate_obs_profiles_or_die "$TARGET_HOME/.config/obs-studio/basic/profiles"
     assert_contains "$TARGET_HOME/.config/obs-studio/user.ini" 'ProfileDir=Untitled'
     assert_file "$(root_path /etc/keyd/normal.conf)"
     assert_contains "$(root_path /etc/keyd/normal.conf)" 'mouse2 = home'
@@ -1164,6 +1169,10 @@ run_install() {
     preflight
     begin_rollback_state
     install_pacman_packages
+    command -v makepkg >/dev/null 2>&1 \
+        || die "required command missing after official package installation: makepkg (provided by base-devel)"
+    stage "validate OBS profile credentials"
+    validate_obs_profiles_or_die "$ROOT/shared/obs/profiles"
     install_aur_packages
     stage "pinned Polychromatic"
     "$ROOT/shared/polychromatic/install.sh"
