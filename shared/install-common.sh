@@ -435,6 +435,38 @@ deploy_instance() {
     find "$src" -type f -printf '%P\n' | LC_ALL=C sort >"$old_manifest"
 }
 
+validate_obs_profile_sanitization() {
+    python3 - "$1" <<'PY'
+import json
+import pathlib
+import re
+import sys
+
+root = pathlib.Path(sys.argv[1])
+sensitive = re.compile(r"(?:token|secret|password|oauth|cookie|stream.?key|authorization|account.?id|uuid)", re.I)
+for path in root.rglob("*"):
+    if not path.is_file():
+        continue
+    if path.suffix == ".json":
+        data = json.loads(path.read_text())
+        def visit(value):
+            if isinstance(value, dict):
+                for key, child in value.items():
+                    if (key.lower() == "key" or sensitive.search(key)) and child not in (None, "", False, 0, [], {}):
+                        raise SystemExit("non-empty credential/account field")
+                    visit(child)
+            elif isinstance(value, list):
+                for child in value:
+                    visit(child)
+        visit(data)
+    elif path.suffix == ".ini":
+        for line in path.read_text(errors="replace").splitlines():
+            key, separator, value = line.partition("=")
+            if separator and (key.lower() == "key" or sensitive.search(key)) and value.strip():
+                raise SystemExit("non-empty credential/account field")
+PY
+}
+
 preflight_sources() {
     local common_executables common_sources source
     common_sources=(
@@ -444,6 +476,8 @@ preflight_sources() {
         "$ROOT/shared/foot/foot.ini"
         "$ROOT/shared/zellij/config.kdl"
         "$ROOT/shared/zellij/layouts/yazi-dual.kdl"
+        "$ROOT/shared/micro/settings.json"
+        "$ROOT/shared/qpwgraph/qpwgraph.conf"
         "$ROOT/shared/yazi/yazi.toml"
         "$ROOT/shared/yazi/keymap.toml"
         "$ROOT/shared/yazi/init.lua"
@@ -468,9 +502,16 @@ preflight_sources() {
         "$ROOT/shared/obs/assets/heidi2.png"
         "$ROOT/shared/obs/assets/heidi3.png"
         "$ROOT/shared/obs/assets/overlay_2.webp"
-        "$ROOT/shared/obs/profiles/basic.ini"
-        "$ROOT/shared/obs/profiles/recordEncoder.json"
-        "$ROOT/shared/obs/profiles/streamEncoder.json"
+        "$ROOT/shared/obs/profiles/Untitled/basic.ini"
+        "$ROOT/shared/obs/profiles/Untitled/service.json"
+        "$ROOT/shared/obs/profiles/Untitled/streamEncoder.json"
+        "$ROOT/shared/obs/profiles/fuzzy/basic.ini"
+        "$ROOT/shared/obs/profiles/fuzzy/service.json"
+        "$ROOT/shared/obs/profiles/fuzzy/streamEncoder.json"
+        "$ROOT/shared/obs/profiles/optimized/basic.ini"
+        "$ROOT/shared/obs/profiles/optimized/service.json"
+        "$ROOT/shared/obs/profiles/optimized/recordEncoder.json"
+        "$ROOT/shared/obs/profiles/optimized/streamEncoder.json"
         "$ROOT/shared/obs/global.ini"
         "$ROOT/shared/obs/user.ini"
         "$ROOT/shared/polychromatic/PKGBUILD.pinned"
@@ -501,6 +542,7 @@ preflight_sources() {
     require_dir "$ROOT/shared/yazi/plugins/ucp.yazi"
     require_dir "$ROOT/shared/applications/desktop"
     require_dir "$ROOT/shared/obs/assets"
+    require_dir "$ROOT/shared/obs/profiles"
     require_dir "$ROOT/shared/polychromatic/source"
 
     case "$MCSR_PLATFORM" in
@@ -572,10 +614,13 @@ preflight_sources() {
         fi
     fi
 
-    if find "$ROOT" -path "$ROOT/.git" -prune -o -type f \
+    if find "$ROOT" -path "$ROOT/.git" -prune -o \
+        -path "$ROOT/shared/obs/profiles" -prune -o -type f \
         \( -name accounts.json -o -name service.json \) -print -quit | grep -q .; then
         die "launcher or OBS authentication data is present in the repository"
     fi
+    validate_obs_profile_sanitization "$ROOT/shared/obs/profiles" \
+        || die "OBS profile contains an unredacted credential or account identifier"
 }
 
 preflight() {
@@ -748,6 +793,8 @@ deploy_common_configuration() {
     deploy_tree "$ROOT/shared/zellij" "$TARGET_HOME/.config/zellij"
     deploy_rendered "$ROOT/shared/foot/foot.ini" "$TARGET_HOME/.config/foot/foot.ini"
     deploy_tree "$ROOT/shared/yazi" "$TARGET_HOME/.config/yazi"
+    deploy_tree "$ROOT/shared/micro" "$TARGET_HOME/.config/micro"
+    deploy_tree "$ROOT/shared/qpwgraph" "$TARGET_HOME/.config/rncbc.org"
     deploy_rendered "$ROOT/shared/applications/mimeapps.list" "$TARGET_HOME/.config/mimeapps.list"
 
     deploy_root_rendered "$ROOT/shared/keyd/normal.conf" /etc/keyd/normal.conf
@@ -772,10 +819,8 @@ deploy_common_configuration() {
     deploy_tree "$ROOT/shared/obs/assets" "$TARGET_HOME/MCSR/CrossDisplayManager/obs images"
     deploy_rendered "$ROOT/shared/obs/global.ini" "$TARGET_HOME/.config/obs-studio/global.ini"
     deploy_rendered "$ROOT/shared/obs/user.ini" "$TARGET_HOME/.config/obs-studio/user.ini"
-    for file in basic.ini recordEncoder.json streamEncoder.json; do
-        deploy_rendered "$ROOT/shared/obs/profiles/$file" \
-            "$TARGET_HOME/.config/obs-studio/basic/profiles/optimized/$file"
-    done
+    deploy_tree "$ROOT/shared/obs/profiles" \
+        "$TARGET_HOME/.config/obs-studio/basic/profiles"
 
     if command -v update-desktop-database >/dev/null; then
         record_destination "$TARGET_HOME/.local/share/applications/mimeinfo.cache"
@@ -898,6 +943,12 @@ post_deploy_sanity_check() {
     assert_file "$TARGET_HOME/.config/yazi/plugins/file-clipboard.yazi/main.lua"
     assert_file "$TARGET_HOME/.config/yazi/plugins/smart-enter.yazi/main.lua"
     assert_file "$TARGET_HOME/.config/yazi/plugins/ucp.yazi/main.lua"
+    assert_file "$TARGET_HOME/.config/micro/settings.json"
+    assert_contains "$TARGET_HOME/.config/micro/settings.json" '"clipboard": "terminal"'
+    assert_contains "$TARGET_HOME/.config/micro/settings.json" '"mouse": true'
+    assert_file "$TARGET_HOME/.config/rncbc.org/qpwgraph.conf"
+    assert_contains "$TARGET_HOME/.config/rncbc.org/qpwgraph.conf" '[GraphNodeAliases]'
+    assert_contains "$TARGET_HOME/.config/rncbc.org/qpwgraph.conf" 'HeadPhones-Mic'
     for helper in yazi-edit yazi-edit-right yazi-archive-create yazi-archive-extract; do
         assert_executable "$TARGET_HOME/.local/bin/$helper"
     done
@@ -909,7 +960,13 @@ post_deploy_sanity_check() {
     done
     assert_file "$TARGET_HOME/.config/obs-studio/global.ini"
     assert_file "$TARGET_HOME/.config/obs-studio/user.ini"
-    assert_dir "$TARGET_HOME/.config/obs-studio/basic/profiles/optimized"
+    for profile in Untitled fuzzy optimized; do
+        assert_file "$TARGET_HOME/.config/obs-studio/basic/profiles/$profile/basic.ini"
+        assert_file "$TARGET_HOME/.config/obs-studio/basic/profiles/$profile/service.json"
+    done
+    validate_obs_profile_sanitization "$TARGET_HOME/.config/obs-studio/basic/profiles" \
+        || die "OBS profile $profile contains an unredacted credential or account identifier"
+    assert_contains "$TARGET_HOME/.config/obs-studio/user.ini" 'ProfileDir=Untitled'
     assert_file "$(root_path /etc/keyd/normal.conf)"
     assert_contains "$(root_path /etc/keyd/normal.conf)" 'mouse2 = home'
     assert_contains "$(root_path /etc/keyd/normal.conf)" 'mouse1 = backspace'
@@ -993,6 +1050,9 @@ PY
             assert_file "$TARGET_HOME/.config/waybar/style.css"
             assert_contains "$TARGET_HOME/.config/jay/config.toml" 'MCSR_SETUP_WAYBAR_START'
             assert_contains "$TARGET_HOME/.config/jay/config.toml" 'exec = ["waybar"]'
+            [[ "$(grep -Fc 'MCSR_SETUP_WAYBAR_START' "$TARGET_HOME/.config/jay/config.toml")" == 1 \
+                && "$(grep -Fc 'exec = ["waybar"]' "$TARGET_HOME/.config/jay/config.toml")" == 1 ]] \
+                || die "NL Jay config must start Waybar exactly once"
         fi
     else
         assert_file "$TARGET_HOME/.config/i3/config"

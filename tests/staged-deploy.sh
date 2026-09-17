@@ -60,6 +60,67 @@ assert() {
     [[ "$1" ]] || { printf 'STAGED TEST FAILED: %s\n' "$2" >&2; exit 1; }
 }
 
+assert_file_payload() {
+    python3 - "$1" "$2" "$3" "$4" "$5" <<'PY'
+import pathlib, stat, sys
+src, dst = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
+home, user, platform = sys.argv[3:6]
+replacements = {
+    b'@HOME@': home.encode(), b'@USER@': user.encode(),
+    b'@OBS_COLLECTION@': b'JAY (wayland)' if platform == 'wayland' else b'I3 (x11)',
+    b'@OBS_SCENE_FILE@': b'JAY_wayland' if platform == 'wayland' else b'I3_x11',
+}
+data = src.read_bytes()
+for old, new in replacements.items():
+    data = data.replace(old, new)
+if not dst.is_file() or dst.read_bytes() != data:
+    raise SystemExit(f'file payload differs: {src} -> {dst}')
+expected_mode = 0o755 if src.stat().st_mode & 0o111 else 0o644
+if stat.S_IMODE(dst.stat().st_mode) != expected_mode:
+    raise SystemExit(f'file mode differs: {src} -> {dst}')
+PY
+}
+
+assert_tree_payload() {
+    python3 - "$1" "$2" "$3" "$4" "$5" "$6" <<'PY'
+import os, pathlib, stat, sys
+src, dst = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
+home, user, platform = sys.argv[3:6]
+replacements = {
+    b'@HOME@': home.encode(), b'@USER@': user.encode(),
+    b'@OBS_COLLECTION@': b'JAY (wayland)' if platform == 'wayland' else b'I3 (x11)',
+    b'@OBS_SCENE_FILE@': b'JAY_wayland' if platform == 'wayland' else b'I3_x11',
+}
+def entries(root):
+    return {
+        p.relative_to(root).as_posix(): p
+        for p in root.rglob('*')
+        if (p.is_file() or p.is_symlink())
+        and '__pycache__' not in p.parts
+        and p.suffix != '.pyc'
+    }
+left, right = entries(src), entries(dst)
+exact = sys.argv[6] == 'exact'
+if (exact and set(left) != set(right)) or (not exact and not set(left).issubset(right)):
+    missing, extra = sorted(set(left)-set(right)), sorted(set(right)-set(left))
+    raise SystemExit(f'tree inventory differs {src} -> {dst}; missing={missing}; extra={extra}')
+for rel, source in left.items():
+    target = right[rel]
+    if source.is_symlink():
+        if not target.is_symlink() or os.readlink(source) != os.readlink(target):
+            raise SystemExit(f'symlink differs: {source} -> {target}')
+        continue
+    data = source.read_bytes()
+    for old, new in replacements.items():
+        data = data.replace(old, new)
+    if not target.is_file() or target.read_bytes() != data:
+        raise SystemExit(f'tree file differs: {source} -> {target}')
+    expected_mode = 0o755 if source.stat().st_mode & 0o111 else 0o644
+    if stat.S_IMODE(target.stat().st_mode) != expected_mode:
+        raise SystemExit(f'tree mode differs: {source} -> {target}')
+PY
+}
+
 stage_variant() {
     local variant=$1 platform=$2 tier=$3 home="$STAGE_ROOT/$1/home/mcsrtest"
     local system="$STAGE_ROOT/$1/root"
@@ -99,8 +160,11 @@ stage_variant() {
             "$home/.config/jay/config.toml" "$home/.config/waywall/init.lua" \
             "$home/.config/foot/foot.ini" "$home/.config/zellij/config.kdl" \
             "$home/.config/yazi/yazi.toml" "$home/.config/yazi/keymap.toml" \
+            "$home/.config/micro/settings.json" "$home/.config/rncbc.org/qpwgraph.conf" \
             "$home/.config/waybar/config" "$home/.config/waybar/style.css" \
             "$home/.config/obs-studio/basic/scenes/JAY_wayland.json" \
+            "$home/.config/obs-studio/basic/profiles/Untitled/basic.ini" \
+            "$home/.config/obs-studio/basic/profiles/fuzzy/basic.ini" \
             "$home/.config/obs-studio/basic/profiles/optimized/basic.ini" \
             "$home/.config/systemd/user/xdg-desktop-portal-jay.service" \
             "$home/launcher/instances/waywall/instance.json" \
@@ -115,15 +179,27 @@ stage_variant() {
         done
         assert "$(grep -Fq 'MCSR_SETUP_WAYBAR_START' "$home/.config/jay/config.toml" && printf yes)" "Waybar startup marker"
         assert "$(test -x "$home/.local/bin/foot-tabbed" && test -x "$home/.local/bin/yazi-edit" && printf yes)" "executable user helpers"
+        assert "$(test ! -e "$home/.local/bin/jay-startup-windows" && test ! -e "$home/.local/bin/input-recorder" && printf yes)" "NL excludes L-only startup helpers"
+        if [[ "${MCSR_RUN_SYSTEMD_VERIFY:-0}" == 1 ]] && command -v systemd-analyze >/dev/null; then
+            local unit_log="$STAGE_ROOT/systemd-$variant.log"
+            if ! systemd-analyze verify \
+                "$home/.config/systemd/user/xdg-desktop-portal-jay.service" \
+                "$home/.config/systemd/user/obs-input-overlay.service" >"$unit_log" 2>&1; then
+                cat "$unit_log" >&2
+                exit 1
+            fi
+        fi
         if rg -I -l '/home/nathan|@(HOME|USER|OBS_COLLECTION|OBS_SCENE_FILE)@' \
             "$home/.config/jay" "$home/.config/waywall" "$home/.config/foot" \
             "$home/.config/zellij" "$home/.config/yazi" "$home/.config/waybar" \
-            "$home/.config/obs-studio" "$home/.local/bin" "$home/.local/share/applications" \
+            "$home/.config/obs-studio" "$home/.config/micro" "$home/.config/rncbc.org" \
+            "$home/.local/bin" "$home/.local/share/applications" \
             "$home/launcher/instances/waywall/instance.json" >/dev/null; then
             rg -n -I '/home/nathan|@(HOME|USER|OBS_COLLECTION|OBS_SCENE_FILE)@' \
                 "$home/.config/jay" "$home/.config/waywall" "$home/.config/foot" \
                 "$home/.config/zellij" "$home/.config/yazi" "$home/.config/waybar" \
-                "$home/.config/obs-studio" "$home/.local/bin" "$home/.local/share/applications" \
+                "$home/.config/obs-studio" "$home/.config/micro" "$home/.config/rncbc.org" \
+                "$home/.local/bin" "$home/.local/share/applications" \
                 "$home/launcher/instances/waywall/instance.json" || :
             printf 'Runtime path/template leak in staged Wayland deployment.\n' >&2
             exit 1
@@ -131,6 +207,38 @@ stage_variant() {
         instance_id=$(jq -r '.id' "$home/launcher/instances/waywall/instance.json")
         assert "$([[ "$instance_id" == waywall ]] && printf yes)" "Wayland instance identity"
 
+    else
+        assert "$(test -f "$home/.config/i3/config" && test -f "$home/launcher/instances/MCSRRanked/instance.json" && printf yes)" "X11 config/instance destinations"
+        instance_id=$(jq -r '.id' "$home/launcher/instances/MCSRRanked/instance.json")
+        assert "$([[ "$instance_id" == MCSRRanked ]] && printf yes)" "X11 instance identity"
+        assert "$(grep -Fq '"javaPath": "/usr/lib/jvm/java-21-openjdk/bin/java"' "$home/launcher/instances/MCSRRanked/instance.json" && printf yes)" "X11 MCSR instance remains pinned to Java 21"
+    fi
+    printf 'STAGED PAYLOAD PARITY: %s\n' "$variant"
+    assert_tree_payload "$ROOT/shared/scripts" "$home/.local/bin" "$home" mcsrtest "$platform" subset
+    assert_tree_payload "$ROOT/shared/foot" "$home/.config/foot" "$home" mcsrtest "$platform" exact
+    assert_tree_payload "$ROOT/shared/zellij" "$home/.config/zellij" "$home" mcsrtest "$platform" exact
+    assert_tree_payload "$ROOT/shared/yazi" "$home/.config/yazi" "$home" mcsrtest "$platform" exact
+    assert_tree_payload "$ROOT/shared/micro" "$home/.config/micro" "$home" mcsrtest "$platform" exact
+    assert_tree_payload "$ROOT/shared/qpwgraph" "$home/.config/rncbc.org" "$home" mcsrtest "$platform" exact
+    assert_tree_payload "$ROOT/shared/obs/profiles" "$home/.config/obs-studio/basic/profiles" "$home" mcsrtest "$platform" exact
+    assert_tree_payload "$ROOT/shared/obs/assets" "$home/MCSR/CrossDisplayManager/obs images" "$home" mcsrtest "$platform" exact
+    assert_file_payload "$ROOT/shared/obs/global.ini" "$home/.config/obs-studio/global.ini" "$home" mcsrtest "$platform"
+    assert_file_payload "$ROOT/shared/obs/user.ini" "$home/.config/obs-studio/user.ini" "$home" mcsrtest "$platform"
+    if [[ "$platform" == wayland ]]; then
+        assert_tree_payload "$ROOT/wayland/waywall/resources" "$home/.config/waywall/resources" "$home" mcsrtest "$platform" exact
+        assert_file_payload "$ROOT/wayland/waywall/NL-init.lua" "$home/.config/waywall/init.lua" "$home" mcsrtest "$platform"
+        assert_tree_payload "$ROOT/wayland/waybar" "$home/.config/waybar" "$home" mcsrtest "$platform" exact
+        assert_file_payload "$ROOT/shared/obs/scenes/JAY_wayland.json" "$home/.config/obs-studio/basic/scenes/JAY_wayland.json" "$home" mcsrtest "$platform"
+        for name in index.html overlay.css overlay.js; do
+            assert_file_payload "$ROOT/shared/obs/input-overlay/$name" "$home/.local/share/obs-input-overlay/$name" "$home" mcsrtest "$platform"
+        done
+        assert_file_payload "$ROOT/shared/obs/input-overlay/obs-input-overlay" "$home/.local/bin/obs-input-overlay" "$home" mcsrtest "$platform"
+        assert_file_payload "$ROOT/shared/obs/input-overlay/obs-input-overlay.service" "$home/.config/systemd/user/obs-input-overlay.service" "$home" mcsrtest "$platform"
+    else
+        assert_file_payload "$ROOT/shared/obs/scenes/I3_x11.json" "$home/.config/obs-studio/basic/scenes/I3_x11.json" "$home" mcsrtest "$platform"
+    fi
+
+    if [[ "$platform" == wayland ]]; then
         printf 'user edit after install\n' >>"$home/.config/yazi/yazi.toml"
         printf 'waybar\n' >"$(<"$home/.test-state-path")/packages.added"
         HOME="$home" "$home/DoOvers/undo-waybar.sh"
@@ -143,11 +251,6 @@ stage_variant() {
         assert "$(grep -Fq 'user edit after install' "$home/.config/yazi/yazi.toml" && printf yes)" "rollback preserves subsequent user edit"
         assert "$(test ! -e "$home/.local/bin/yazi-edit" && printf yes)" "rollback removes unchanged installer-created helper"
         assert "$(test ! -e "$home/.config/jay/config.toml" && printf yes)" "rollback removes updated installer-created Jay config"
-    else
-        assert "$(test -f "$home/.config/i3/config" && test -f "$home/launcher/instances/MCSRRanked/instance.json" && printf yes)" "X11 config/instance destinations"
-        instance_id=$(jq -r '.id' "$home/launcher/instances/MCSRRanked/instance.json")
-        assert "$([[ "$instance_id" == MCSRRanked ]] && printf yes)" "X11 instance identity"
-        assert "$(grep -Fq '"javaPath": "/usr/lib/jvm/java-21-openjdk/bin/java"' "$home/launcher/instances/MCSRRanked/instance.json" && printf yes)" "X11 MCSR instance remains pinned to Java 21"
     fi
     printf 'STAGED PASS: %s (home=%s)\n' "$variant" "$home"
 }

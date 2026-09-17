@@ -127,18 +127,26 @@ check_file "Yazi keymap" "$TARGET_HOME/.config/yazi/keymap.toml"
 check_file "Yazi startup config" "$TARGET_HOME/.config/yazi/init.lua"
 check_contains "Yazi Enter uses smart-enter" "$TARGET_HOME/.config/yazi/keymap.toml" 'plugin smart-enter'
 check_contains "Yazi Space toggles and advances" "$TARGET_HOME/.config/yazi/keymap.toml" 'toggle", "arrow 1'
+check_file "Yazi file clipboard plugin" "$TARGET_HOME/.config/yazi/plugins/file-clipboard.yazi/main.lua"
+check_file "Yazi smart-enter plugin" "$TARGET_HOME/.config/yazi/plugins/smart-enter.yazi/main.lua"
+check_file "Yazi UCP plugin" "$TARGET_HOME/.config/yazi/plugins/ucp.yazi/main.lua"
 for helper in yazi-edit yazi-edit-right yazi-archive-create yazi-archive-extract; do
     check_executable "Yazi helper $helper" "$TARGET_HOME/.local/bin/$helper"
 done
 check_executable "Foot/Zellij launcher" "$TARGET_HOME/.local/bin/foot-tabbed"
 check_executable "OBS wrapper" "$TARGET_HOME/.local/bin/obs"
+check_file "Micro settings" "$TARGET_HOME/.config/micro/settings.json"
+check_contains "Micro uses terminal clipboard integration" "$TARGET_HOME/.config/micro/settings.json" '"clipboard": "terminal"'
+check_file "qpwgraph aliases and layout" "$TARGET_HOME/.config/rncbc.org/qpwgraph.conf"
 
 section "OBS"
-check_file "OBS profile" "$TARGET_HOME/.config/obs-studio/basic/profiles/optimized/basic.ini"
+check_file "OBS active profile" "$TARGET_HOME/.config/obs-studio/basic/profiles/Untitled/basic.ini"
+check_file "OBS optimized profile" "$TARGET_HOME/.config/obs-studio/basic/profiles/optimized/basic.ini"
+check_file "OBS fuzzy profile" "$TARGET_HOME/.config/obs-studio/basic/profiles/fuzzy/basic.ini"
 check_file "OBS global configuration" "$TARGET_HOME/.config/obs-studio/global.ini"
 check_file "OBS user configuration" "$TARGET_HOME/.config/obs-studio/user.ini"
 check_file "OBS scene collection" "$TARGET_HOME/.config/obs-studio/basic/scenes/$OBS_SCENE"
-check_contains "OBS optimized profile selected" "$TARGET_HOME/.config/obs-studio/user.ini" 'ProfileDir=optimized'
+check_contains "OBS live Untitled profile selected" "$TARGET_HOME/.config/obs-studio/user.ini" 'ProfileDir=Untitled'
 check_contains "OBS current scene selected" "$TARGET_HOME/.config/obs-studio/user.ini" "SceneCollectionFile=${OBS_SCENE%.json}"
 check_dir "OBS assets" "$TARGET_HOME/MCSR/CrossDisplayManager/obs images"
 check_contains "OBS Mic/Aux noise suppression" "$TARGET_HOME/.config/obs-studio/basic/scenes/$OBS_SCENE" 'noise_suppress_filter'
@@ -217,8 +225,14 @@ if [[ "$PLATFORM" == wayland ]]; then
     if [[ "$VARIANT" == NLmcsrWL.sh ]]; then
         check_file "NL Waybar config" "$TARGET_HOME/.config/waybar/config"
         check_file "NL Waybar style" "$TARGET_HOME/.config/waybar/style.css"
-        check_contains "NL Jay starts Waybar exactly through its owned marker" \
+        check_contains "NL Jay starts Waybar through its owned marker" \
             "$TARGET_HOME/.config/jay/config.toml" 'MCSR_SETUP_WAYBAR_START'
+        if [[ "$(grep -Fc 'MCSR_SETUP_WAYBAR_START' "$TARGET_HOME/.config/jay/config.toml")" == 1 \
+            && "$(grep -Fc 'exec = ["waybar"]' "$TARGET_HOME/.config/jay/config.toml")" == 1 ]]; then
+            pass "Waybar startup entry appears exactly once"
+        else
+            fail "Waybar startup entry must appear exactly once"
+        fi
         check_command "Waybar" waybar
     fi
 else
@@ -226,6 +240,42 @@ else
     check_command "i3" i3
     check_file "i3 config" "$TARGET_HOME/.config/i3/config"
     check_dir "X11 xmodmap assets" "$TARGET_HOME/MCSR/x11/xmodmap"
+fi
+
+section "OBS profile privacy"
+if python3 - "$TARGET_HOME/.config/obs-studio/basic/profiles" <<'PY'
+import json
+import pathlib
+import re
+import sys
+
+root = pathlib.Path(sys.argv[1])
+sensitive = re.compile(r"(?:token|secret|password|oauth|cookie|stream.?key|authorization|account.?id|uuid)", re.I)
+for path in root.rglob("*"):
+    if not path.is_file():
+        continue
+    if path.suffix == ".json":
+        data = json.loads(path.read_text())
+        def visit(value):
+            if isinstance(value, dict):
+                for key, child in value.items():
+                    if (key.lower() == "key" or sensitive.search(key)) and child not in (None, "", False, 0, [], {}):
+                        raise SystemExit(1)
+                    visit(child)
+            elif isinstance(value, list):
+                for child in value:
+                    visit(child)
+        visit(data)
+    elif path.suffix == ".ini":
+        for line in path.read_text(errors="replace").splitlines():
+            key, separator, value = line.partition("=")
+            if separator and (key.lower() == "key" or sensitive.search(key)) and value.strip():
+                raise SystemExit(1)
+PY
+then
+    pass "OBS profile auth/account fields are empty"
+else
+    fail "OBS profiles contain non-empty auth/account fields or malformed JSON"
 fi
 
 section "default applications"
@@ -249,6 +299,8 @@ scan_candidates=(
     "$TARGET_HOME/.config/zellij"
     "$TARGET_HOME/.config/i3"
     "$TARGET_HOME/.config/obs-studio"
+    "$TARGET_HOME/.config/micro"
+    "$TARGET_HOME/.config/rncbc.org"
     "$TARGET_HOME/.config/systemd/user"
     "$TARGET_HOME/.config/environment.d"
     "$TARGET_HOME/.config/mimeapps.list"
