@@ -226,7 +226,8 @@ finish_rollback_state() {
     else
         pacman -Qq | LC_ALL=C sort >"$ROLLBACK_STATE/packages.after"
     fi
-    comm -13 "$ROLLBACK_STATE/packages.before" "$ROLLBACK_STATE/packages.after" >"$ROLLBACK_STATE/packages.added"
+    LC_ALL=C comm -13 "$ROLLBACK_STATE/packages.before" "$ROLLBACK_STATE/packages.after" \
+        >"$ROLLBACK_STATE/packages.added"
     chmod 600 "$ROLLBACK_STATE/packages.after" "$ROLLBACK_STATE/packages.added"
     if command -v archlinux-java >/dev/null 2>&1; then
         java_default >"$ROLLBACK_STATE/java.after"
