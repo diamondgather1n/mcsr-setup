@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+path=${1-}
+[[ -n "$path" && -e "$path" ]] || exit 0
+
+mime=$(file --brief --mime-type -- "$path")
+case "$mime" in
+    text/*|application/json|application/*javascript|application/*xml|application/*yaml|application/toml)
+        exec micro -- "$path"
+        ;;
+    image/*)
+        exec gimp -- "$path"
+        ;;
+    video/*)
+        exec shotcut -- "$path"
+        ;;
+    *)
+        exit 0
+        ;;
+esac

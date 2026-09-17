@@ -64,6 +64,12 @@ check_enabled() {
     [[ "$state" == enabled ]] && pass "$unit enabled" || fail "$unit enabled (state: ${state:-unknown})"
 }
 
+check_active() {
+    local unit=$1 state
+    state=$(systemctl is-active "$unit" 2>/dev/null || true)
+    [[ "$state" == active ]] && pass "$unit active" || fail "$unit active (state: ${state:-unknown})"
+}
+
 check_user_enabled() {
     local unit=$1 state
     state=$(systemctl --user is-enabled "$unit" 2>/dev/null || true)
@@ -85,15 +91,18 @@ for command_spec in \
     'Discord:discord' \
     'Helium:helium-browser' \
     'Spotify:spotify-launcher' \
+    'MCSRLauncher:mcsrlauncher' \
     'OBS Studio:obs' \
     'qpwgraph:qpwgraph' \
+    'pavucontrol:pavucontrol' \
     'Shotcut:shotcut' \
     'GIMP:gimp' \
     'imv:imv' \
     'mpv:mpv' \
     'Zellij:zellij' \
     'Yazi:yazi' \
-    'Thunar:thunar' \
+    'Foot:foot' \
+    'PrismLauncher:prismlauncher' \
     'Micro:micro' \
     'fd:fd' \
     'ripgrep:rg' \
@@ -113,8 +122,15 @@ section "user configuration"
 check_file "Foot config" "$TARGET_HOME/.config/foot/foot.ini"
 check_file "Zellij config" "$TARGET_HOME/.config/zellij/config.kdl"
 check_file "Yazi dual-pane Zellij layout" "$TARGET_HOME/.config/zellij/layouts/yazi-dual.kdl"
-check_executable "Micro opener" "$TARGET_HOME/.local/bin/mcsr-open-micro"
-check_executable "Yazi opener" "$TARGET_HOME/.local/bin/mcsr-open-yazi"
+check_file "Yazi config" "$TARGET_HOME/.config/yazi/yazi.toml"
+check_file "Yazi keymap" "$TARGET_HOME/.config/yazi/keymap.toml"
+check_file "Yazi startup config" "$TARGET_HOME/.config/yazi/init.lua"
+check_contains "Yazi Enter uses smart-enter" "$TARGET_HOME/.config/yazi/keymap.toml" 'plugin smart-enter'
+check_contains "Yazi Space toggles and advances" "$TARGET_HOME/.config/yazi/keymap.toml" 'toggle", "arrow 1'
+for helper in yazi-edit yazi-edit-right yazi-archive-create yazi-archive-extract; do
+    check_executable "Yazi helper $helper" "$TARGET_HOME/.local/bin/$helper"
+done
+check_executable "Foot/Zellij launcher" "$TARGET_HOME/.local/bin/foot-tabbed"
 check_executable "OBS wrapper" "$TARGET_HOME/.local/bin/obs"
 
 section "OBS"
@@ -136,17 +152,23 @@ check_file "$INSTANCE instance metadata" "$TARGET_HOME/launcher/instances/$INSTA
 if command -v jq >/dev/null 2>&1 && [[ -r "$TARGET_HOME/launcher/instances/$INSTANCE/instance.json" ]]; then
     actual_id=$(jq -r '.id // empty' "$TARGET_HOME/launcher/instances/$INSTANCE/instance.json" 2>/dev/null || true)
     [[ "$actual_id" == "$INSTANCE" ]] && pass "$INSTANCE metadata id" || fail "$INSTANCE metadata id (got ${actual_id:-none})"
+    if [[ "$INSTANCE" == waywall || "$INSTANCE" == MCSRRanked ]]; then
+        check_contains "$INSTANCE is pinned to Java 21" \
+            "$TARGET_HOME/launcher/instances/$INSTANCE/instance.json" \
+            '"javaPath": "/usr/lib/jvm/java-21-openjdk/bin/java"'
+    fi
 fi
 
 section "input/keyd"
 check_file "keyd configuration" /etc/keyd/normal.conf
 check_contains "keyd mouse2 mapping" /etc/keyd/normal.conf 'mouse2 = home'
 check_contains "keyd mouse1 mapping" /etc/keyd/normal.conf 'mouse1 = backspace'
-check_contains "keyd right-control desktop mapping" /etc/keyd/normal.conf 'rightcontrol = leftmeta'
+check_contains "keyd right-control desktop mapping" /etc/keyd/normal.conf 'rightcontrol = layer(meta)'
 
 section "services"
 check_enabled NetworkManager.service
 check_enabled keyd.service
+check_active keyd.service
 check_enabled lightdm.service
 check_user_enabled pipewire.socket
 check_user_enabled pipewire-pulse.socket
@@ -165,12 +187,19 @@ if [[ "$PLATFORM" == wayland ]]; then
     check_executable "Jay binary" "$TARGET_HOME/.local/bin/jay.real"
     check_file "Jay config" "$TARGET_HOME/.config/jay/config.toml"
     check_contains "Jay desktop keymap remains gb,no" "$TARGET_HOME/.config/jay/config.toml" 'layout = "gb,no"'
+    check_contains "Jay Super+Enter launches Foot workflow" "$TARGET_HOME/.config/jay/config.toml" 'exec = "foot-tabbed"'
+    check_contains "keyd maps Right Ctrl to Meta" /etc/keyd/normal.conf 'rightcontrol = layer(meta)'
     check_file "Jay session" /usr/share/wayland-sessions/jay.desktop
     check_contains "Jay session has absolute local binary" /usr/share/wayland-sessions/jay.desktop "Exec=$TARGET_HOME/.local/bin/jay run"
     check_executable "Waywall binary" "$TARGET_HOME/.local/bin/waywall-ctrl-scroll"
     check_file "Waywall config" "$TARGET_HOME/.config/waywall/init.lua"
     check_contains "Waywall owns mcsr gameplay keymap" "$TARGET_HOME/.config/waywall/init.lua" 'layout = "mcsr"'
     check_file "MCSR XKB source" "$TARGET_HOME/MCSR/wayland/xkb/symbols/mcsr"
+    for resource in background.png crosshair.png overlay_tall.png overlay_thin.png \
+        overlay_wide.png measuring_overlay.png stretched_overlay.png set-dpi.py \
+        Ninjabrain-Bot-1.5.2.jar paceman-tracker-0.7.2.jar fix-ninbot-hotkeys.py; do
+        check_file "Waywall resource $resource" "$TARGET_HOME/.config/waywall/resources/$resource"
+    done
     if [[ -L "$TARGET_HOME/.config/xkb/symbols/mcsr" ]] \
         && [[ "$(readlink -f "$TARGET_HOME/.config/xkb/symbols/mcsr")" == "$TARGET_HOME/MCSR/wayland/xkb/symbols/mcsr" ]]; then
         pass "MCSR XKB live link"
@@ -185,6 +214,13 @@ if [[ "$PLATFORM" == wayland ]]; then
     check_contains "Waywall instance uses portable local wrapper" \
         "$TARGET_HOME/launcher/instances/waywall/instance.json" \
         "$TARGET_HOME/.local/bin/waywall-ctrl-scroll wrap --"
+    if [[ "$VARIANT" == NLmcsrWL.sh ]]; then
+        check_file "NL Waybar config" "$TARGET_HOME/.config/waybar/config"
+        check_file "NL Waybar style" "$TARGET_HOME/.config/waybar/style.css"
+        check_contains "NL Jay starts Waybar exactly through its owned marker" \
+            "$TARGET_HOME/.config/jay/config.toml" 'MCSR_SETUP_WAYBAR_START'
+        check_command "Waybar" waybar
+    fi
 else
     section "X11"
     check_command "i3" i3
@@ -196,8 +232,12 @@ section "default applications"
 check_mime x-scheme-handler/http helium.desktop
 check_mime x-scheme-handler/https helium.desktop
 check_mime text/plain micro-foot.desktop
+check_mime text/html helium.desktop
+check_mime application/pdf helium.desktop
 check_mime video/mp4 mpv.desktop
+check_mime audio/mpeg mpv.desktop
 check_mime image/png imv.desktop
+check_mime image/gif imv.desktop
 check_mime inode/directory yazi-foot.desktop
 
 section "portability"

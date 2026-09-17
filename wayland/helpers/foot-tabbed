@@ -16,4 +16,11 @@ if ! command -v zellij >/dev/null 2>&1; then
   exec /usr/bin/foot
 fi
 
-exec /usr/bin/foot zellij
+# Foot owns selection/paste; wheel bindings scroll this window's Zellij session.
+export MCSR_TERMINAL_SESSION="foot-$$"
+exec /usr/bin/foot \
+  --override=mouse-bindings.scrollback-up-mouse=none \
+  --override=mouse-bindings.scrollback-down-mouse=none \
+  --override='mouse-bindings.pipe-visible=[sh -c '\''cat >/dev/null; exec zellij --session "$MCSR_TERMINAL_SESSION" action scroll-up'\''] BTN_WHEEL_BACK' \
+  --override='mouse-bindings.pipe-visible=[sh -c '\''cat >/dev/null; exec zellij --session "$MCSR_TERMINAL_SESSION" action scroll-down'\''] BTN_WHEEL_FORWARD' \
+  zellij --session "$MCSR_TERMINAL_SESSION"

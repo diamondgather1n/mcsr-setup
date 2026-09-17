@@ -1,0 +1,186 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+TARGET_USER="@USER@"
+TARGET_HOME="@HOME@"
+STATE_ROOT="$TARGET_HOME/DoOvers/state"
+
+[[ "$(id -un)" == "$TARGET_USER" && "$EUID" -ne 0 ]] || {
+    printf 'Run this as %s, without sudo.\n' "$TARGET_USER" >&2
+    exit 2
+}
+[[ -f "$STATE_ROOT/latest" && ! -L "$STATE_ROOT/latest" ]] || {
+    printf 'No rollback state found at %s.\n' "$STATE_ROOT" >&2
+    exit 1
+}
+state_id=$(<"$STATE_ROOT/latest")
+[[ "$state_id" =~ ^[A-Za-z0-9._-]+$ ]] || {
+    printf 'Invalid rollback state identifier.\n' >&2
+    exit 1
+}
+STATE="$STATE_ROOT/$state_id"
+[[ -d "$STATE" && ! -L "$STATE" && -f "$STATE/files.before" && -f "$STATE/files.after" \
+    && -f "$STATE/java.before" && -f "$STATE/java.after" ]] || {
+    printf 'Rollback state is incomplete: %s\n' "$STATE" >&2
+    exit 1
+}
+
+fingerprint() {
+    local path=$1
+    if [[ -L "$path" ]]; then
+        printf 'link:%s' "$(readlink -- "$path")"
+    elif [[ -f "$path" ]]; then
+        if [[ -n "${file_hashes[$path]+x}" ]]; then
+            printf 'file:%s' "${file_hashes[$path]}"
+        else
+            printf 'file:%s' "$(sha256sum -- "$path" | cut -d' ' -f1)"
+        fi
+    elif [[ -d "$path" ]]; then
+        printf 'dir:%s' "$(stat -c '%u:%g:%a' -- "$path")"
+    else
+        printf missing
+    fi
+}
+
+declare -A after=() file_hashes=()
+mapfile -d '' -t fields <"$STATE/files.after"
+for ((i=0; i+1<${#fields[@]}; i+=2)); do
+    after["${fields[i]}"]=${fields[i+1]}
+done
+
+printf 'Resetting changes recorded by %s. Files changed since installation will be left untouched.\n' "$state_id"
+restored_count=0
+removed_count=0
+kept_count=0
+removed_dirs=0
+kept_examples=()
+mapfile -d '' -t fields <"$STATE/files.before"
+file_paths=()
+for ((i=0; i+2<${#fields[@]}; i+=3)); do
+    path=${fields[i]}
+    [[ -f "$path" && ! -L "$path" ]] && file_paths+=("$path")
+done
+if ((${#file_paths[@]} > 0)); then
+    while IFS= read -r -d '' item; do
+        file_hashes["${item:66}"]=${item:0:64}
+    done < <(printf '%s\0' "${file_paths[@]}" | xargs -0 -r sha256sum --zero --)
+fi
+
+for ((i=${#fields[@]}-3; i>=0; i-=3)); do
+    path=${fields[i]}
+    kind=${fields[i+1]}
+    metadata=${fields[i+2]}
+    expected=${after[$path]-}
+    [[ -n "$expected" ]] || continue
+    actual=$(fingerprint "$path")
+    if [[ "$actual" != "$expected" ]]; then
+        kept_count=$((kept_count + 1))
+        ((${#kept_examples[@]} >= 10)) || kept_examples+=("$path")
+        continue
+    fi
+
+    privilege=${kind%%:*}
+    action=${kind#*:}
+    case "$action" in
+        backup-file|backup-link)
+            backup="$STATE/files/${path#/}"
+            [[ -e "$backup" || -L "$backup" ]] || {
+                printf 'KEEP missing saved original: %s\n' "$path"
+                continue
+            }
+            sudo cp -a --remove-destination -- "$backup" "$path"
+            if [[ "$action" == backup-file ]]; then
+                IFS=: read -r uid gid mode <<<"$metadata"
+                sudo chown "$uid:$gid" -- "$path"
+                sudo chmod "$mode" -- "$path"
+            else
+                IFS=: read -r uid gid mode <<<"$metadata"
+                sudo chown -h "$uid:$gid" -- "$path"
+            fi
+            restored_count=$((restored_count + 1))
+            ;;
+        new-file)
+            if [[ "$privilege" == root ]]; then sudo rm -f -- "$path"; else rm -f -- "$path"; fi
+            removed_count=$((removed_count + 1))
+            ;;
+        new-dir)
+            if [[ "$privilege" == root ]]; then
+                sudo rmdir -- "$path" 2>/dev/null && removed_dirs=$((removed_dirs + 1)) || :
+            else
+                rmdir -- "$path" 2>/dev/null && removed_dirs=$((removed_dirs + 1)) || :
+            fi
+            ;;
+        existing-dir)
+            IFS=: read -r uid gid mode <<<"$metadata"
+            if [[ "$privilege" == root ]]; then
+                sudo chown "$uid:$gid" -- "$path"
+                sudo chmod "$mode" -- "$path"
+            else
+                chmod "$mode" -- "$path"
+            fi
+            ;;
+    esac
+done
+
+if command -v archlinux-java >/dev/null 2>&1; then
+    java_before=$(<"$STATE/java.before")
+    java_after=$(<"$STATE/java.after")
+    if java_current=$(archlinux-java get 2>/dev/null); then :; else java_current=none; fi
+    if [[ "$java_current" == "$java_after" && "$java_before" != "$java_after" ]]; then
+        if [[ "$java_before" == none ]]; then
+            sudo archlinux-java unset
+        elif archlinux-java status | grep -Fq -- "$java_before"; then
+            sudo archlinux-java set "$java_before"
+        fi
+    elif [[ "$java_current" != "$java_after" ]]; then
+        printf 'Kept Java selection changed since install (%s).\n' "$java_current"
+    fi
+fi
+
+if [[ -f "$STATE/services.before" ]]; then
+    mapfile -d '' -t fields <"$STATE/services.before"
+    for ((i=0; i+3<${#fields[@]}; i+=4)); do
+        scope=${fields[i]}; unit=${fields[i+1]}; enabled=${fields[i+2]}; active=${fields[i+3]}
+        if [[ "$scope" == system ]]; then
+            ctl=(sudo systemctl)
+        else
+            ctl=(systemctl --user)
+        fi
+        case "$enabled" in
+            enabled) "${ctl[@]}" enable "$unit" || printf 'WARN could not re-enable %s\n' "$unit" >&2 ;;
+            masked) "${ctl[@]}" mask "$unit" || printf 'WARN could not mask %s\n' "$unit" >&2 ;;
+            *) "${ctl[@]}" disable "$unit" >/dev/null 2>&1 || : ;;
+        esac
+        if [[ "$active" == active ]]; then
+            "${ctl[@]}" start "$unit" || printf 'WARN could not start %s\n' "$unit" >&2
+        else
+            "${ctl[@]}" stop "$unit" >/dev/null 2>&1 || :
+        fi
+    done
+    systemctl --user daemon-reload >/dev/null 2>&1 || :
+    sudo systemctl daemon-reload >/dev/null 2>&1 || :
+fi
+
+if [[ -f "$STATE/groups.before" ]]; then
+    for group in input plugdev; do
+        if ! grep -Eq "(^|[[:space:]])${group}([[:space:]]|$)" "$STATE/groups.before" \
+            && id -nG "$TARGET_USER" | tr ' ' '\n' | grep -Fxq "$group"; then
+            sudo gpasswd -d "$TARGET_USER" "$group"
+        fi
+    done
+fi
+
+mapfile -t added <"$STATE/packages.added"
+if ((${#added[@]} > 0)); then
+    printf 'Attempting non-recursive removal of %d packages added by this installer. Pacman will protect current dependents.\n' "${#added[@]}"
+    if ! sudo pacman -R --noconfirm "${added[@]}"; then
+        printf 'WARN package rollback was refused; no forced or recursive removal was attempted.\n' >&2
+    fi
+fi
+
+printf 'File rollback: %d restored, %d installer-created files removed, %d directories removed, %d changed/missing paths retained.\n' \
+    "$restored_count" "$removed_count" "$removed_dirs" "$kept_count"
+for path in "${kept_examples[@]}"; do
+    printf 'Kept changed path: %s\n' "$path"
+done
+printf 'Reset complete. Pacman upgrades are not downgraded; use the filesystem snapshot for exact restoration.\n'

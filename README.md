@@ -59,15 +59,13 @@ restored.
 ## Applications and Defaults
 
 The manifests install Discord, Helium, MCSRLauncher, Waywall, Spotify, native
-OBS Studio with browser support, qpwgraph, Foot for Wayland, Shotcut, GIMP,
-imv, mpv, Zellij, Yazi, Thunar, Micro, fd, ripgrep, and playerctl. Thunar is
-installed with archive, media-tag, volume, thumbnail, and GVfs support, without
-the full Xfce desktop.
+OBS Studio with browser support, qpwgraph, pavucontrol, Foot for Wayland,
+Waybar, Shotcut, GIMP, imv, mpv, Zellij, Yazi, Micro, fd, ripgrep, and
+playerctl. Yazi is the intended file manager; this setup does not install
+Thunar, Double Commander, or a full KDE/Xfce desktop.
 
-Rendered MIME defaults use Helium for web links, Micro for text/config files,
-mpv for audio/video, imv for images/GIFs, and Yazi for terminal directory
-navigation. Thunar remains available for GUI file handling, drag-and-drop,
-tabs, and split view.
+Rendered MIME defaults use Helium for web links and PDFs, Micro for text/config
+files, mpv for audio/video, imv for images/GIFs, and Yazi for directories.
 
 ### Wayland Terminal
 

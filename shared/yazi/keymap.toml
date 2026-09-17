@@ -1,0 +1,119 @@
+[[mgr.prepend_keymap]]
+on = "y"
+run = ["yank", "plugin file-clipboard copy"]
+desc = "Copy files in Yazi and to the desktop clipboard"
+
+[[mgr.prepend_keymap]]
+on = "x"
+run = ["yank --cut", "plugin file-clipboard copy"]
+desc = "Cut files in Yazi; also copy their desktop file references"
+
+[[mgr.prepend_keymap]]
+on = "<C-c>"
+run = ["yank", "plugin file-clipboard copy"]
+desc = "Copy files"
+
+[[mgr.prepend_keymap]]
+on = "<C-x>"
+run = ["yank --cut", "plugin file-clipboard copy"]
+desc = "Cut files in Yazi"
+
+[[mgr.prepend_keymap]]
+on = "<C-v>"
+run = "plugin file-clipboard paste"
+desc = "Paste files from the desktop clipboard"
+
+[[mgr.prepend_keymap]]
+on = "<Space>"
+run = [ "toggle", "arrow 1" ]
+desc = "Select item and move down"
+
+[[mgr.prepend_keymap]]
+on = "<Delete>"
+run = "remove"
+desc = "Move selected items to trash"
+
+[[mgr.prepend_keymap]]
+on = "<F2>"
+run = "rename"
+desc = "Rename selected item"
+
+[[mgr.prepend_keymap]]
+on = ["t", "q"]
+run = "close"
+desc = "Close this Yazi tab"
+
+[[mgr.prepend_keymap]]
+on = "<Enter>"
+run = "plugin smart-enter"
+desc = "Open normally or enter directory"
+
+[[mgr.prepend_keymap]]
+on = "o"
+run = "plugin smart-enter"
+desc = "Enter directory or open file"
+
+[[mgr.prepend_keymap]]
+on = "e"
+run = "shell --block -- yazi-edit %h"
+desc = "Edit with Micro/GIMP/Shotcut"
+
+[[mgr.prepend_keymap]]
+on = "E"
+run = "shell --block -- yazi-edit-right %h"
+desc = "Edit with Micro in right pane"
+
+[[mgr.prepend_keymap]]
+on = "<C-p>"
+run = "cd --interactive"
+desc = "Jump to a path"
+
+[[mgr.prepend_keymap]]
+on = "A"
+run = "shell --block -- yazi-archive-create %s"
+desc = "Create archive from selection"
+
+[[mgr.prepend_keymap]]
+on = "X"
+run = "shell --block -- yazi-archive-extract %h"
+desc = "Extract archive here"
+
+[[mgr.prepend_keymap]]
+on = "I"
+run = "spot"
+desc = "Show file information"
+
+[[mgr.prepend_keymap]]
+on = "C"
+run = "copy path"
+desc = "Copy absolute path"
+
+[[mgr.prepend_keymap]]
+on = [ "g", "h" ]
+run = "cd ~"
+desc = "Go home"
+
+[[mgr.prepend_keymap]]
+on = [ "g", "c" ]
+run = "cd ~/.config"
+desc = "Go to config"
+
+[[mgr.prepend_keymap]]
+on = [ "g", "l" ]
+run = "cd ~/.local"
+desc = "Go to local data"
+
+[[mgr.prepend_keymap]]
+on = [ "g", "m" ]
+run = "cd ~/MCSR"
+desc = "Go to MCSR"
+
+[[mgr.prepend_keymap]]
+on = [ "g", "d" ]
+run = "cd ~/Downloads"
+desc = "Go to Downloads"
+
+[[mgr.prepend_keymap]]
+on = [ "g", "u" ]
+run = "cd /run/media"
+desc = "Go to removable media"

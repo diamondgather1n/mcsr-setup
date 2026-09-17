@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+archive=${1-}
+[[ -f "$archive" ]] || exit 0
+
+name=${archive##*/}
+case "$name" in
+    *.tar.gz) target=${name%.tar.gz} ;;
+    *.tgz) target=${name%.tgz} ;;
+    *.tar) target=${name%.tar} ;;
+    *.zip) target=${name%.zip} ;;
+    *.7z) target=${name%.7z} ;;
+    *) printf 'Unsupported archive extension: %s\n' "$name" >&2; exit 2 ;;
+esac
+
+if [[ -e "$target" ]]; then
+    printf 'Destination already exists: %s\n' "$target" >&2
+    exit 1
+fi
+mkdir -- "$target"
+case "$name" in
+    *.tar.gz|*.tgz|*.tar) tar -xf "$archive" -C "$target" ;;
+    *.zip) unzip -q "$archive" -d "$target" ;;
+    *.7z) 7z x -y "-o$target" -- "$archive" >/dev/null ;;
+esac

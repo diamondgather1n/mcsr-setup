@@ -19,6 +19,9 @@ discord
 spotify-launcher
 prismlauncher
 jre21-openjdk
+jre17-openjdk
+jre8-openjdk
+jre-openjdk
 obs-studio
 obs-studio-plugin-browser
 libfdk-aac
@@ -42,11 +45,7 @@ jq
 xdg-utils
 desktop-file-utils
 shared-mime-info
-thunar
-thunar-archive-plugin
-thunar-media-tags-plugin
-thunar-volman
-tumbler
-gvfs
-file-roller
-ffmpegthumbnailer
+file
+zip
+unzip
+7zip

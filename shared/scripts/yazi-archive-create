@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+(( $# > 0 )) || exit 0
+
+default=${1##*/}.tar.gz
+printf 'Archive name [%s]: ' "$default" >&2
+read -r archive || exit 0
+archive=${archive:-$default}
+
+cwd=$(pwd -P)
+names=()
+for path in "$@"; do
+    [[ -e "$path" || -L "$path" ]] || exit 1
+    absolute=$(realpath -- "$path")
+    [[ $(dirname -- "$absolute") == "$cwd" ]] || {
+        printf 'Selected items must be in the current directory.\n' >&2
+        exit 1
+    }
+    names+=("${absolute##*/}")
+done
+
+case "$archive" in
+    *.tar.gz|*.tgz) exec tar -czf "$archive" -- "${names[@]}" ;;
+    *.tar) exec tar -cf "$archive" -- "${names[@]}" ;;
+    *.zip) exec zip -r "$archive" -- "${names[@]}" ;;
+    *.7z) exec 7z a "$archive" "${names[@]}" ;;
+    *) printf 'Unsupported archive extension: %s\n' "$archive" >&2; exit 2 ;;
+esac

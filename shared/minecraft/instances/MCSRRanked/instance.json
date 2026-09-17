@@ -17,7 +17,7 @@
         "autoModUpdates": true,
         "useLauncherWorkarounds": false,
         "useDiscreteGpu": true,
-        "javaPath": "/usr/bin/java"
+        "javaPath": "/usr/lib/jvm/java-21-openjdk/bin/java"
     },
     "playTime": 2877038
 }

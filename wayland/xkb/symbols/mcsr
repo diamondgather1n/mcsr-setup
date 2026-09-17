@@ -139,7 +139,7 @@ xkb_symbols "norwegian" {
     key <PGDN> { [ NoSymbol ] };
     key <INS>  { [ NoSymbol ] };
 
-    // function row you explicitly killed in xmodmap except F3
+    // Keys intentionally suppressed in the Waywall Minecraft layout except F3
     key <FK01> { [ NoSymbol ] };
     key <FK02> { [ NoSymbol ] };
     key <FK04> { [ F4, F4, F4, F4 ] };
@@ -152,7 +152,7 @@ xkb_symbols "norwegian" {
     key <FK11> { [ NoSymbol ] };
     key <FK12> { [ NoSymbol ] };
 
-    // macro keys and keyd speedrun output remaps
+    // MCSR macro keys and Waywall remap output keysyms
     // inet(evdev) gives FK13-FK16 XF86 keysyms by default, so override
     // both the canonical names and their evdev aliases.
     key <I156> { [ u, l ] };

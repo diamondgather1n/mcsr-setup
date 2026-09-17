@@ -783,7 +783,7 @@ local remaps = {
         ["6"] = DISABLED,
         ["7"] = DISABLED,
 
-        -- Old keyd disabled these while playing.
+        -- Waywall owns gameplay keyboard remaps; keyd does not remap these keys.
         ["8"] = DISABLED,
         ["9"] = DISABLED,
         ["0"] = DISABLED,
@@ -859,11 +859,8 @@ local remaps = {
         ["Mouse5"] = "Home",
         ["Mouse4"] = "Backspace",
 
-        -- Not representable as plain Waywall remaps:
-        --   arrow keys should pass through natively
-        --   rightcontrol = layer(meta/rctrlmeta)
-        --   shift + 2..7 = 1..6
-        --   rctrlmeta combos such as M-1, M-enter, M-space, etc.
+        -- Arrow keys pass through natively. Right Ctrl -> Meta is provided by
+        -- keyd; gameplay/search-crafting remaps remain owned here by Waywall.
     },
 }
 
