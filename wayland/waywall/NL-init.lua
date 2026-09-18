@@ -128,6 +128,7 @@ local function build_config(cfg, remaps)
     end
     local send_ninbot_input = function(key)
         show_ninbot(cfg.ninbot_hide_time_input or 10)
+        request_ninbot_state(0)
         return false
     end
     local eye_throws_state = function(data)
@@ -175,8 +176,32 @@ local function build_config(cfg, remaps)
 
         apply_ninbot_visibility()
     end
-    request_ninbot_state = function(_)
-        return
+    request_ninbot_state = function(delay_ms)
+        if delay_ms and delay_ms > 0 then
+            waywall.sleep(delay_ms)
+        end
+
+        local now = current_ms()
+        if now > 0 and now - ninbot_last_api_probe_ms < (cfg.ninbot_api_min_interval_ms or 250) then
+            return
+        end
+        ninbot_last_api_probe_ms = now
+
+        local handle = io.popen(
+            "curl -fsS --connect-timeout 0.05 --max-time 0.08 " .. ninbot_api_url .. " 2>/dev/null"
+        )
+        if not handle then
+            return
+        end
+
+        local data = handle:read("*a")
+        handle:close()
+
+        if data and data ~= "" then
+            update_ninbot_from_api(data)
+        else
+            apply_ninbot_visibility()
+        end
     end
     local is_pacem_running = function()
         return is_running("[p]aceman-tracker.*\\.jar")
@@ -480,6 +505,7 @@ local function build_config(cfg, remaps)
 
     waywall.listen("load", function()
         set_normal_mouse()
+        repair_ninbot_hotkeys()
         if cfg.crosshair and cfg.crosshair.enabled then
             local size = cfg.crosshair.size or 2
             crosshair_image = waywall.image(crosshair_path, {
@@ -504,6 +530,11 @@ local function build_config(cfg, remaps)
             end
         end
 
+        apply_ninbot_visibility()
+        request_ninbot_state(0)
+    end)
+    pcall(waywall.listen, "state", function()
+        request_ninbot_state(0)
         apply_ninbot_visibility()
     end)
 
@@ -790,6 +821,7 @@ local remaps = {
 
         ["F1"] = DISABLED,
         ["F2"] = DISABLED,
+        ["F3"] = DISABLED,
         ["F5"] = DISABLED,
         ["F6"] = DISABLED,
         ["F7"] = DISABLED,
@@ -906,7 +938,7 @@ local cfg = {
     crosshair = { enabled = true, size = 2, x = 0, y = 0, depth = 100 },
 
     thin = { key = "*-F13", f3_safe = false, ingame_only = false },
-    wide = { key = "*-N", f3_safe = false, ingame_only = true },
+    wide = { key = "*-N", f3_safe = false, ingame_only = false },
     tall = { key = "*-Alt_L", extra_keys = { "*-H" }, f3_safe = false, ingame_only = false },
 
     toggle_fullscreen_key = "Shift-O",

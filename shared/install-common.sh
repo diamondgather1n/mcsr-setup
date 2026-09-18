@@ -829,8 +829,12 @@ build_wayland_components() {
 }
 
 deploy_common_configuration() {
-    local file
+    local file launcher_runtime
     stage "shared user configuration"
+    launcher_runtime="$TARGET_HOME/MCSR/CrossDisplayManager/MCSRlauncher/launcher"
+    if [[ -e "$launcher_runtime" && ! -L "$launcher_runtime" ]]; then
+        die "refusing to replace existing MCSRLauncher runtime directory: $launcher_runtime"
+    fi
     deploy_tree "$ROOT/shared/scripts" "$TARGET_HOME/.local/bin"
     for file in "$ROOT/shared/applications/desktop/"*.desktop; do
         [[ "$MCSR_PLATFORM" == wayland || "$(basename "$file")" != foot.desktop ]] || continue
@@ -859,6 +863,8 @@ deploy_common_configuration() {
     deploy_copy "$ROOT/shared/mcsr/launcher/MCSRLauncher.jar" \
         "$TARGET_HOME/MCSR/CrossDisplayManager/MCSRlauncher/MCSRLauncher.jar"
     deploy_rendered "$ROOT/shared/mcsr/launcher/options.json" "$TARGET_HOME/launcher/options.json"
+    record_destination "$launcher_runtime"
+    ln -sfn -- "$TARGET_HOME/launcher" "$launcher_runtime"
     for file in Ninjabrain-Bot-1.5.2.jar paceman-tracker-0.7.2.jar; do
         deploy_copy "$ROOT/shared/mcsr/launcher/$file" \
             "$TARGET_HOME/MCSR/CrossDisplayManager/jarfiles/$file"
@@ -963,6 +969,9 @@ enable_system_services() {
         return
     fi
     sudo usermod -aG input "$TARGET_USER"
+    getent group openrazer >/dev/null \
+        || die "OpenRazer group is missing; openrazer-driver-dkms must be installed first"
+    sudo usermod -aG openrazer "$TARGET_USER"
     if getent group plugdev >/dev/null; then
         sudo usermod -aG plugdev "$TARGET_USER"
     fi
@@ -975,6 +984,8 @@ enable_system_services() {
 
 post_deploy_sanity_check() {
     local mimeapps="$TARGET_HOME/.config/mimeapps.list"
+    local expected_instance=waywall
+    [[ "$MCSR_PLATFORM" == wayland ]] || expected_instance=MCSRRanked
     stage "pre-reboot deployment sanity check"
     assert_executable "$TARGET_HOME/.local/bin/mcsr-open-micro"
     assert_executable "$TARGET_HOME/.local/bin/mcsr-open-yazi"
@@ -1019,12 +1030,20 @@ post_deploy_sanity_check() {
     assert_file "$(root_path /etc/keyd/normal.conf)"
     assert_contains "$(root_path /etc/keyd/normal.conf)" 'mouse2 = home'
     assert_contains "$(root_path /etc/keyd/normal.conf)" 'mouse1 = backspace'
-    assert_contains "$(root_path /etc/keyd/normal.conf)" 'rightcontrol = layer(meta)'
+    assert_contains "$(root_path /etc/keyd/normal.conf)" 'rightcontrol = leftmeta'
     if [[ "${MCSR_STAGING:-0}" != 1 ]]; then
         systemctl is-enabled --quiet keyd.service || die "keyd.service is not enabled after deployment"
         systemctl is-active --quiet keyd.service || die "keyd.service is not active after deployment"
     fi
     assert_file "$TARGET_HOME/launcher/options.json"
+    [[ -d "$TARGET_HOME/launcher" && ! -L "$TARGET_HOME/launcher" ]] \
+        || die "canonical launcher data path is missing or not a real directory"
+    [[ -L "$TARGET_HOME/MCSR/CrossDisplayManager/MCSRlauncher/launcher" ]] \
+        || die "MCSRLauncher sibling runtime path is not a symlink"
+    [[ "$(readlink -- "$TARGET_HOME/MCSR/CrossDisplayManager/MCSRlauncher/launcher")" == "$TARGET_HOME/launcher" ]] \
+        || die "MCSRLauncher sibling runtime symlink points to the wrong directory"
+    assert_file "$TARGET_HOME/MCSR/CrossDisplayManager/MCSRlauncher/launcher/options.json"
+    assert_file "$TARGET_HOME/MCSR/CrossDisplayManager/MCSRlauncher/launcher/instances/$expected_instance/instance.json"
     assert_file "$TARGET_HOME/MCSR/CrossDisplayManager/MCSRlauncher/MCSRLauncher.jar"
     assert_file "$TARGET_HOME/MCSR/CrossDisplayManager/jarfiles/Ninjabrain-Bot-1.5.2.jar"
     assert_file "$TARGET_HOME/MCSR/CrossDisplayManager/jarfiles/paceman-tracker-0.7.2.jar"
@@ -1071,6 +1090,7 @@ PY
             Ninjabrain-Bot-1.5.2.jar paceman-tracker-0.7.2.jar fix-ninbot-hotkeys.py; do
             assert_file "$TARGET_HOME/.config/waywall/resources/$file"
         done
+        assert_executable "$TARGET_HOME/.config/waywall/resources/set-dpi.py"
         assert_file "$TARGET_HOME/MCSR/wayland/xkb/symbols/mcsr"
         [[ -L "$TARGET_HOME/.config/xkb/symbols/mcsr" ]] \
             || die "post-deploy sanity missing symlink: $TARGET_HOME/.config/xkb/symbols/mcsr"

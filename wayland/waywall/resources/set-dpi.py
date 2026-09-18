@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 import glob
 import os
+from pathlib import Path
 import struct
 import sys
 import time
 
-LOG_PATH = "/tmp/waywall-dpi.log"
+STATE_HOME = Path(os.environ.get("XDG_STATE_HOME") or (Path.home() / ".local/state"))
+LOG_PATH = STATE_HOME / "waywall-dpi.log"
 
 
 def log(message):
-    with open(LOG_PATH, "a", encoding="utf-8") as handle:
+    LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with LOG_PATH.open("a", encoding="utf-8") as handle:
         handle.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} {message}\n")
 
 

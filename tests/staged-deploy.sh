@@ -127,6 +127,10 @@ PY
 stage_variant() {
     local variant=$1 platform=$2 tier=$3 home="$STAGE_ROOT/$1/home/mcsrtest"
     local system="$STAGE_ROOT/$1/root"
+    local instance=waywall
+    local dpi_state
+    [[ "$platform" == wayland ]] || instance=MCSRRanked
+    assert "$(grep -Fq 'sudo usermod -aG openrazer "$TARGET_USER"' "$ROOT/shared/install-common.sh" && printf yes)" "OpenRazer sysfs access group is granted"
     mkdir -p "$home/.config/foot" "$system"
     printf 'pre-install foot config\n' >"$home/.config/foot/foot.ini"
 
@@ -159,6 +163,17 @@ stage_variant() {
         assert "$(grep -Fq 'layout = "mcsr"' "$home/.config/waywall/init.lua" && printf yes)" "Waywall MCSR XKB"
         assert "$(grep -Fq "Exec=$home/.local/bin/jay run" "$system/usr/share/wayland-sessions/jay.desktop" && printf yes)" "absolute Jay session command"
         assert "$(readlink -f "$home/.config/xkb/symbols/mcsr" | grep -Fx "$home/MCSR/wayland/xkb/symbols/mcsr" && printf yes)" "XKB source symlink"
+        assert "$(grep -Fxq 'rightcontrol = leftmeta' "$system/etc/keyd/normal.conf" && printf yes)" "Right Ctrl keyd mapping"
+        assert "$(grep -Fxq 'mouse2 = home' "$system/etc/keyd/normal.conf" && grep -Fxq 'mouse1 = backspace' "$system/etc/keyd/normal.conf" && printf yes)" "keyd mouse mappings"
+        assert "$(grep -Fq 'logo-d =' "$home/.config/jay/config.toml" && grep -Fq 'exec = "jay-desktop-launcher"' "$home/.config/jay/config.toml" && test -x "$home/.local/bin/jay-desktop-launcher" && grep -Fq '/usr/bin/bemenu-run' "$home/.local/bin/jay-desktop-launcher" && printf yes)" "Right Ctrl+D launcher command chain"
+        assert "$(grep -Fq 'logo-Return' "$home/.config/jay/config.toml" && test -x "$home/.local/bin/foot-tabbed" && printf yes)" "Right Ctrl+Enter terminal command chain"
+        assert "$(grep -Fq 'request_ninbot_state = function(delay_ms)' "$home/.config/waywall/init.lua" && grep -Fq 'repair_ninbot_hotkeys()' "$home/.config/waywall/init.lua" && grep -Fq '["F3"] = DISABLED' "$home/.config/waywall/init.lua" && grep -Fq 'wide = { key = "*-N", f3_safe = false, ingame_only = false }' "$home/.config/waywall/init.lua" && grep -Fq 'path = true' "$home/.config/waywall/init.lua" && printf yes)" "Waywall live behavior and portable DPI configuration"
+        assert "$(grep -Fq 'bind_shift_hotbar("*-Shift-2", "1")' "$home/.config/waywall/init.lua" && grep -Fq 'bind_shift_hotbar("*-Shift-7", "6")' "$home/.config/waywall/init.lua" && printf yes)" "Ranked Shift+2..7 piechart bindings retained"
+        dpi_state="$STAGE_ROOT/dpi-state-$variant"
+        if XDG_STATE_HOME="$dpi_state" python3 "$home/.config/waywall/resources/set-dpi.py" invalid >/dev/null 2>&1; then
+            assert "" "DPI helper rejects invalid input"
+        fi
+        assert "$(test -x "$home/.config/waywall/resources/set-dpi.py" && test -s "$dpi_state/waywall-dpi.log" && printf yes)" "DPI helper executable and persistent diagnostic"
         for path in \
             "$home/.config/jay/config.toml" "$home/.config/waywall/init.lua" \
             "$home/.config/foot/foot.ini" "$home/.config/zellij/config.kdl" \
@@ -216,6 +231,7 @@ stage_variant() {
         assert "$([[ "$instance_id" == MCSRRanked ]] && printf yes)" "X11 instance identity"
         assert "$(grep -Fq '"javaPath": "/usr/lib/jvm/java-21-openjdk/bin/java"' "$home/launcher/instances/MCSRRanked/instance.json" && printf yes)" "X11 MCSR instance remains pinned to Java 21"
     fi
+    assert "$(test -L "$home/MCSR/CrossDisplayManager/MCSRlauncher/launcher" && test "$(readlink -- "$home/MCSR/CrossDisplayManager/MCSRlauncher/launcher")" = "$home/launcher" && test -f "$home/MCSR/CrossDisplayManager/MCSRlauncher/launcher/options.json" && test -f "$home/MCSR/CrossDisplayManager/MCSRlauncher/launcher/instances/$instance/instance.json" && printf yes)" "launcher sibling runtime resolves selected instance via canonical directory"
     printf 'STAGED PAYLOAD PARITY: %s\n' "$variant"
     assert_tree_payload "$ROOT/shared/scripts" "$home/.local/bin" "$home" mcsrtest "$platform" subset
     assert_tree_payload "$ROOT/shared/foot" "$home/.config/foot" "$home" mcsrtest "$platform" exact
@@ -254,12 +270,24 @@ stage_variant() {
         assert "$(grep -Fq 'user edit after install' "$home/.config/yazi/yazi.toml" && printf yes)" "rollback preserves subsequent user edit"
         assert "$(test ! -e "$home/.local/bin/yazi-edit" && printf yes)" "rollback removes unchanged installer-created helper"
         assert "$(test ! -e "$home/.config/jay/config.toml" && printf yes)" "rollback removes updated installer-created Jay config"
+        assert "$(test ! -L "$home/MCSR/CrossDisplayManager/MCSRlauncher/launcher" && printf yes)" "rollback removes installer-created launcher symlink"
     fi
     printf 'STAGED PASS: %s (home=%s)\n' "$variant" "$home"
 }
 
 stage_variant NLmcsrWL.sh wayland NL
 stage_variant NLmcsrX11.sh x11 NL
+launcher_conflict_home="$STAGE_ROOT/launcher-conflict/home"
+launcher_conflict_dir="$launcher_conflict_home/MCSR/CrossDisplayManager/MCSRlauncher/launcher"
+mkdir -p "$launcher_conflict_dir"
+printf 'preserve existing runtime data\n' >"$launcher_conflict_dir/sentinel"
+if ROOT="$ROOT" MCSR_PLATFORM=wayland MCSR_TIER=NL MCSR_VARIANT=NLmcsrWL.sh \
+    MCSR_TARGET_USER=mcsrtest MCSR_TARGET_HOME="$launcher_conflict_home" \
+    bash -c 'set -Eeuo pipefail; source "$ROOT/shared/install-common.sh"; deploy_common_configuration' \
+    >"$STAGE_ROOT/launcher-conflict.log" 2>&1; then
+    assert "" "physical launcher sibling runtime is rejected"
+fi
+assert "$(grep -Fq 'refusing to replace existing MCSRLauncher runtime directory' "$STAGE_ROOT/launcher-conflict.log" && grep -Fxq 'preserve existing runtime data' "$launcher_conflict_dir/sentinel" && printf yes)" "physical launcher runtime remains untouched on conflict"
 cleanup_home="$STAGE_ROOT/cleanup/home/mcsrtest"
 cleanup_repo="$cleanup_home/mcsr-setup"
 mkdir -p "$cleanup_repo/.git" "$cleanup_repo/shared"

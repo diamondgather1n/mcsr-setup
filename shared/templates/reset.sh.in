@@ -162,7 +162,7 @@ if [[ -f "$STATE/services.before" ]]; then
 fi
 
 if [[ -f "$STATE/groups.before" ]]; then
-    for group in input plugdev; do
+    for group in input plugdev openrazer; do
         if ! grep -Eq "(^|[[:space:]])${group}([[:space:]]|$)" "$STATE/groups.before" \
             && id -nG "$TARGET_USER" | tr ' ' '\n' | grep -Fxq "$group"; then
             sudo gpasswd -d "$TARGET_USER" "$group"

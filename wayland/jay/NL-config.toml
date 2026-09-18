@@ -214,7 +214,7 @@ logo-shift-space = "toggle-floating"
 logo-Return = { type = "exec", exec = "foot-tabbed" }
 logo-shift-e  = "quit"
 logo-shift-s = { type = "exec", exec = ["systemctl", "suspend"] }
-# Waywall owns gameplay remapping; keyd only handles the mouse side buttons.
+# Waywall owns gameplay remapping; keyd maps Right Ctrl to Meta and the mouse buttons.
 logo-KP_End = { type = "exec", exec = ["playerctl", "-p", "spotify", "previous"] }
 logo-KP_Down = { type = "exec", exec = ["playerctl", "-p", "spotify", "play-pause"] }
 logo-KP_Next = { type = "exec", exec = ["playerctl", "-p", "spotify", "next"] }
