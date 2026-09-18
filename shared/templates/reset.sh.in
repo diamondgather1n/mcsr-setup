@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
+umask 077
 
 TARGET_USER="@USER@"
 TARGET_HOME="@HOME@"
@@ -19,10 +20,63 @@ state_id=$(<"$STATE_ROOT/latest")
     exit 1
 }
 STATE="$STATE_ROOT/$state_id"
-[[ -d "$STATE" && ! -L "$STATE" && -f "$STATE/files.before" && -f "$STATE/files.after" \
-    && -f "$STATE/java.before" && -f "$STATE/java.after" ]] || {
-    printf 'Rollback state is incomplete: %s\n' "$STATE" >&2
+[[ -d "$STATE" && ! -L "$STATE" ]] || {
+    printf 'Rollback state directory is invalid: %s\n' "$STATE" >&2
     exit 1
+}
+for required in files.before files.after packages.added groups.before services.before java.before java.after; do
+    [[ -f "$STATE/$required" && ! -L "$STATE/$required" ]] || {
+        printf 'Rollback state is incomplete: %s\n' "$STATE/$required" >&2
+        exit 1
+    }
+done
+RESET_LOG="$STATE/reset.log"
+[[ ! -L "$RESET_LOG" ]] || {
+    printf 'Refusing symlinked reset log: %s\n' "$RESET_LOG" >&2
+    exit 1
+}
+
+# Read and validate all rollback metadata before changing the installed system.
+declare -a before_fields=() after_fields=() service_fields=() added=()
+declare -A after=() file_hashes=()
+mapfile -d '' -t before_fields <"$STATE/files.before"
+mapfile -d '' -t after_fields <"$STATE/files.after"
+mapfile -d '' -t service_fields <"$STATE/services.before"
+mapfile -t added <"$STATE/packages.added"
+((${#before_fields[@]} % 3 == 0)) || { printf 'Malformed files.before rollback data.\n' >&2; exit 1; }
+((${#after_fields[@]} % 2 == 0)) || { printf 'Malformed files.after rollback data.\n' >&2; exit 1; }
+((${#service_fields[@]} % 4 == 0)) || { printf 'Malformed services.before rollback data.\n' >&2; exit 1; }
+for ((i=0; i+1<${#after_fields[@]}; i+=2)); do
+    after["${after_fields[i]}"]=${after_fields[i+1]}
+done
+for package in "${added[@]}"; do
+    [[ "$package" =~ ^[A-Za-z0-9@._+-]+$ ]] || {
+        printf 'Invalid package name in rollback state.\n' >&2
+        exit 1
+    }
+done
+
+RESET_STAGE="startup"
+restored_count=0
+removed_count=0
+kept_count=0
+removed_dirs=0
+warnings=0
+deferred_service_stops=()
+deferred_file_indices=()
+kept_examples=()
+
+reset_error() {
+    local status=$? command=$BASH_COMMAND
+    trap - ERR
+    printf '\n===== RESET FAILED =====\nStage: %s\nStatus: %s\nCommand: %s\nLog: %s\n' \
+        "$RESET_STAGE" "$status" "$command" "$RESET_LOG" >&2
+    exit "$status"
+}
+
+warn() {
+    warnings=$((warnings + 1))
+    printf 'WARN: %s\n' "$*" >&2
 }
 
 fingerprint() {
@@ -42,41 +96,21 @@ fingerprint() {
     fi
 }
 
-declare -A after=() file_hashes=()
-mapfile -d '' -t fields <"$STATE/files.after"
-for ((i=0; i+1<${#fields[@]}; i+=2)); do
-    after["${fields[i]}"]=${fields[i+1]}
-done
-
-printf 'Resetting changes recorded by %s. Files changed since installation will be left untouched.\n' "$state_id"
-restored_count=0
-removed_count=0
-kept_count=0
-removed_dirs=0
-kept_examples=()
-mapfile -d '' -t fields <"$STATE/files.before"
-file_paths=()
-for ((i=0; i+2<${#fields[@]}; i+=3)); do
-    path=${fields[i]}
-    [[ -f "$path" && ! -L "$path" ]] && file_paths+=("$path")
-done
-if ((${#file_paths[@]} > 0)); then
-    while IFS= read -r -d '' item; do
-        file_hashes["${item:66}"]=${item:0:64}
-    done < <(printf '%s\0' "${file_paths[@]}" | xargs -0 -r sha256sum --zero --)
-fi
-
-for ((i=${#fields[@]}-3; i>=0; i-=3)); do
-    path=${fields[i]}
-    kind=${fields[i+1]}
-    metadata=${fields[i+2]}
+rollback_file_entry() {
+    local index=$1 path kind metadata expected actual privilege action backup uid gid mode
+    path=${before_fields[index]}
+    kind=${before_fields[index+1]}
+    metadata=${before_fields[index+2]}
     expected=${after[$path]-}
-    [[ -n "$expected" ]] || continue
+    [[ -n "$expected" ]] || { warn "no post-install fingerprint for $path; left untouched"; return 0; }
     actual=$(fingerprint "$path")
     if [[ "$actual" != "$expected" ]]; then
         kept_count=$((kept_count + 1))
-        ((${#kept_examples[@]} >= 10)) || kept_examples+=("$path")
-        continue
+        if ((${#kept_examples[@]} < 10)); then
+            kept_examples+=("$path")
+            printf 'KEEP changed/missing path: %s\n' "$path"
+        fi
+        return 0
     fi
 
     privilege=${kind%%:*}
@@ -84,17 +118,16 @@ for ((i=${#fields[@]}-3; i>=0; i-=3)); do
     case "$action" in
         backup-file|backup-link)
             backup="$STATE/files/${path#/}"
-            [[ -e "$backup" || -L "$backup" ]] || {
-                printf 'KEEP missing saved original: %s\n' "$path"
-                continue
-            }
+            if [[ ! -e "$backup" && ! -L "$backup" ]]; then
+                warn "saved original is missing for $path"
+                return 0
+            fi
             sudo cp -a --remove-destination -- "$backup" "$path"
+            IFS=: read -r uid gid mode <<<"$metadata"
             if [[ "$action" == backup-file ]]; then
-                IFS=: read -r uid gid mode <<<"$metadata"
                 sudo chown "$uid:$gid" -- "$path"
                 sudo chmod "$mode" -- "$path"
             else
-                IFS=: read -r uid gid mode <<<"$metadata"
                 sudo chown -h "$uid:$gid" -- "$path"
             fi
             restored_count=$((restored_count + 1))
@@ -105,9 +138,9 @@ for ((i=${#fields[@]}-3; i>=0; i-=3)); do
             ;;
         new-dir)
             if [[ "$privilege" == root ]]; then
-                sudo rmdir -- "$path" 2>/dev/null && removed_dirs=$((removed_dirs + 1)) || :
+                if sudo rmdir -- "$path" 2>/dev/null; then removed_dirs=$((removed_dirs + 1)); fi
             else
-                rmdir -- "$path" 2>/dev/null && removed_dirs=$((removed_dirs + 1)) || :
+                if rmdir -- "$path" 2>/dev/null; then removed_dirs=$((removed_dirs + 1)); fi
             fi
             ;;
         existing-dir)
@@ -120,8 +153,42 @@ for ((i=${#fields[@]}-3; i>=0; i-=3)); do
             fi
             ;;
     esac
-done
+}
 
+: >>"$RESET_LOG"
+chmod 600 "$RESET_LOG"
+exec > >(tee -a "$RESET_LOG") 2>&1
+trap reset_error ERR
+printf '===== RESET STARTED =====\nState: %s\nLog: %s\n' "$state_id" "$RESET_LOG"
+printf 'Packages recorded for removal: %d\n' "${#added[@]}"
+
+RESET_STAGE="file rollback"
+printf '\n==> Restore files and symlinks (installer fingerprints only)\n'
+file_paths=()
+for ((i=0; i+2<${#before_fields[@]}; i+=3)); do
+    path=${before_fields[i]}
+    [[ -f "$path" && ! -L "$path" ]] && file_paths+=("$path")
+done
+if ((${#file_paths[@]} > 0)); then
+    while IFS= read -r -d '' item; do
+        file_hashes["${item:66}"]=${item:0:64}
+    done < <(printf '%s\0' "${file_paths[@]}" | xargs -0 -r sha256sum --zero --)
+fi
+for ((i=${#before_fields[@]}-3; i>=0; i-=3)); do
+    path=${before_fields[i]}
+    case "$path" in
+        "$TARGET_HOME/DoOvers/reset.sh"|"$TARGET_HOME/DoOvers/verify-install.sh"|"$TARGET_HOME/DoOvers/undo-waybar.sh")
+            deferred_file_indices+=("$i")
+            printf 'DEFER recovery helper until final cleanup: %s\n' "$path"
+            continue
+            ;;
+    esac
+    rollback_file_entry "$i"
+done
+printf 'File phase summary: %d restored, %d installer-created files removed, %d directories removed, %d changed/missing paths retained.\n' \
+    "$restored_count" "$removed_count" "$removed_dirs" "$kept_count"
+
+RESET_STAGE="Java restoration"
 if command -v archlinux-java >/dev/null 2>&1; then
     java_before=$(<"$STATE/java.before")
     java_after=$(<"$STATE/java.after")
@@ -129,58 +196,110 @@ if command -v archlinux-java >/dev/null 2>&1; then
     if [[ "$java_current" == "$java_after" && "$java_before" != "$java_after" ]]; then
         if [[ "$java_before" == none ]]; then
             sudo archlinux-java unset
+            printf 'Java selection restored to unset.\n'
         elif archlinux-java status | grep -Fq -- "$java_before"; then
             sudo archlinux-java set "$java_before"
+            printf 'Java selection restored to %s.\n' "$java_before"
+        else
+            printf 'Java selection %s is no longer installed; left unchanged.\n' "$java_before"
         fi
     elif [[ "$java_current" != "$java_after" ]]; then
         printf 'Kept Java selection changed since install (%s).\n' "$java_current"
+    else
+        printf 'Java selection unchanged (%s).\n' "$java_current"
     fi
+else
+    printf 'archlinux-java unavailable; no Java selection change to restore.\n'
 fi
 
-if [[ -f "$STATE/services.before" ]]; then
-    mapfile -d '' -t fields <"$STATE/services.before"
-    for ((i=0; i+3<${#fields[@]}; i+=4)); do
-        scope=${fields[i]}; unit=${fields[i+1]}; enabled=${fields[i+2]}; active=${fields[i+3]}
-        if [[ "$scope" == system ]]; then
-            ctl=(sudo systemctl)
+RESET_STAGE="service state restoration"
+printf '\n==> Restore service enabled/active state\n'
+for ((i=0; i+3<${#service_fields[@]}; i+=4)); do
+    scope=${service_fields[i]}
+    unit=${service_fields[i+1]}
+    enabled=${service_fields[i+2]}
+    active=${service_fields[i+3]}
+    if [[ "$scope" == system ]]; then ctl=(sudo systemctl); else ctl=(systemctl --user); fi
+    printf 'Service %s %s: enabled=%s active=%s\n' "$scope" "$unit" "$enabled" "$active"
+    case "$enabled" in
+        enabled) "${ctl[@]}" enable "$unit" || warn "could not re-enable $unit" ;;
+        masked) "${ctl[@]}" mask "$unit" || warn "could not mask $unit" ;;
+        *) "${ctl[@]}" disable "$unit" >/dev/null 2>&1 || warn "could not disable $unit" ;;
+    esac
+    if [[ "$active" == active ]]; then
+        "${ctl[@]}" start "$unit" || warn "could not start $unit"
+    elif [[ "$scope" == system && "$unit" == lightdm.service ]]; then
+        if systemctl is-active --quiet "$unit"; then
+            deferred_service_stops+=("$unit")
+            printf 'DEFERRED stop %s to logout/reboot so this reset session remains alive.\n' "$unit"
         else
-            ctl=(systemctl --user)
+            printf '%s is already inactive; no stop needed.\n' "$unit"
         fi
-        case "$enabled" in
-            enabled) "${ctl[@]}" enable "$unit" || printf 'WARN could not re-enable %s\n' "$unit" >&2 ;;
-            masked) "${ctl[@]}" mask "$unit" || printf 'WARN could not mask %s\n' "$unit" >&2 ;;
-            *) "${ctl[@]}" disable "$unit" >/dev/null 2>&1 || : ;;
-        esac
-        if [[ "$active" == active ]]; then
-            "${ctl[@]}" start "$unit" || printf 'WARN could not start %s\n' "$unit" >&2
-        else
-            "${ctl[@]}" stop "$unit" >/dev/null 2>&1 || :
-        fi
-    done
-    systemctl --user daemon-reload >/dev/null 2>&1 || :
-    sudo systemctl daemon-reload >/dev/null 2>&1 || :
-fi
+    else
+        "${ctl[@]}" stop "$unit" >/dev/null 2>&1 || warn "could not stop $unit"
+    fi
+done
+systemctl --user daemon-reload >/dev/null 2>&1 || warn 'could not reload user systemd manager'
+sudo systemctl daemon-reload >/dev/null 2>&1 || warn 'could not reload system systemd manager'
 
-if [[ -f "$STATE/groups.before" ]]; then
+RESET_STAGE="group membership restoration"
+printf '\n==> Restore installer-added groups\n'
+if [[ -s "$STATE/groups.before" ]]; then
     for group in input plugdev openrazer; do
         if ! grep -Eq "(^|[[:space:]])${group}([[:space:]]|$)" "$STATE/groups.before" \
             && id -nG "$TARGET_USER" | tr ' ' '\n' | grep -Fxq "$group"; then
+            printf 'Removing installer-added group membership: %s\n' "$group"
             sudo gpasswd -d "$TARGET_USER" "$group"
         fi
     done
+else
+    printf 'No pre-install supplementary groups were recorded.\n'
 fi
 
-mapfile -t added <"$STATE/packages.added"
+RESET_STAGE="non-recursive package rollback"
 if ((${#added[@]} > 0)); then
-    printf 'Attempting non-recursive removal of %d packages added by this installer. Pacman will protect current dependents.\n' "${#added[@]}"
-    if ! sudo pacman -R --noconfirm "${added[@]}"; then
-        printf 'WARN package rollback was refused; no forced or recursive removal was attempted.\n' >&2
+    printf '\n==> Attempt non-recursive removal of %d installer-added packages\n' "${#added[@]}"
+    if sudo pacman -R --noconfirm "${added[@]}"; then
+        printf 'Package removal transaction completed.\n'
+    else
+        warn 'pacman refused or failed the package rollback; no recursive/forced removal was attempted'
     fi
+else
+    printf '\nNo installer-added packages recorded.\n'
 fi
 
-printf 'File rollback: %d restored, %d installer-created files removed, %d directories removed, %d changed/missing paths retained.\n' \
+RESET_STAGE="final rollback summary"
+printf '\nFile rollback total: %d restored, %d installer-created files removed, %d directories removed, %d changed/missing paths retained.\n' \
     "$restored_count" "$removed_count" "$removed_dirs" "$kept_count"
-for path in "${kept_examples[@]}"; do
-    printf 'Kept changed path: %s\n' "$path"
+for path in "${kept_examples[@]}"; do printf 'Kept changed path: %s\n' "$path"; done
+for unit in "${deferred_service_stops[@]}"; do printf 'Deferred service stop: %s (will remain until logout/reboot).\n' "$unit"; done
+
+if ((warnings > 0)); then
+    printf 'RESET INCOMPLETE: %d warning(s); recovery helpers and state retained for diagnosis/retry.\n' "$warnings" >&2
+    exit 1
+fi
+
+RESET_STAGE="final recovery-helper cleanup"
+printf '\n==> Final recovery-helper cleanup\n'
+for ((i=0; i<${#deferred_file_indices[@]}; i++)); do
+    index=${deferred_file_indices[i]}
+    if [[ "${before_fields[index]}" == "$TARGET_HOME/DoOvers/reset.sh" ]]; then
+        reset_helper_index=$index
+        continue
+    fi
+    rollback_file_entry "$index"
 done
-printf 'Reset complete. Pacman upgrades are not downgraded; use the filesystem snapshot for exact restoration.\n'
+if ((warnings > 0)); then
+    printf 'RESET INCOMPLETE: %d warning(s) during helper cleanup; reset.sh retained where possible.\n' "$warnings" >&2
+    exit 1
+fi
+if [[ -n "${reset_helper_index:-}" ]]; then
+    rollback_file_entry "$reset_helper_index"
+fi
+if ((warnings > 0)); then
+    printf 'RESET INCOMPLETE: %d warning(s); see %s.\n' "$warnings" "$RESET_LOG" >&2
+    exit 1
+fi
+
+RESET_STAGE="complete"
+printf '\nReset complete. Pacman upgrades are not downgraded; use the filesystem snapshot for exact restoration.\n'

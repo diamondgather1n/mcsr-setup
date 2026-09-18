@@ -58,6 +58,7 @@ export MCSR_STAGING=1 MCSR_STAGE_HARDLINK_INSTANCES=0
 
 "$ROOT/tests/preflight-validation.sh"
 "$ROOT/tests/rollback-locale.sh"
+bash "$ROOT/tests/reset-session-safe.sh"
 
 assert() {
     [[ "$1" ]] || { printf 'STAGED TEST FAILED: %s\n' "$2" >&2; exit 1; }
