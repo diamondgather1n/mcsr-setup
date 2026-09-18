@@ -17,6 +17,7 @@ fd
 ripgrep
 discord
 spotify-launcher
+authenticator
 prismlauncher
 jre21-openjdk
 jre17-openjdk
