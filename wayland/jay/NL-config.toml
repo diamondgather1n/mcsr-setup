@@ -9,7 +9,7 @@ window-management-key = "Super_L"
 workspace-display-order = "sorted"
 workspace-capture = true
 direct-scanout = false
-show-bar = true
+show-bar = false
 show-titles = true
 
 on-graphics-initialized = [

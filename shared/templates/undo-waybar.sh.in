@@ -72,15 +72,23 @@ if not path.is_file():
     print(f"Jay config not found; left unchanged: {path}")
     raise SystemExit(10)
 lines = path.read_text().splitlines(keepends=True)
-found = [i for i, line in enumerate(lines) if marker in line]
-if not found:
-    print("Waybar startup marker is already absent.")
+markers = [i for i, line in enumerate(lines) if marker in line]
+bars = [i for i, line in enumerate(lines) if line.strip().startswith("show-bar")]
+if len(bars) != 1 or lines[bars[0]].strip() not in {"show-bar = false", "show-bar = true"}:
+    raise SystemExit("Refusing to alter Jay config: expected exactly one recognized show-bar setting.")
+if not markers and lines[bars[0]].strip() == "show-bar = true":
+    print("Waybar startup is already removed and Jay's built-in bar is enabled.")
     raise SystemExit(10)
-elif len(found) != 1 or 'exec = ["waybar"]' not in lines[found[0]]:
-    raise SystemExit("Refusing to alter an unexpected Jay line carrying the Waybar marker.")
+expected_waybar = '{ type = "exec", exec = ["waybar"] }, # MCSR_SETUP_WAYBAR_START'
+if len(markers) != 1 or lines[markers[0]].strip() != expected_waybar:
+    raise SystemExit("Refusing to alter Jay config: expected exactly one marked Waybar startup line.")
+if lines[bars[0]].strip() != "show-bar = false":
+    raise SystemExit("Refusing to alter Jay config: expected show-bar = false while managed Waybar is enabled.")
 else:
     mode = path.stat().st_mode & 0o777
-    lines.pop(found[0])
+    lines.pop(markers[0])
+    bars = [i for i, line in enumerate(lines) if line.strip().startswith("show-bar")]
+    lines[bars[0]] = lines[bars[0]].replace("show-bar = false", "show-bar = true", 1)
     fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".config.toml.")
     try:
         with os.fdopen(fd, "w") as stream:
@@ -90,12 +98,10 @@ else:
     finally:
         if os.path.exists(tmp):
             os.unlink(tmp)
-    print("Removed only the marked Waybar startup entry from Jay.")
+    print("Removed the marked Waybar startup entry and enabled Jay's built-in bar.")
 PY
 then
-    if is_installer_created_file "$CONFIG"; then
-        update_after_fingerprint "$CONFIG" "$(runtime_fingerprint "$CONFIG")"
-    fi
+    update_after_fingerprint "$CONFIG" "$(runtime_fingerprint "$CONFIG")"
 else
     status=$?
     [[ "$status" == 10 ]] || exit "$status"

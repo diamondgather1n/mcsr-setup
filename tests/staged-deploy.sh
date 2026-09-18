@@ -130,6 +130,7 @@ stage_variant() {
     local system="$STAGE_ROOT/$1/root"
     local instance=waywall
     local dpi_state
+    local -a runtime_paths
     [[ "$platform" == wayland ]] || instance=MCSRRanked
     assert "$(grep -Fq 'sudo usermod -aG openrazer "$TARGET_USER"' "$ROOT/shared/install-common.sh" && printf yes)" "OpenRazer sysfs access group is granted"
     mkdir -p "$home/.config/foot" "$system"
@@ -168,7 +169,13 @@ stage_variant() {
         assert "$(grep -Fxq 'mouse2 = home' "$system/etc/keyd/normal.conf" && grep -Fxq 'mouse1 = backspace' "$system/etc/keyd/normal.conf" && printf yes)" "keyd mouse mappings"
         assert "$(grep -Fq 'logo-d =' "$home/.config/jay/config.toml" && grep -Fq 'exec = "jay-desktop-launcher"' "$home/.config/jay/config.toml" && test -x "$home/.local/bin/jay-desktop-launcher" && grep -Fq '/usr/bin/bemenu-run' "$home/.local/bin/jay-desktop-launcher" && printf yes)" "Right Ctrl+D launcher command chain"
         assert "$(grep -Fq 'logo-Return' "$home/.config/jay/config.toml" && test -x "$home/.local/bin/foot-tabbed" && printf yes)" "Right Ctrl+Enter terminal command chain"
-        assert "$(grep -Fq 'request_ninbot_state = function(delay_ms)' "$home/.config/waywall/init.lua" && grep -Fq 'repair_ninbot_hotkeys()' "$home/.config/waywall/init.lua" && grep -Fq '["F3"] = DISABLED' "$home/.config/waywall/init.lua" && grep -Fq 'wide = { key = "*-N", f3_safe = false, ingame_only = false }' "$home/.config/waywall/init.lua" && grep -Fq 'path = true' "$home/.config/waywall/init.lua" && printf yes)" "Waywall live behavior and portable DPI configuration"
+        assert "$(grep -Fq 'request_ninbot_state = function(delay_ms)' "$home/.config/waywall/init.lua" && grep -Fq 'repair_ninbot_hotkeys()' "$home/.config/waywall/init.lua" && grep -Fq 'path = true' "$home/.config/waywall/init.lua" && printf yes)" "Waywall live behavior and portable DPI configuration"
+        if [[ "$tier" == NL ]]; then
+            assert "$(grep -Fq '["F3"] = DISABLED' "$home/.config/waywall/init.lua" && printf yes)" "NL Waywall retains its F3 disable mapping"
+            assert "$(grep -Fq 'wide = { key = "*-N", f3_safe = false, ingame_only = false }' "$home/.config/waywall/init.lua" && printf yes)" "NL Waywall retains its intended Wide macro behavior"
+        else
+            assert "$(grep -Fq 'wide = { key = "*-N", f3_safe = false, ingame_only = true }' "$home/.config/waywall/init.lua" && printf yes)" "L Waywall retains its existing Wide macro behavior"
+        fi
         assert "$(grep -Fq 'bind_shift_hotbar("*-Shift-2", "1")' "$home/.config/waywall/init.lua" && grep -Fq 'bind_shift_hotbar("*-Shift-7", "6")' "$home/.config/waywall/init.lua" && printf yes)" "Ranked Shift+2..7 piechart bindings retained"
         dpi_state="$STAGE_ROOT/dpi-state-$variant"
         if XDG_STATE_HOME="$dpi_state" python3 "$home/.config/waywall/resources/set-dpi.py" invalid >/dev/null 2>&1; then
@@ -180,7 +187,6 @@ stage_variant() {
             "$home/.config/foot/foot.ini" "$home/.config/zellij/config.kdl" \
             "$home/.config/yazi/yazi.toml" "$home/.config/yazi/keymap.toml" \
             "$home/.config/micro/settings.json" "$home/.config/rncbc.org/qpwgraph.conf" \
-            "$home/.config/waybar/config" "$home/.config/waybar/style.css" \
             "$home/.config/obs-studio/basic/scenes/JAY_wayland.json" \
             "$home/.config/obs-studio/basic/profiles/Untitled/basic.ini" \
             "$home/.config/obs-studio/basic/profiles/fuzzy/basic.ini" \
@@ -196,9 +202,18 @@ stage_variant() {
             paceman-tracker-0.7.2.jar fix-ninbot-hotkeys.py; do
             assert "$(test -f "$home/.config/waywall/resources/$name" && printf yes)" "missing Waywall asset: $name"
         done
-        assert "$(grep -Fq 'MCSR_SETUP_WAYBAR_START' "$home/.config/jay/config.toml" && printf yes)" "Waybar startup marker"
+        if [[ "$tier" == NL ]]; then
+            assert "$(grep -Fxc 'show-bar = false' "$home/.config/jay/config.toml")" "NL disables Jay's built-in bar"
+            assert "$(grep -Fc 'MCSR_SETUP_WAYBAR_START' "$home/.config/jay/config.toml")" "NL has exactly one marked Waybar startup"
+            assert "$(grep -Fc 'exec = [\"waybar\"]' "$home/.config/jay/config.toml")" "NL starts exactly one Waybar instance"
+        else
+            assert "$(grep -Fxc 'show-bar = true' "$home/.config/jay/config.toml")" "L retains its existing Jay bar setting"
+            assert "$(! grep -Fq 'MCSR_SETUP_WAYBAR_START' "$home/.config/jay/config.toml" && printf yes)" "L remains free of the NL Waybar startup"
+        fi
         assert "$(test -x "$home/.local/bin/foot-tabbed" && test -x "$home/.local/bin/yazi-edit" && printf yes)" "executable user helpers"
-        assert "$(test ! -e "$home/.local/bin/jay-startup-windows" && test ! -e "$home/.local/bin/input-recorder" && printf yes)" "NL excludes L-only startup helpers"
+        if [[ "$tier" == NL ]]; then
+            assert "$(test ! -e "$home/.local/bin/jay-startup-windows" && test ! -e "$home/.local/bin/input-recorder" && printf yes)" "NL excludes L-only startup helpers"
+        fi
         if [[ "${MCSR_RUN_SYSTEMD_VERIFY:-0}" == 1 ]] && command -v systemd-analyze >/dev/null; then
             local unit_log="$STAGE_ROOT/systemd-$variant.log"
             if ! systemd-analyze verify \
@@ -208,18 +223,16 @@ stage_variant() {
                 exit 1
             fi
         fi
-        if rg -I -l '/home/nathan|@(HOME|USER|OBS_COLLECTION|OBS_SCENE_FILE)@' \
-            "$home/.config/jay" "$home/.config/waywall" "$home/.config/foot" \
-            "$home/.config/zellij" "$home/.config/yazi" "$home/.config/waybar" \
-            "$home/.config/obs-studio" "$home/.config/micro" "$home/.config/rncbc.org" \
-            "$home/.local/bin" "$home/.local/share/applications" \
-            "$home/launcher/instances/waywall/instance.json" >/dev/null; then
-            rg -n -I '/home/nathan|@(HOME|USER|OBS_COLLECTION|OBS_SCENE_FILE)@' \
-                "$home/.config/jay" "$home/.config/waywall" "$home/.config/foot" \
-                "$home/.config/zellij" "$home/.config/yazi" "$home/.config/waybar" \
-                "$home/.config/obs-studio" "$home/.config/micro" "$home/.config/rncbc.org" \
-                "$home/.local/bin" "$home/.local/share/applications" \
-                "$home/launcher/instances/waywall/instance.json" || :
+        runtime_paths=(
+            "$home/.config/jay" "$home/.config/waywall" "$home/.config/foot"
+            "$home/.config/zellij" "$home/.config/yazi"
+            "$home/.config/obs-studio" "$home/.config/micro" "$home/.config/rncbc.org"
+            "$home/.local/bin" "$home/.local/share/applications"
+            "$home/launcher/instances/waywall/instance.json"
+        )
+        [[ "$tier" != NL ]] || runtime_paths+=("$home/.config/waybar")
+        if rg -I -l '/home/nathan|@(HOME|USER|OBS_COLLECTION|OBS_SCENE_FILE)@' "${runtime_paths[@]}" >/dev/null; then
+            rg -n -I '/home/nathan|@(HOME|USER|OBS_COLLECTION|OBS_SCENE_FILE)@' "${runtime_paths[@]}" || :
             printf 'Runtime path/template leak in staged Wayland deployment.\n' >&2
             exit 1
         fi
@@ -246,8 +259,10 @@ stage_variant() {
     assert_file_payload "$ROOT/shared/obs/user.ini" "$home/.config/obs-studio/user.ini" "$home" mcsrtest "$platform"
     if [[ "$platform" == wayland ]]; then
         assert_tree_payload "$ROOT/wayland/waywall/resources" "$home/.config/waywall/resources" "$home" mcsrtest "$platform" exact
-        assert_file_payload "$ROOT/wayland/waywall/NL-init.lua" "$home/.config/waywall/init.lua" "$home" mcsrtest "$platform"
-        assert_tree_payload "$ROOT/wayland/waybar" "$home/.config/waybar" "$home" mcsrtest "$platform" exact
+        assert_file_payload "$ROOT/wayland/waywall/${tier}-init.lua" "$home/.config/waywall/init.lua" "$home" mcsrtest "$platform"
+        if [[ "$tier" == NL ]]; then
+            assert_tree_payload "$ROOT/wayland/waybar" "$home/.config/waybar" "$home" mcsrtest "$platform" exact
+        fi
         assert_file_payload "$ROOT/shared/obs/scenes/JAY_wayland.json" "$home/.config/obs-studio/basic/scenes/JAY_wayland.json" "$home" mcsrtest "$platform"
         for name in index.html overlay.css overlay.js; do
             assert_file_payload "$ROOT/shared/obs/input-overlay/$name" "$home/.local/share/obs-input-overlay/$name" "$home" mcsrtest "$platform"
@@ -258,12 +273,44 @@ stage_variant() {
         assert_file_payload "$ROOT/shared/obs/scenes/I3_x11.json" "$home/.config/obs-studio/basic/scenes/I3_x11.json" "$home" mcsrtest "$platform"
     fi
 
-    if [[ "$platform" == wayland ]]; then
+    if [[ "$platform" == wayland && "$tier" == NL ]]; then
         printf 'user edit after install\n' >>"$home/.config/yazi/yazi.toml"
         printf 'waybar\n' >"$(<"$home/.test-state-path")/packages.added"
         HOME="$home" "$home/DoOvers/undo-waybar.sh"
         assert "$(grep -Fq 'exec = "foot-tabbed"' "$home/.config/jay/config.toml" && printf yes)" "Waybar undo preserves Jay bindings"
         assert "$(! grep -Fq 'MCSR_SETUP_WAYBAR_START' "$home/.config/jay/config.toml" && printf yes)" "Waybar undo removes only marked startup"
+        assert "$(grep -Fxc 'show-bar = true' "$home/.config/jay/config.toml")" "Waybar undo restores Jay's built-in bar"
+        assert "$(grep -Fq 'logo-Return' "$home/.config/jay/config.toml" && grep -Fq 'keymap.rmlvo = { layout = "gb,no"' "$home/.config/jay/config.toml" && printf yes)" "Waybar undo preserves unrelated Jay settings"
+        python3 - "$ROOT/wayland/jay/NL-config.toml" "$home/.config/jay/config.toml" "$home" <<'PY'
+import pathlib, sys
+source, deployed, home = map(pathlib.Path, sys.argv[1:])
+expected = source.read_text().replace('@HOME@', str(home))
+expected = '\n'.join(
+    line.replace('show-bar = false', 'show-bar = true')
+    for line in expected.splitlines()
+    if 'MCSR_SETUP_WAYBAR_START' not in line
+) + '\n'
+if deployed.read_text() != expected:
+    raise SystemExit('Waybar undo changed unrelated Jay configuration')
+PY
+        config_path="$home/.config/jay/config.toml"
+        state_dir="$(<"$home/.test-state-path")"
+        expected_fingerprint="file:$(sha256sum -- "$config_path" | cut -d' ' -f1)"
+        recorded_fingerprint=$(python3 - "$state_dir/files.after" "$config_path" <<'PY'
+import pathlib, sys
+records = pathlib.Path(sys.argv[1]).read_bytes().split(b'\0')
+target = sys.argv[2].encode()
+for path, fingerprint in zip(records[0::2], records[1::2]):
+    if path == target:
+        print(fingerprint.decode())
+        break
+else:
+    raise SystemExit('Jay config missing from rollback fingerprints')
+PY
+        )
+        assert "$( [[ "$recorded_fingerprint" == "$expected_fingerprint" ]] && printf yes)" "Waybar undo updates Jay rollback fingerprint"
+        HOME="$home" "$home/DoOvers/undo-waybar.sh" >/dev/null
+        assert "$(grep -Fxc 'show-bar = true' "$home/.config/jay/config.toml")" "repeated Waybar undo is harmless"
         assert "$(grep -Fq -- '-R --noconfirm waybar' "$MCSR_TEST_PACMAN_LOG" && printf yes)" "Waybar undo requests non-recursive package removal"
         assert "$(! grep -Fxq waybar "$(<"$home/.test-state-path")/packages.added" && printf yes)" "Waybar package rollback record updated"
         HOME="$home" "$home/DoOvers/reset.sh"
@@ -277,6 +324,7 @@ stage_variant() {
 }
 
 stage_variant NLmcsrWL.sh wayland NL
+stage_variant LmcsrWL.sh wayland L
 stage_variant NLmcsrX11.sh x11 NL
 launcher_conflict_home="$STAGE_ROOT/launcher-conflict/home"
 launcher_conflict_dir="$launcher_conflict_home/MCSR/CrossDisplayManager/MCSRlauncher/launcher"
