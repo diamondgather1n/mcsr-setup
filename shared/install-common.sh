@@ -604,6 +604,8 @@ preflight_sources() {
         wayland)
             require_file "$ROOT/packages/pacman-wayland.txt"
             require_file "$ROOT/packages/yay-wayland.txt"
+            grep -Fxq bemenu "$ROOT/packages/pacman-wayland.txt" \
+                || die "Wayland package manifest must include bemenu for the Jay launcher"
             require_file "$ROOT/wayland/jay/source/Cargo.toml"
             require_file "$ROOT/wayland/jay/source/Cargo.lock"
             require_file "$ROOT/wayland/jay/source/etc/jay.desktop"
@@ -615,6 +617,7 @@ preflight_sources() {
             require_file "$ROOT/wayland/helpers/jay"
             require_file "$ROOT/wayland/helpers/foot-tabbed"
             require_file "$ROOT/wayland/helpers/jay-desktop-launcher"
+            require_file "$ROOT/wayland/helpers/jay-startup-windows"
             require_file "$ROOT/wayland/waybar/config"
             require_file "$ROOT/wayland/waybar/style.css"
             require_file "$ROOT/wayland/waywall/NL-init.lua"
@@ -634,6 +637,7 @@ preflight_sources() {
             require_executable "$ROOT/wayland/helpers/jay"
             require_executable "$ROOT/wayland/helpers/foot-tabbed"
             require_executable "$ROOT/wayland/helpers/jay-desktop-launcher"
+            require_executable "$ROOT/wayland/helpers/jay-startup-windows"
             require_executable "$ROOT/wayland/waywall/resources/set-dpi.py"
             require_executable "$ROOT/shared/obs/input-overlay/obs-input-overlay"
             require_dir "$ROOT/wayland/waywall/resources"
@@ -665,7 +669,6 @@ preflight_sources() {
         require_dir "$ROOT/x11/helpers"
         if [[ "$MCSR_PLATFORM" == wayland ]]; then
             require_executable "$ROOT/wayland/helpers/input-recorder"
-            require_executable "$ROOT/wayland/helpers/jay-startup-windows"
         fi
     fi
 
@@ -904,6 +907,8 @@ deploy_wayland_configuration() {
     done
     if [[ "$MCSR_TIER" == NL ]]; then
         configure_bash_login_path
+        deploy_rendered "$ROOT/wayland/helpers/jay-startup-windows" \
+            "$TARGET_HOME/.local/bin/jay-startup-windows" 755
         deploy_rendered "$ROOT/wayland/waybar/config" "$TARGET_HOME/.config/waybar/config"
         deploy_rendered "$ROOT/wayland/waybar/style.css" "$TARGET_HOME/.config/waybar/style.css"
     fi
@@ -1119,6 +1124,7 @@ PY
         assert_executable "$TARGET_HOME/.local/bin/waywall-ctrl-scroll"
         assert_executable "$TARGET_HOME/.local/bin/foot-tabbed"
         assert_executable "$TARGET_HOME/.local/bin/jay-desktop-launcher"
+        assert_executable "$TARGET_HOME/.local/bin/jay-startup-windows"
         assert_file "$TARGET_HOME/.config/jay/config.toml"
         python3 - "$TARGET_HOME/.config/jay/config.toml" <<'PY'
 import sys
@@ -1128,7 +1134,36 @@ with open(sys.argv[1], "rb") as source:
     tomllib.load(source)
 PY
         assert_contains "$TARGET_HOME/.config/jay/config.toml" 'layout = "gb,no"'
-        assert_contains "$TARGET_HOME/.config/jay/config.toml" 'exec = "foot-tabbed"'
+        for shortcut in \
+            "logo-d = { type = \"exec\", exec = [\"$TARGET_HOME/.local/bin/jay-desktop-launcher\"] }" \
+            "logo-Return = { type = \"exec\", exec = [\"$TARGET_HOME/.local/bin/foot-tabbed\"] }"; do
+            [[ "$(grep -Fxc "$shortcut" "$TARGET_HOME/.config/jay/config.toml")" == 1 ]] \
+                || die "Jay shortcut is missing or non-portable: $shortcut"
+        done
+        local startup_command="exec = [\"$TARGET_HOME/.local/bin/jay-startup-windows\"]"
+        [[ "$(grep -Fc "$startup_command" "$TARGET_HOME/.config/jay/config.toml")" == 1 ]] \
+            || die "Jay must start jay-startup-windows exactly once"
+        if [[ "$MCSR_TIER" == NL ]]; then
+            python3 - "$TARGET_HOME/.config/jay/config.toml" <<'PY'
+import sys
+import tomllib
+
+with open(sys.argv[1], "rb") as source:
+    config = tomllib.load(source)
+windows = config.get("windows", [])
+waywall = [rule for rule in windows if rule.get("name") == "waywall"]
+if len(waywall) != 1:
+    raise SystemExit("expected exactly one Waywall window rule")
+rule = waywall[0]
+if rule.get("match", {}).get("title-regex") != "(?i)^Waywall$":
+    raise SystemExit("Waywall window rule does not match the Waywall title")
+if not any(action == {"type": "move-to-workspace", "name": "7"}
+           for action in rule.get("action", [])):
+    raise SystemExit("Waywall window rule does not route to workspace 7")
+if any(rule.get("name") == "ranked-minecraft" for rule in windows):
+    raise SystemExit("obsolete Ranked Minecraft title rule remains in NL Jay config")
+PY
+        fi
         assert_contains "$TARGET_HOME/.config/zellij/config.kdl" 'ToggleMouseMode'
         assert_file "$TARGET_HOME/.config/waywall/init.lua"
         assert_contains "$TARGET_HOME/.config/waywall/init.lua" 'layout = "mcsr"'

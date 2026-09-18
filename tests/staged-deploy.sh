@@ -86,6 +86,8 @@ if stat.S_IMODE(dst.stat().st_mode) != expected_mode:
 PY
 }
 
+assert "$(grep -Fxq bemenu "$ROOT/packages/pacman-wayland.txt" && printf yes)" "NL Wayland package set includes bemenu-run provider"
+
 assert_tree_payload() {
     python3 - "$1" "$2" "$3" "$4" "$5" "$6" <<'PY'
 import os, pathlib, stat, sys
@@ -169,8 +171,44 @@ stage_variant() {
         assert "$(readlink -f "$home/.config/xkb/symbols/mcsr" | grep -Fx "$home/MCSR/wayland/xkb/symbols/mcsr" && printf yes)" "XKB source symlink"
         assert "$(grep -Fxq 'rightcontrol = leftmeta' "$system/etc/keyd/normal.conf" && printf yes)" "Right Ctrl keyd mapping"
         assert "$(grep -Fxq 'mouse2 = home' "$system/etc/keyd/normal.conf" && grep -Fxq 'mouse1 = backspace' "$system/etc/keyd/normal.conf" && printf yes)" "keyd mouse mappings"
-        assert "$(grep -Fq 'logo-d =' "$home/.config/jay/config.toml" && grep -Fq 'exec = "jay-desktop-launcher"' "$home/.config/jay/config.toml" && test -x "$home/.local/bin/jay-desktop-launcher" && grep -Fq '/usr/bin/bemenu-run' "$home/.local/bin/jay-desktop-launcher" && printf yes)" "Right Ctrl+D launcher command chain"
-        assert "$(grep -Fq 'logo-Return' "$home/.config/jay/config.toml" && test -x "$home/.local/bin/foot-tabbed" && printf yes)" "Right Ctrl+Enter terminal command chain"
+        for expected_binding in \
+            "logo-d = { type = \"exec\", exec = [\"$home/.local/bin/jay-desktop-launcher\"] }" \
+            "logo-Return = { type = \"exec\", exec = [\"$home/.local/bin/foot-tabbed\"] }"; do
+            assert "$(grep -Fxc "$expected_binding" "$home/.config/jay/config.toml")" "absolute Jay shortcut: $expected_binding"
+        done
+        assert "$(test -x "$home/.local/bin/jay-desktop-launcher" && grep -Fq '/usr/bin/bemenu-run' "$home/.local/bin/jay-desktop-launcher" && printf yes)" "launcher helper exists and executes bemenu-run"
+        assert "$(test -x "$home/.local/bin/foot-tabbed" && printf yes)" "terminal helper executable"
+        startup_command="exec = [\"$home/.local/bin/jay-startup-windows\"]"
+        assert "$(grep -Fc "$startup_command" "$home/.config/jay/config.toml")" "Jay starts absolute startup helper exactly once"
+        assert "$(test -x "$home/.local/bin/jay-startup-windows" && printf yes)" "startup helper deployed executable"
+        python3 - "$home/.config/jay/config.toml" "$home" "$tier" <<'PY'
+import sys
+import tomllib
+
+config_path, home, tier = sys.argv[1:]
+with open(config_path, "rb") as source:
+    config = tomllib.load(source)
+shortcuts = config["shortcuts"]
+assert shortcuts["logo-d"]["exec"] == [f"{home}/.local/bin/jay-desktop-launcher"]
+assert shortcuts["logo-Return"]["exec"] == [f"{home}/.local/bin/foot-tabbed"]
+startup = [entry for entry in config["on-graphics-initialized"]
+           if entry.get("exec") == [f"{home}/.local/bin/jay-startup-windows"]]
+assert len(startup) == 1, "expected one absolute startup-helper invocation"
+if tier == "NL":
+    windows = config.get("windows", [])
+    waywall = [rule for rule in windows if rule.get("name") == "waywall"]
+    assert len(waywall) == 1, "expected exactly one Waywall rule"
+    rule = waywall[0]
+    assert rule["match"]["title-regex"] == "(?i)^Waywall$"
+    assert rule["initial-tile-state"] == "floating"
+    assert {"type": "move-to-workspace", "name": "7"} in rule["action"]
+    assert not any(item.get("name") == "ranked-minecraft" for item in windows)
+    assert not any(item.get("match", {}).get("title-regex") == r"^Minecraft\* 1\.16\.1 - MCSR Ranked$"
+                   for item in windows)
+    ninjabrain = [item for item in windows if item.get("name") == "ninjabrain"]
+    assert len(ninjabrain) == 1
+    assert {"type": "move-to-workspace", "name": "7"} in ninjabrain[0]["action"]
+PY
         assert "$(grep -Fq 'request_ninbot_state = function(delay_ms)' "$home/.config/waywall/init.lua" && grep -Fq 'repair_ninbot_hotkeys()' "$home/.config/waywall/init.lua" && grep -Fq 'path = true' "$home/.config/waywall/init.lua" && printf yes)" "Waywall live behavior and portable DPI configuration"
         if [[ "$tier" == NL ]]; then
             assert "$(grep -Fq '["F3"] = DISABLED' "$home/.config/waywall/init.lua" && printf yes)" "NL Waywall retains its F3 disable mapping"
@@ -218,7 +256,7 @@ stage_variant() {
         fi
         assert "$(test -x "$home/.local/bin/foot-tabbed" && test -x "$home/.local/bin/yazi-edit" && printf yes)" "executable user helpers"
         if [[ "$tier" == NL ]]; then
-            assert "$(test ! -e "$home/.local/bin/jay-startup-windows" && test ! -e "$home/.local/bin/input-recorder" && printf yes)" "NL excludes L-only startup helpers"
+            assert "$(test -x "$home/.local/bin/jay-startup-windows" && test ! -e "$home/.local/bin/input-recorder" && printf yes)" "NL includes startup helper and excludes L-only input recorder"
         fi
         if [[ "${MCSR_RUN_SYSTEMD_VERIFY:-0}" == 1 ]] && command -v systemd-analyze >/dev/null; then
             local unit_log="$STAGE_ROOT/systemd-$variant.log"
@@ -264,6 +302,7 @@ stage_variant() {
     assert_file_payload "$ROOT/shared/obs/global.ini" "$home/.config/obs-studio/global.ini" "$home" mcsrtest "$platform"
     assert_file_payload "$ROOT/shared/obs/user.ini" "$home/.config/obs-studio/user.ini" "$home" mcsrtest "$platform"
     if [[ "$platform" == wayland ]]; then
+        assert_file_payload "$ROOT/wayland/jay/${tier}-config.toml" "$home/.config/jay/config.toml" "$home" mcsrtest "$platform"
         assert_tree_payload "$ROOT/wayland/waywall/resources" "$home/.config/waywall/resources" "$home" mcsrtest "$platform" exact
         assert_file_payload "$ROOT/wayland/waywall/${tier}-init.lua" "$home/.config/waywall/init.lua" "$home" mcsrtest "$platform"
         if [[ "$tier" == NL ]]; then
@@ -283,7 +322,7 @@ stage_variant() {
         printf 'user edit after install\n' >>"$home/.config/yazi/yazi.toml"
         printf 'waybar\n' >"$(<"$home/.test-state-path")/packages.added"
         HOME="$home" "$home/DoOvers/undo-waybar.sh"
-        assert "$(grep -Fq 'exec = "foot-tabbed"' "$home/.config/jay/config.toml" && printf yes)" "Waybar undo preserves Jay bindings"
+        assert "$(grep -Fq "$home/.local/bin/foot-tabbed" "$home/.config/jay/config.toml" && printf yes)" "Waybar undo preserves absolute Jay terminal binding"
         assert "$(! grep -Fq 'MCSR_SETUP_WAYBAR_START' "$home/.config/jay/config.toml" && printf yes)" "Waybar undo removes only marked startup"
         assert "$(grep -Fxc 'show-bar = true' "$home/.config/jay/config.toml")" "Waybar undo restores Jay's built-in bar"
         assert "$(grep -Fq 'logo-Return' "$home/.config/jay/config.toml" && grep -Fq 'keymap.rmlvo = { layout = "gb,no"' "$home/.config/jay/config.toml" && printf yes)" "Waybar undo preserves unrelated Jay settings"
