@@ -903,6 +903,7 @@ deploy_wayland_configuration() {
         deploy_rendered "$ROOT/wayland/helpers/$file" "$TARGET_HOME/.local/bin/$file" 755
     done
     if [[ "$MCSR_TIER" == NL ]]; then
+        configure_bash_login_path
         deploy_rendered "$ROOT/wayland/waybar/config" "$TARGET_HOME/.config/waybar/config"
         deploy_rendered "$ROOT/wayland/waybar/style.css" "$TARGET_HOME/.config/waybar/style.css"
     fi
@@ -962,6 +963,48 @@ deploy_x11_configuration() {
         "$TARGET_HOME/.config/obs-studio/basic/scenes/I3_x11.json"
 }
 
+configure_bash_login_path() {
+    local profile="$TARGET_HOME/.profile"
+    local start='# MCSR_SETUP_LOCAL_BIN_PATH_START'
+    local end='# MCSR_SETUP_LOCAL_BIN_PATH_END'
+    local start_count end_count tmp
+
+    for profile in "$TARGET_HOME/.bash_profile" "$TARGET_HOME/.bash_login" "$TARGET_HOME/.profile"; do
+        [[ -e "$profile" || -L "$profile" ]] && break
+    done
+    [[ ! -L "$profile" ]] || die "refusing to modify symlinked Bash login file: $profile"
+    [[ ! -e "$profile" || -f "$profile" ]] || die "Bash login path is not a regular file: $profile"
+
+    if [[ -f "$profile" ]] && { grep -Fq "$start" "$profile" || grep -Fq "$end" "$profile"; }; then
+        start_count=$(grep -Fxc "$start" "$profile" || :)
+        end_count=$(grep -Fxc "$end" "$profile" || :)
+        [[ "$start_count" == 1 && "$end_count" == 1 ]] \
+            || die "incomplete or duplicate MCSR PATH block in $profile"
+        grep -Fqx 'case ":${PATH-}:" in' "$profile" \
+            && grep -Fqx '  *:"$HOME/.local/bin":*) ;;' "$profile" \
+            && grep -Fqx '  *) export PATH="$HOME/.local/bin${PATH:+:$PATH}" ;;' "$profile" \
+            || die "unexpected contents in managed MCSR PATH block: $profile"
+        return
+    fi
+
+    record_destination "$profile"
+    tmp=$(mktemp "$TARGET_HOME/.bash-login-path.XXXXXX")
+    if [[ -f "$profile" ]]; then
+        cat -- "$profile" >"$tmp"
+        chmod --reference="$profile" "$tmp"
+    else
+        chmod 644 "$tmp"
+    fi
+    {
+        printf '\n%s\n' "$start"
+        printf 'case ":${PATH-}:" in\n'
+        printf '  *:"$HOME/.local/bin":*) ;;\n'
+        printf '  *) export PATH="$HOME/.local/bin${PATH:+:$PATH}" ;;\n'
+        printf 'esac\n%s\n' "$end"
+    } >>"$tmp"
+    mv -f -- "$tmp" "$profile"
+}
+
 enable_system_services() {
     stage "required services"
     if [[ "${MCSR_STAGING:-0}" == 1 ]]; then
@@ -976,7 +1019,12 @@ enable_system_services() {
         sudo usermod -aG plugdev "$TARGET_USER"
     fi
     systemctl --user enable pipewire.socket pipewire-pulse.socket wireplumber.service
-    sudo systemctl enable NetworkManager.service lightdm.service
+    sudo systemctl enable NetworkManager.service
+    if [[ "$MCSR_PLATFORM" == wayland && "$MCSR_TIER" == NL ]]; then
+        sudo systemctl disable lightdm.service
+    else
+        sudo systemctl enable lightdm.service
+    fi
     sudo systemctl enable --now keyd.service
     systemctl is-enabled --quiet keyd.service || die "keyd.service is not enabled"
     systemctl is-active --quiet keyd.service || die "keyd.service failed to start"

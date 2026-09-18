@@ -59,6 +59,7 @@ export MCSR_STAGING=1 MCSR_STAGE_HARDLINK_INSTANCES=0
 "$ROOT/tests/preflight-validation.sh"
 "$ROOT/tests/rollback-locale.sh"
 bash "$ROOT/tests/reset-session-safe.sh"
+bash "$ROOT/tests/service-variants.sh"
 
 assert() {
     [[ "$1" ]] || { printf 'STAGED TEST FAILED: %s\n' "$2" >&2; exit 1; }
@@ -135,6 +136,7 @@ stage_variant() {
     assert "$(grep -Fq 'sudo usermod -aG openrazer "$TARGET_USER"' "$ROOT/shared/install-common.sh" && printf yes)" "OpenRazer sysfs access group is granted"
     mkdir -p "$home/.config/foot" "$system"
     printf 'pre-install foot config\n' >"$home/.config/foot/foot.ini"
+    printf '# existing login profile\n' >"$home/.bash_profile"
 
     ROOT="$ROOT" MCSR_VARIANT="$variant" MCSR_PLATFORM="$platform" MCSR_TIER="$tier" \
         MCSR_TARGET_USER=mcsrtest MCSR_TARGET_HOME="$home" MCSR_SYSTEM_ROOT="$system" \
@@ -206,6 +208,10 @@ stage_variant() {
             assert "$(grep -Fxc 'show-bar = false' "$home/.config/jay/config.toml")" "NL disables Jay's built-in bar"
             assert "$(grep -Fc 'MCSR_SETUP_WAYBAR_START' "$home/.config/jay/config.toml")" "NL has exactly one marked Waybar startup"
             assert "$(grep -Fc 'exec = [\"waybar\"]' "$home/.config/jay/config.toml")" "NL starts exactly one Waybar instance"
+            assert "$(grep -Fxc '# MCSR_SETUP_LOCAL_BIN_PATH_START' "$home/.bash_profile")" "NL adds one Bash login PATH block"
+            login_jay=$(env -i HOME="$home" USER=mcsrtest LOGNAME=mcsrtest PATH=/usr/bin:/bin \
+                bash --login -c 'command -v jay')
+            assert "$([[ "$login_jay" == "$home/.local/bin/jay" ]] && printf yes)" "fresh Bash login resolves jay from local bin"
         else
             assert "$(grep -Fxc 'show-bar = true' "$home/.config/jay/config.toml")" "L retains its existing Jay bar setting"
             assert "$(! grep -Fq 'MCSR_SETUP_WAYBAR_START' "$home/.config/jay/config.toml" && printf yes)" "L remains free of the NL Waybar startup"
@@ -319,6 +325,7 @@ PY
         assert "$(test ! -e "$home/.local/bin/yazi-edit" && printf yes)" "rollback removes unchanged installer-created helper"
         assert "$(test ! -e "$home/.config/jay/config.toml" && printf yes)" "rollback removes updated installer-created Jay config"
         assert "$(test ! -L "$home/MCSR/CrossDisplayManager/MCSRlauncher/launcher" && printf yes)" "rollback removes installer-created launcher symlink"
+        assert "$(grep -Fxq '# existing login profile' "$home/.bash_profile" && ! grep -Fq MCSR_SETUP_LOCAL_BIN_PATH "$home/.bash_profile" && printf yes)" "rollback restores pre-existing Bash login profile"
     fi
     printf 'STAGED PASS: %s (home=%s)\n' "$variant" "$home"
 }
